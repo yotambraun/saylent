@@ -51,9 +51,18 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-  rmSync(home, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-  rmSync(cwd, { recursive: true, force: true });
+  // Windows can hold a handle on a just-written file for a moment (EBUSY on
+  // rmdir); retry, and never fail a test over a temp folder that would not go.
+  const tidy = (d: string) => {
+    try {
+      rmSync(d, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+    } catch {
+      /* leftover temp dir: harmless */
+    }
+  };
+  for (const d of dirs.splice(0)) tidy(d);
+  tidy(home);
+  tidy(cwd);
   process.env.HOME = prevHome;
   for (const [k, v] of Object.entries(prevEnv)) {
     if (v === undefined) delete process.env[k];

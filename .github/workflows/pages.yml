@@ -1,13 +1,10 @@
 # Builds website/ (Next.js static export) and deploys it to GitHub Pages at
-# https://yotambraun.github.io/saylent/. CI (ci.yml) gates src/**; this
-# workflow only ever touches website/ output.
+# https://yotambraun.github.io/saylent/ on every push to main: the site embeds the
+# sample report and the report package, so a filter on website/** would go stale.
 name: Pages
 on:
   push:
     branches: [main]
-    paths:
-      - "website/**"
-      - ".github/workflows/pages.yml"
   workflow_dispatch:
 # Least-privilege token, widened only for the Pages deploy step itself.
 permissions:
