@@ -6,12 +6,13 @@
 // receipts, and the "since you shipped" notes with the single celebration.
 import { PerEngineTable } from "./per-engine-table";
 import type { Movement } from "../movement";
+import { formatDayUtc } from "../utils";
 
 function day(iso: string | null): string {
   if (!iso) return "";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+  return formatDayUtc(d);
 }
 
 export function MovementView({ model }: { model: Movement }) {

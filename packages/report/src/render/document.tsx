@@ -15,6 +15,7 @@ import { Brief, SINGLE_FAMILY_JUDGE_NOTE } from "../components/brief";
 import { Dossier } from "../components/dossier";
 import { StaticReportHost } from "./static-host";
 import type { ReportData, ReportMeta, RenderReportOptions } from "./types";
+import { formatDayUtc } from "../utils";
 
 export const REPORT_ROOT_ID = "saylent-report-root";
 export const REPORT_DATA_ID = "saylent-report-data";
@@ -58,7 +59,7 @@ function formatDate(iso: string): string {
   if (Number.isNaN(d.getTime())) return iso;
   // UTC on purpose: the static file is rendered once and read everywhere, so the
   // date must not depend on the clock of the machine that rendered it
-  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" });
+  return formatDayUtc(d);
 }
 
 function Fact({ label, children }: { label: string; children: ReactNode }) {

@@ -17,6 +17,7 @@ import { normClaims, normOtherBrands } from "@saylent/engine/verdict-compat";
 import { answerCents, formatCents, hasRecordedUsage } from "@saylent/engine/answer-cost";
 import { pageOwner, type RivalOwnerFn } from "../report-intel";
 import { trimEdgeFragments } from "../strip-md";
+import { formatDayUtc } from "../utils";
 
 /* ---------- row types (DB snake_case, RLS-fetched) ---------- */
 export interface AnswerRow {
@@ -190,7 +191,7 @@ export function AnswerDrawer({
                   ENGINE_LABEL[answer.engine] ?? answer.engine,
                   engineModels?.[answer.engine],
                   answer.created_at &&
-                    new Date(answer.created_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
+                    formatDayUtc(answer.created_at),
                 ]
                   .filter(Boolean)
                   .join(" · ")}

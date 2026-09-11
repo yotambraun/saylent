@@ -68,6 +68,7 @@ import {
   type CorpusRow,
 } from "./drawers";
 import type { RunRow } from "./run-view";
+import { formatDayUtc } from "../utils";
 
 /* ---------- row types (DB snake_case, RLS-fetched) ---------- */
 export interface CheckRow {
@@ -272,11 +273,7 @@ export function Dossier({
   const engineCountLabel = `${enginesAsked.length} AI engine${enginesAsked.length === 1 ? "" : "s"}`;
   // explicit locale: bare toLocaleDateString() differs server vs browser
   // (7/10/2026 vs 10/07/2026) and hydration-mismatches the disclaimer
-  const disclaimerDate = new Date(run.finished_at ?? run.created_at).toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
+  const disclaimerDate = formatDayUtc(run.finished_at ?? run.created_at);
   // qtype tab state lives here so funnel cells can drive it
   const [qtype, setQtype] = useState("all");
 
@@ -554,17 +551,13 @@ export function Dossier({
       {/* print-only running footer — styled by globals.css .saylent-print-footer */}
       <div className="saylent-print-footer hidden" suppressHydrationWarning>
         {brand.name} ·{" "}
-        {new Date(run.finished_at ?? run.created_at).toLocaleDateString("en-GB", {
-          day: "2-digit",
-          month: "short",
-          year: "numeric",
-        })}{" "}
+        {formatDayUtc(run.finished_at ?? run.created_at)}{" "}
         · every number opens its receipt in the live report
       </div>
       {/* EYEBROW — the page's real <h1> (semantic heading; visual treatment unchanged) */}
       <h1 className="font-mono text-xs uppercase tracking-wider text-wire" suppressHydrationWarning>
         SAYLENT · REPORT ·{" "}
-        {new Date(run.finished_at ?? run.created_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" })} · SNAPSHOT (single
+        {formatDayUtc(run.finished_at ?? run.created_at)} · SNAPSHOT (single
         run)
         {previous && (
           <span className="normal-case">
@@ -1763,7 +1756,7 @@ function OwnSiteCoveragePanel({ data }: { data: OwnSiteCoverage }) {
   const fmtDate = (d?: string) => {
     if (!d) return null;
     try {
-      return new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+      return formatDayUtc(d);
     } catch {
       return null;
     }
@@ -2922,11 +2915,7 @@ function FixDetailBody({
               <Check aria-hidden className="size-3 shrink-0 self-center" />
               <span>
               Shipped{" "}
-              {new Date(fix.published_at).toLocaleDateString("en-GB", {
-                day: "2-digit",
-                month: "short",
-                year: "numeric",
-              })}{" "}
+              {formatDayUtc(fix.published_at)}{" "}
               · watching: your next verify measures it
               </span>
             </span>

@@ -51,8 +51,8 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true });
-  rmSync(home, { recursive: true, force: true });
+  for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  rmSync(home, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   rmSync(cwd, { recursive: true, force: true });
   process.env.HOME = prevHome;
   for (const [k, v] of Object.entries(prevEnv)) {

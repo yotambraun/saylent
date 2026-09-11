@@ -1,3 +1,4 @@
+import { formatDayUtc } from "./utils";
 // Compact relative time for the notifications inbox ("just now",
 // "5m", "3h", "2d", then a date). Pure; rendered client-only (suppressHydration)
 // so it never mismatches SSR.
@@ -12,5 +13,5 @@ export function relativeTime(iso: string, now: number = Date.now()): string {
   if (hrs < 24) return `${hrs}h`;
   const days = Math.floor(hrs / 24);
   if (days < 7) return `${days}d`;
-  return new Date(then).toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+  return formatDayUtc(then, { year: false });
 }

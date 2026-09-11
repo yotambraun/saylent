@@ -15,6 +15,7 @@ import { gateTally, robotsVsLiveNote, type GateCheck } from "../gates-lede";
 import { artifactToMarkdown } from "../artifact";
 import { DOCS_URL, REPO_URL, RUN_COMMAND, PROJECT_TAGLINE } from "../components/report-outro";
 import type { ReportData } from "./types";
+import { formatDayUtc } from "../utils";
 
 const ENGINE_LABEL: Record<string, string> = {
   chatgpt: "ChatGPT",
@@ -30,7 +31,7 @@ function day(iso: string | null | undefined): string {
   if (!iso) return "date not recorded";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "date not recorded";
-  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" });
+  return formatDayUtc(d);
 }
 
 /** A cited page whose stored title is just the site's own name ("Medium") tells

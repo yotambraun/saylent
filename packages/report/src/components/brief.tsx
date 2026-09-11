@@ -32,6 +32,7 @@ import { makeRivalOwner } from "@saylent/engine/rival-owner";
 import { useReportHost } from "../host";
 import { AnswerDrawer, PageDrawer, type AnswerRow, type CorpusRow } from "./drawers";
 import type { RunRow } from "./run-view";
+import { formatDayUtc } from "../utils";
 
 /* ---------- SSR-safe desktop breakpoint (lg = 1024px) ----------
    Mirrors reveal/tour-kit's useReducedMotion: server snapshot is false (mobile
@@ -110,12 +111,7 @@ export function Brief({
       : [];
   }, [brandModel]);
 
-  const dateStr = new Date(run.finished_at ?? run.created_at).toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  });
+  const dateStr = formatDayUtc(run.finished_at ?? run.created_at);
 
   const brief = useMemo<BriefModel>(
     () =>
