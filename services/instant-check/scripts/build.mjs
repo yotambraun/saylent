@@ -13,8 +13,9 @@
 // The engine is BUNDLED FROM SOURCE, never copied: esbuild follows the real
 // `@saylent/engine/crawl`, `/domainChecks`, `/memory-writer`, `/util` modules
 // (they ship as raw TypeScript, which is why they cannot be an external), so
-// the hosted check and `saylent gate-check` cannot drift apart. cheerio, the
-// one real npm dependency in that graph, is inlined too. zod / openai /
+// the hosted check and `saylent gate-check` cannot drift apart. cheerio and
+// undici, the two real npm dependencies in that graph, are inlined too (both
+// declared in this package.json so a root-directory install has them). zod / openai /
 // @anthropic-ai/sdk / @google/genai are NOT in the graph — src/gate.ts imports
 // only those four submodules, and everything else they touch (config.ts's
 // ExtraBot, run-audit.ts's Fetcher) is imported with `import type`, which
@@ -43,6 +44,10 @@ const result = await build({
   format: "cjs",
   target: "node20",
   external: [],
+  // The engine sources live in a sibling directory, so Node's upward lookup
+  // from packages/engine/src never reaches this service's node_modules. On
+  // Vercel that is the ONLY node_modules there is; point esbuild at it.
+  nodePaths: [path.join(serviceDir, "node_modules")],
   // Strips esbuild's per-module banners, which would otherwise leave this
   // repo's absolute paths in the deployed artifact.
   minify: true,
