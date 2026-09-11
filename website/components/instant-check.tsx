@@ -229,7 +229,12 @@ export function InstantCheck({ serviceUrl = SERVICE_URL }: { serviceUrl?: string
         <CommandFallback note="Replace acme.com with your domain. The check is free and makes no LLM calls." />
       </section>
     );
-  }
+  }  // the variable is the service's BASE url (docs, .env.example); accept the
+  // full endpoint too, so neither form breaks the widget
+  const endpoint = /\/api\/check\/?$/.test(serviceUrl)
+    ? serviceUrl.replace(/\/$/, "")
+    : `${serviceUrl.replace(/\/+$/, "")}/api/check`;
+
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -239,11 +244,6 @@ export function InstantCheck({ serviceUrl = SERVICE_URL }: { serviceUrl?: string
     setError(null);
     setResult(null);
     try {
-      // the variable is the service's BASE url (docs, .env.example); accept the
-      // full endpoint too, so neither form breaks the widget
-      const endpoint = /\/api\/check\/?$/.test(serviceUrl)
-        ? serviceUrl.replace(/\/$/, "")
-        : `${serviceUrl.replace(/\/+$/, "")}/api/check`;
       const res = await fetch(`${endpoint}?domain=${encodeURIComponent(value)}`, {
         headers: { accept: "application/json" },
       });
