@@ -23,6 +23,9 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # the workspace packages export their built dist/, so every consumer (tests, the
+      # app build, the CLI bundle) needs them built first
+      - run: npm run build:packages
       # License gate — fail on strong-copyleft / network-copyleft licenses (GPL,
       # AGPL, SSPL) in the production dependency tree. failOn matches the FULL SPDX
       # id exactly, so LGPL-3.0-or-later (@img/sharp-libvips, dynamic-link) and
@@ -77,6 +80,9 @@ jobs:
           node-version: ${{ matrix.node }}
           cache: npm
       - run: npm ci
+      # the workspace packages export their built dist/, so every consumer (tests, the
+      # app build, the CLI bundle) needs them built first
+      - run: npm run build:packages
       - name: Test the CLI, engine, and report packages only
         run: npx vitest run packages/cli packages/engine packages/report
       - run: npm run build:cli
