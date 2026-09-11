@@ -12,7 +12,8 @@
 <p align="center">
   <a href="https://yotambraun.github.io/saylent/docs">Docs</a> ·
   <a href="https://yotambraun.github.io/saylent/docs/quickstart">Quickstart</a> ·
-  <a href="examples/kestrel/">Sample report</a>
+  <a href="examples/kestrel/">Sample report</a> ·
+  <a href="https://saylent-demo.vercel.app/app">Live demo</a>
 </p>
 
 <p align="center">
@@ -117,6 +118,8 @@ every citation. `run.json` is also what `saylent verify` and `saylent history`
 read later.
 
 ## Ways to run it
+
+A read-only copy of the app runs at [https://saylent-demo.vercel.app/app](https://saylent-demo.vercel.app/app) on the Kestrel Uptime sample: every screen, nothing saves, no account.
 
 **The command.** `npx saylent audit example.com`. No install, no account, no
 database. `saylent questions` prints the buyer questions and the brand model

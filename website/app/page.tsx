@@ -82,7 +82,13 @@ export default function Home() {
             <p className="mt-2 text-center text-xs text-wire">
               Needs one OpenAI or Anthropic key (both for cross-family judging) · about $0.40 to $1.20 with four engines, of your own credits
             </p>
-            <p className="mt-5 text-center">
+            <p className="mt-5 flex flex-wrap justify-center gap-3">
+              <a
+                href="https://saylent-demo.vercel.app/app"
+                className="inline-block rounded-lg border border-line bg-card px-4 py-2 text-sm text-ink transition-colors hover:border-wire"
+              >
+                Try the live demo
+              </a>
               <Link
                 href="/docs/self-host"
                 className="inline-block rounded-lg border border-line bg-card px-4 py-2 text-sm text-ink transition-colors hover:border-wire"
@@ -133,7 +139,8 @@ export default function Home() {
             <h2 className="font-display text-xl text-ink">Deploy the full app</h2>
             <p className="mt-2 text-sm text-wire">
               History, scheduled verifies, multiple users on one deployment, and share links - on
-              infrastructure you own.
+              infrastructure you own. Walk a read-only copy first at{" "}
+              <span className="text-ink">saylent-demo.vercel.app</span>.
             </p>
           </Link>
         </section>

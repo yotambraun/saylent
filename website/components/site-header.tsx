@@ -24,6 +24,7 @@ const LINKS: [label: string, href: string, narrow?: boolean][] = [
   ["Docs", "/docs", true],
   ["How it works", "/docs/how-it-works"],
   ["Self-host", "/docs/self-host"],
+  ["Live demo", "https://saylent-demo.vercel.app/app"],
 ];
 
 export function SiteHeader() {
