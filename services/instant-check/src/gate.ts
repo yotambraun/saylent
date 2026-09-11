@@ -85,10 +85,10 @@ export function toInstantCheckResult(
   const unreadable = byCheck.get("robots.txt");
   const robotsNotes: string[] = [];
   if (unreadable) robotsNotes.push(unreadable.detail);
-  for (const name of ["robots: Google-Extended", "robots.txt scope"]) {
-    const row = byCheck.get(name);
-    if (row) robotsNotes.push(row.detail);
-  }
+  const ext = byCheck.get("robots: Google-Extended");
+  if (ext) robotsNotes.push(`Google-Extended: ${ext.detail}`); // a note needs its subject
+  const scope = byCheck.get("robots.txt scope");
+  if (scope) robotsNotes.push(scope.detail);
   for (const c of checks) {
     if (!c.check.startsWith("robots: ")) continue;
     const agent = c.check.slice("robots: ".length);

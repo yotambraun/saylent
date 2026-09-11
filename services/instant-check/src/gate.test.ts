@@ -48,6 +48,7 @@ describe("toInstantCheckResult", () => {
 
   it("keeps info rows as notes, where they cannot move a verdict", () => {
     const out = reduce();
+    expect(out.robots.notes.join(" ")).toContain("Google-Extended: present"); // the note names its subject
     expect(out.robots.notes.join(" ")).toContain("training token");
     expect(out.robots.notes.join(" ")).toContain("deprecated agent");
     expect(out.probe.notes.join(" ")).toContain("evidence, not proof");
