@@ -45,11 +45,13 @@ jobs:
           registry-url: "https://registry.npmjs.org"
 
       - run: npm ci
+      # the workspace packages export their built dist/; every consumer below
+      # (typecheck, tests, the CLI bundle) needs them built first
+      - run: npm run build:packages
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run test
       - run: npm run build:cli
-      - run: npm run build:packages
 
       - name: Resolve tag version
         id: version

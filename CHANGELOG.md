@@ -4,7 +4,7 @@ All notable changes to Saylent are documented in this file. The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this
 project uses [Semantic Versioning](https://semver.org/).
 
-## [0.1.0]
+## [0.1.0] - 2026-09-11
 
 First public release. Saylent is an open-source audit of what AI assistants
 say about your brand: every verdict traced to the answer, the cited page,
