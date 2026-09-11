@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { inngestKeysRequired } from "./env";
+import { inngestKeysRequired } from "./env-rules";
 
 describe("inngestKeysRequired", () => {
   it("requires the Inngest keys on a production deployment", () => {

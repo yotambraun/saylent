@@ -25,7 +25,7 @@ npm run check-env -- --profile app     # what the full app needs
 | `DATABASE_URL` | every target | The Transaction pooler string (port 6543) - the app's own runtime queries |
 | `DIRECT_DATABASE_URL` | every target | The Direct connection string (port 5432) - migrations only; using the pooler here hangs |
 | `INNGEST_EVENT_KEY` | cloud, own-server (production) | Local dev needs neither Inngest key - `npx inngest-cli dev` reads none |
-| `INNGEST_SIGNING_KEY` | cloud, own-server (production) | Required so `/api/inngest` is authenticated; without it in production, paid runs are externally triggerable Not needed on a read-only demo deployment (`NEXT_PUBLIC_DEMO_READONLY=1`), which runs nothing. |
+| `INNGEST_SIGNING_KEY` | cloud, own-server (production) | Required so `/api/inngest` is authenticated; without it in production, paid runs are externally triggerable. Not needed on a read-only demo deployment (`NEXT_PUBLIC_DEMO_READONLY=1`), which runs nothing. |
 | `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` | every target | One of the two is enough to run an audit; both give cross-family judging |
 
 ## Optional

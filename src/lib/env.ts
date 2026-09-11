@@ -64,6 +64,8 @@ const serverSchema = z.object({
   MODEL_DRAFTER: opt,
 });
 
+import { inngestKeysRequired } from "./env-rules";
+
 const skip = process.env.SKIP_ENV_VALIDATION === "1";
 const isServer = typeof window === "undefined";
 
@@ -71,13 +73,6 @@ const isServer = typeof window === "undefined";
 // none) but a MUST in production — without INNGEST_SIGNING_KEY the /api/inngest
 // endpoint serves unauthenticated and paid runs become externally triggerable.
 // A prod deploy missing them fails fast at env-parse instead of shipping the hole.
-/** The read-only demo refuses every run (src/lib/demo-mode.ts), so it has no job
- *  runner at all and the Inngest route answers 404 there (src/app/api/inngest).
- *  Only in that mode are the keys not required in production. Exported for the test. */
-export function inngestKeysRequired(env: Record<string, string | undefined> = process.env): boolean {
-  return env.VERCEL_ENV === "production" && env.NEXT_PUBLIC_DEMO_READONLY !== "1";
-}
-
 function assertProdInngestKeys(data: Record<string, unknown>) {
   if (!inngestKeysRequired()) return;
   const missing = (["INNGEST_SIGNING_KEY", "INNGEST_EVENT_KEY"] as const).filter((k) => !data[k]);
