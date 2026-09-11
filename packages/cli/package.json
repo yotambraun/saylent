@@ -42,14 +42,14 @@
     "access": "public"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.109.1",
-    "@modelcontextprotocol/sdk": "^1.29.0",
-    "@google/genai": "^2.10.0",
+    "@anthropic-ai/sdk": "^0.124.0",
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@google/genai": "^2.21.0",
     "cheerio": "^1.2.0",
     "openai": "^6.45.0",
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4",
-    "zod": "^4.4.3"
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "zod": "^4.5.4"
   },
   "devDependencies": {
     "@saylent/engine": "^0.1.0",
