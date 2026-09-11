@@ -1,0 +1,65 @@
+name: Engine quirk (a provider changed behavior)
+description: An AI answer engine (ChatGPT, Claude, Gemini, Perplexity, ...) is returning something the adapter or judge does not expect.
+labels: ["engine-quirk"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Providers change models, rate limits, and response shapes without
+        warning. This is expected to be the most common kind of contribution,
+        thanks for tracking it down. Please redact anything from the answer
+        text you do not want public; a short excerpt around the problem is
+        usually enough.
+
+  - type: dropdown
+    id: provider
+    attributes:
+      label: Provider
+      options:
+        - OpenAI (ChatGPT)
+        - Anthropic (Claude)
+        - Google (Gemini)
+        - Perplexity
+        - Other / not sure
+    validations:
+      required: true
+
+  - type: input
+    id: model
+    attributes:
+      label: Model name
+      description: The exact model string in use, from packages/engine/src/models.ts or a MODEL_* override.
+      placeholder: "e.g. gpt-5.4 / claude-sonnet-4-6 / gemini-3.6-flash / sonar"
+    validations:
+      required: true
+
+  - type: input
+    id: date
+    attributes:
+      label: Date observed
+      placeholder: "YYYY-MM-DD"
+    validations:
+      required: true
+
+  - type: textarea
+    id: error
+    attributes:
+      label: Error text or unexpected behavior
+      description: The literal error message, HTTP status, or a description of the malformed/changed response shape.
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: redacted-sample
+    attributes:
+      label: Redacted sample (optional)
+      description: A short, redacted excerpt of the raw response if it helps illustrate the change. Remove any brand or personal data you don't want public.
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: What breaks because of this
+      description: "e.g. the adapter throws, the judge misparses the answer, citations are missing, the run silently drops this engine."
+    validations:
+      required: true

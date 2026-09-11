@@ -1,0 +1,149 @@
+/* website/src/tokens.css - the site must
+   look like one product with the app. Values below are COPIED verbatim from
+   the source of truth, `src/app/globals.css` (the app's 160 design tokens).
+   This is a copy, not an import - the website is a
+   separate workspace and the app's file is not reachable from a static
+   Pages build. If the app's tokens change, re-sync this file by hand. */
+
+@custom-variant dark (&:is(.dark *));
+
+/* generate bg-, text- and border- utilities for the Saylent brand tokens,
+   same wiring as the app's globals.css (@theme inline + :root/.dark values). */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ink: var(--ink);
+  --color-paper: var(--paper);
+  --color-signal: var(--signal);
+  --color-success: var(--success);
+  --color-wire: var(--wire);
+  --color-line: var(--line);
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-plex-mono);
+  --font-display: var(--font-fraunces);
+}
+
+/* shadcn base (src/app/globals.css lines 58-91) */
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+}
+
+/* Saylent brand tokens - light (src/app/globals.css lines 156-182) */
+:root {
+  --ink: #14212b;
+  --paper: #f7f5f0;
+  --signal: #c8551b;
+  --success: #2e6e4e;
+  --wire: #5f6d77;
+  --line: #dad4c8;
+  --background: #f7f5f0;
+  --foreground: #14212b;
+  --card: #ffffff;
+  --card-foreground: #14212b;
+  --primary: #14212b;
+  --primary-foreground: #f7f5f0;
+  --border: #dad4c8;
+  --input: #dad4c8;
+  --ring: #c8551b;
+  --muted-foreground: #5f6d77;
+}
+
+/* Saylent brand tokens - dark (src/app/globals.css lines 184-207) */
+.dark {
+  --ink: #ece6da;
+  --paper: #16130f;
+  --signal: #e5703a;
+  --success: #4f9e77;
+  --wire: #8f98a1;
+  --line: #34302a;
+  --background: #16130f;
+  --foreground: #ece6da;
+  --card: #201c17;
+  --card-foreground: #ece6da;
+  --primary: #ece6da;
+  --primary-foreground: #16130f;
+  --border: #34302a;
+  --input: #34302a;
+  --ring: #e5703a;
+  --muted-foreground: #8f98a1;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}
+
+/* Fumadocs UI chrome (sidebar, search dialog, nav) reads --color-fd-* - point
+   those at the same Saylent values instead of fumadocs-ui/css/neutral.css's
+   defaults, same indirection fumadocs-ui/css/shadcn.css uses. */
+:root,
+.dark {
+  --color-fd-background: var(--background);
+  --color-fd-foreground: var(--foreground);
+  --color-fd-muted: var(--muted);
+  --color-fd-muted-foreground: var(--muted-foreground);
+  --color-fd-popover: var(--card);
+  --color-fd-popover-foreground: var(--card-foreground);
+  --color-fd-card: var(--card);
+  --color-fd-card-foreground: var(--card-foreground);
+  --color-fd-border: var(--border);
+  --color-fd-primary: var(--signal);
+  --color-fd-primary-foreground: var(--primary-foreground);
+  --color-fd-secondary: var(--secondary);
+  --color-fd-secondary-foreground: var(--secondary-foreground);
+  --color-fd-accent: var(--accent);
+  --color-fd-accent-foreground: var(--accent-foreground);
+  --color-fd-ring: var(--ring);
+}

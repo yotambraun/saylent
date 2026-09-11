@@ -1,0 +1,52 @@
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": ["./src/*"],
+      "@saylent/engine": ["./packages/engine/src/index.ts"],
+      "@saylent/engine/adapters": ["./packages/engine/src/adapters/index.ts"],
+      "@saylent/engine/adapters/*": ["./packages/engine/src/adapters/*.ts"],
+      "@saylent/engine/*": ["./packages/engine/src/*.ts"],
+      "@saylent/report": ["./packages/report/src/index.ts"],
+      "@saylent/report/host": ["./packages/report/src/host.tsx"],
+      "@saylent/report/components/*": ["./packages/report/src/components/*.tsx"],
+      "@saylent/report/ui/*": ["./packages/report/src/ui/*.tsx"],
+      "@saylent/report/render": ["./packages/report/src/render/index.ts"],
+      "@saylent/report/render/*": [
+        "./packages/report/src/render/*.tsx",
+        "./packages/report/src/render/*.ts"
+      ],
+      "@saylent/report/*": ["./packages/report/src/*.ts"]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts",
+    "**/*.mts",
+    "packages/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "website"
+  ]
+}

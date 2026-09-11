@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675">
+  <rect width="1200" height="675" fill="#14212b"/>
+  <rect x="0" y="667" width="1200" height="8" fill="#e5703a"/>
+  <g transform="translate(72,72)">
+    <rect width="60" height="60" rx="12.2" fill="#f7f5f0"/>
+    <text x="26.25" y="41.25" font-family="Georgia,'Times New Roman',Times,serif" font-size="33.75" font-weight="600" fill="#14212b" text-anchor="middle" textLength="20.16" lengthAdjust="spacingAndGlyphs">S</text>
+    <circle cx="43.6" cy="16.4" r="4.9" fill="#e5703a"/>
+    <text x="78" y="43" font-family="Georgia,'Times New Roman',Times,serif" font-size="38" font-weight="600" fill="#f7f5f0" textLength="150" lengthAdjust="spacingAndGlyphs">Saylent</text>
+  </g>
+  <text x="72" y="375" font-family="Georgia,'Times New Roman',Times,serif" font-size="60" font-weight="600" fill="#f7f5f0">What do AI assistants say</text>
+  <text x="72" y="449" font-family="Georgia,'Times New Roman',Times,serif" font-size="60" font-weight="600" fill="#f7f5f0">about your brand?</text>
+  <text x="72" y="515" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="30" fill="#9aa8b2">The open-source audit, with the receipts: every verdict traced to the</text>
+  <text x="72" y="557" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="30" fill="#9aa8b2">answer, the cited page, and the fix.</text>
+  <text x="72" y="619" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="24" fill="#9aa8b2">github.com/yotambraun/saylent</text>
+</svg>

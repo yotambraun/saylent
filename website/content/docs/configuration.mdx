@@ -1,0 +1,274 @@
+---
+title: Configuration reference
+description: The complete saylent.config.json with every field, its default and what it changes - plus one table saying where each control lives on the CLI, in the environment, in the config file and in the app.
+---
+
+Every control Saylent has is reachable four ways: a CLI flag, an environment
+variable, a `saylent.config.json` next to your project, or a page in the
+self-hosted app. This page is the config file in full, then one table mapping
+each control across all four.
+
+## The complete config file
+
+Drop this in the folder you run `saylent` from as `saylent.config.json` and
+delete the lines you do not need - **every field is optional**, and leaving one
+out gets you the shipped default, byte for byte. (`saylent.config.js`,
+`.mjs` and `.ts` work too, in that order after `.json`; JSON has no comments,
+so strip the `//` lines below before saving as `.json`.)
+
+```jsonc
+{
+  // ── Which questions get asked ────────────────────────────────────────────
+  // Override the shipped buyer-question library, one key at a time. Shipped
+  // keys and their quotas: category 8, comparison 5, problem 4, branded 3,
+  // integration 1, migration 1, trust 1 → 23 questions.
+  // `templates` replaces that key's phrasings; `quota` (0-50) changes how many
+  // it generates; `quota: 0` drops the group entirely. A key that is NOT a
+  // shipped type is appended as a new group whose questions are typed
+  // "custom" - asked, judged and reported, never scored.
+  // Placeholders you can use: {brand} {category} {icp} {problem}
+  // {competitor} {competitor2} {year}.
+  "questionTemplates": {
+    "category": {
+      "templates": [
+        "What is the best {category} for {icp}?",
+        "Which {category} should {icp} choose and why?"
+      ],
+      "quota": 6
+    },
+    "comparison": { "quota": 3 },
+    "trust": { "quota": 0 },
+    "compliance": {
+      "templates": ["Is {brand} SOC 2 compliant, and how would I verify it?"]
+    }
+  },
+
+  // ── Which model serves which role ────────────────────────────────────────
+  // Any model id your key can call. Defaults are the shipped registry
+  // (packages/engine/src/models.ts); `saylent models` prints what resolves on
+  // your machine right now and where each choice came from.
+  "models": {
+    // The judge scores the answers. One entry per family, because the judge is
+    // deliberately from the OTHER family than the engine that answered.
+    "judge": {
+      "anthropic": "claude-haiku-4-5", // default claude-haiku-4-5
+      "openai": "gpt-5-mini"           // default gpt-5-mini
+    },
+    // Reads your crawled pages and builds the brand model (category, ICP,
+    // problems, rivals) the questions are generated from.
+    // Default claude-haiku-4-5, or gpt-5-mini on an OpenAI-only machine.
+    "brand": "claude-haiku-4-5",
+    // Writes the drafted fixes, and translates the question set when `locale`
+    // is set. Default claude-sonnet-4-6, or gpt-5.4 on an OpenAI-only machine.
+    "drafter": "claude-sonnet-4-6",
+    // The answer engines themselves - the models that get asked the questions.
+    "engines": {
+      "chatgpt": "gpt-5.4",            // default gpt-5.4
+      "claude": "claude-sonnet-4-6",   // default claude-sonnet-4-6
+      "gemini": "gemini-3.6-flash",    // default gemini-3.6-flash
+      "perplexity": "sonar"            // default sonar
+    }
+  },
+
+  // ── What gets asked, of whom, how many times ─────────────────────────────
+  // Seed rivals by domain or name; merged with whatever the brand model
+  // derives from your site. Default: only what the brand model finds.
+  "competitors": ["beacon-uptime.example", "Statusly"],
+
+  // The answer engines to ask. Default: every engine you have a key for.
+  "engines": ["chatgpt", "claude", "gemini", "perplexity"],
+
+  // "smoke" (6 questions) or "full" (23). Default when nothing overrides it:
+  // smoke on the CLI.
+  "profile": "smoke",
+
+  "sampling": {
+    // How many times each SCORED question is asked per engine, 1-5.
+    // Default: the profile's own count - full 2, smoke 1.
+    "samples": 2,
+    // Only ever applies when the effective count is exactly 2: one extra draw
+    // is taken when the first two disagree. Default true. It can turn that
+    // third draw off; it can never force one at 1 or 3-5 samples.
+    "tiebreak": true
+  },
+
+  // ── Stages to skip ───────────────────────────────────────────────────────
+  // Default: nothing is skipped. `drafts` = no drafter calls (fixes are still
+  // listed, each honestly "not drafted"). `corpus` = no cited-page fetches
+  // (citation presence unverified). `gates` = no live site checks (never
+  // reported as a pass).
+  "skip": { "drafts": false, "corpus": false, "gates": false },
+
+  // ── The crawler ──────────────────────────────────────────────────────────
+  // Applies to the whole run's fetches: crawl, cited pages, site gates.
+  // Default: "Mozilla/5.0 (compatible; SaylentAudit/<version>; +<docs url>)".
+  "userAgent": "Mozilla/5.0 (compatible; AcmeAudit/1.0; +https://acme.example/bot)",
+
+  // Cap how many crawled pages feed the brand model and corpus, 1-200.
+  // Default: no cap beyond the profile's own page budget (full 25, smoke 8).
+  "maxPages": 25,
+
+  // Let the AUDITED SITE's own host (and its www/apex sibling) resolve to a
+  // private address - for a staging server on your own network. Never applies
+  // to a cited or corpus URL on another host. Default false.
+  "allowPrivate": false,
+
+  // Extra AI bots to test for in the site-gate checks, merged into the shipped
+  // registry. `kind`: "training" (blocking it is a legitimate choice),
+  // "search" or "user" (blocking those costs you citations or live reads).
+  // `impact` is the sentence the report prints. Default: the shipped registry.
+  "extraBots": [
+    { "agent": "AcmeBot", "kind": "search", "impact": "Blocking AcmeBot removes you from Acme answers." }
+  ],
+
+  // ── Scoring thresholds ───────────────────────────────────────────────────
+  "thresholds": {
+    // A question counts as uncovered on your site when the best-matching page
+    // scores below this, 0-1. Default 0.45.
+    "coverage": 0.45,
+    // Priority weights for the fix families, 0-10. Name only the ones you want
+    // to change; unnamed families keep their default (shown here).
+    "fixWeights": {
+      "access": 9.5,
+      "coverage_hub": 9.0,
+      "source_pitch": 8.5,
+      "negative_or_wrong": 7.0,
+      "entity_unclear": 7.0,
+      "schema_missing": 5.5,
+      "freshness_stale": 4.0
+    }
+  },
+
+  // ── Language ─────────────────────────────────────────────────────────────
+  // BCP47 tag. When set, a freshly generated question set is translated ONCE
+  // through the drafter model and each row is marked `translated: true`. No
+  // effect on a reused set (`--questions`) or on `verify` - neither generates
+  // a new set. Default: unset (the English templates).
+  "locale": "de",
+
+  // ── App branding ─────────────────────────────────────────────────────────
+  // Accepted and validated, but read by nothing: the self-hosted app reads
+  // NEXT_PUBLIC_APP_NAME / NEXT_PUBLIC_CONTACT_EMAIL instead. Documented so
+  // you know it is not a working knob.
+  "branding": { "appName": "Acme AI Audit", "contactEmail": "hello@acme.example" }
+}
+```
+
+A config file that fails validation stops the run with the exact field and the
+exact reason - it never silently falls back to defaults.
+
+**API keys are deliberately not config fields.** They live in your environment,
+in a `.env` next to you, or in `~/.saylent/config.json` via `saylent keys`, so
+a config file is always safe to commit.
+
+## Where each control lives
+
+Same control, four surfaces. "App page" is the self-hosted app; brand-scoped
+pages are per brand.
+
+| Control | CLI flag | Environment variable | Config key | App page |
+|---|---|---|---|---|
+| Edit / add / remove / tag a question | `saylent questions --out`, then `audit --questions <file>` | - | `questionTemplates` | Questions and run options (`/app/brand/<id>/questions`) |
+| Samples for ONE question | `samples` on that `questions.json` row (1-5) | - | - | Questions and run options |
+| Samples for the whole run | `--samples <1-5>` | `AUDIT_SAMPLES` | `sampling.samples` (+ `sampling.tiebreak`) | Questions and run options |
+| Judge model | `--judge <model>` (+ `--judge-family`) | `MODEL_JUDGE_ANTHROPIC` / `_OPENAI` | `models.judge.*` | Admin → Providers & models (`/admin/providers`) |
+| Brand model | `--model brand=<model>` | `MODEL_BRAND` / `_OPENAI` | `models.brand` | Admin → Providers & models |
+| Drafter model | `--model drafter=<model>` | `MODEL_DRAFTER` / `_OPENAI` | `models.drafter` | Admin → Providers & models |
+| Engine models | `--model chatgpt=<model>`, also `claude` / `gemini` / `perplexity` | `MODEL_<ENGINE>_ANSWER` (four) | `models.engines.*` | Admin → Providers & models |
+| Which engines get asked | `--engines chatgpt,claude` | `AUDIT_ENGINES` (your keys decide the maximum) | `engines` | Questions and run options; Brand settings |
+| Profile (6 vs 23 questions) | `--profile smoke\|full` | `AUDIT_PROFILE` | `profile` | operator env var, not a user setting |
+| Skip a stage | `--skip drafts,corpus,gates` | `AUDIT_SKIP` | `skip.drafts`, `skip.corpus`, `skip.gates` | Questions and run options |
+| API keys | `saylent keys set <provider>`, `list`, `test`, `remove` | `<PROVIDER>_API_KEY` (four) | - (never in the config file) | Admin → Providers & models |
+| Spend cap | `--max-usd <n>`, per run | `DAILY_SPEND_CAP_USD` (20), per day | - | Admin → operator settings (daily spend cap) |
+| Crawler user agent | `--user-agent <string>` | `SAYLENT_USER_AGENT` | `userAgent` | the same env var on the deployment |
+| Language of the questions | `--locale <bcp47>` | - | `locale` | Questions and run options |
+| Pages that feed the brand model | `--max-pages <1-200>` | - | `maxPages` | - |
+| Private/staging host | `--allow-private` | - | `allowPrivate` | - |
+
+**Precedence, everywhere, for every one of the above: CLI flag → environment
+variable → `saylent.config.*` → the shipped default.** A per-question
+`samples` value on a `questions.json` row is the one exception: it wins over
+all four, for that one question only.
+
+Key lookup has its own order, first match wins per provider: **environment
+variable → `.env` in the current folder → `~/.saylent/config.json`** (written
+by `saylent keys set`, owner-only permissions).
+
+## The app's environment
+
+The full tiered reference - required vs. optional, per deployment target, with
+defaults and "what breaks without it" - lives on
+[Environment variables](/docs/self-host/environment). Two families worth
+knowing about here:
+
+- **`MODEL_*`** (ten variables) override the model registry - the same registry
+  `saylent models` prints, shared by the CLI and the app.
+- **`FLAG_*`** (`FLAG_EMAILS`, `FLAG_SCHEDULED_RUNS`, `FLAG_CSP_ENFORCE`,
+  `FLAG_COVE_AUDIT`) are kill switches: `1`/`true`/`on`/`yes` is on, anything
+  else (including unset) uses the typed default, so a config redeploy flips one
+  with no code change.
+
+`INNGEST_*` is read by the Inngest SDK and `SENTRY_*` by the Sentry build
+plugin and runtime SDK, not by application code; both are documented with their
+defaults on the environment reference.
+
+## Operator settings (the admin console)
+
+A single `app_settings` row, read and written through the service-role client
+only:
+
+| Setting | Default | Changed by |
+|---|---|---|
+| Kill switch (pause every run instantly) | off | Admin → the `pauseRuns` action |
+| Daily spend cap (USD) | `DAILY_SPEND_CAP_USD` (20) | Admin → the `setDailyCap` action |
+
+Every other admin action - disable an account, re-run or retry a run, mark a
+run failed, issue a recovery link, unpublish a share, disable a brand, block a
+domain, resolve a takedown, and test each configured provider key with one free
+call - is gated behind an admin check and written to the audit log. Scheduled
+runs are the `FLAG_SCHEDULED_RUNS` environment switch, not an admin action.
+
+## Per-brand and per-user settings
+
+**Brands** (`/app/settings/brands`, own rows only): name, domain, competitors,
+category, ICP, problems, the answer-engine subset, and the frozen question-set
+version. Editing a field that changes what gets asked re-baselines the question
+set - the UI confirms before that happens, the same rule `saylent verify`
+enforces from the CLI.
+
+**Per-user** (`/app/settings/*`): display name and timezone (Profile), theme
+(Appearance, browser-local), email-report opt-in (Notifications), account
+deletion (Account). `/app/settings/limits` is read-only from the user's side - it
+shows the limits and the spend cap the operator set, never a price.
+
+<details>
+<summary>For contributors: where each key is read</summary>
+
+Every field above is live. If you are changing behavior rather than using it,
+this is the file that reads each one:
+
+| Key | Read by |
+|---|---|
+| `questionTemplates` | `packages/engine/src/questions.ts` (`resolveTemplates`) |
+| `models.*` | `packages/engine/src/models.ts`, printed by `saylent models` |
+| `competitors` | `packages/cli/src/commands/audit.ts`, `questions.ts` (merged with `--competitors`) |
+| `engines`, `profile` | `packages/cli/src/commands/audit.ts` |
+| `sampling.samples`, `sampling.tiebreak` | `packages/engine/src/profiles.ts` (`resolveSampling`) |
+| `skip.*` | `packages/engine/src/profiles.ts` (`resolveSkip`) |
+| `userAgent`, `maxPages`, `allowPrivate` | `packages/cli/src/run.ts` (`buildCrawlerFetcher`, `buildCrawlerHooks`), default UA in `packages/engine/src/util.ts` |
+| `locale` | `packages/cli/src/commands/audit.ts` → `run.ts` `buildCrawlerHooks` |
+| `extraBots` | `packages/engine/src/domainChecks.ts` |
+| `thresholds.coverage` | `packages/engine/src/coverage.ts` |
+| `thresholds.fixWeights` | `packages/engine/src/fixes.ts` |
+| `branding.*` | schema only - the app reads `NEXT_PUBLIC_APP_NAME` / `NEXT_PUBLIC_CONTACT_EMAIL` |
+
+The schema itself is `packages/engine/src/config.ts`; the file is found and
+validated by `loadConfig()` in that same module.
+
+</details>
+
+---
+
+Something here look wrong or missing? Open an issue against
+[github.com/yotambraun/saylent](https://github.com/yotambraun/saylent) with the
+field and the page, and it gets fixed at the source.

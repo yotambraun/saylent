@@ -1,0 +1,589 @@
+{
+  "_meta": {
+    "title": "Judge golden set v2 (public) — Kestrel Uptime, hand-labeled 2026-09-09",
+    "version": 2,
+    "method": "Hand-labeled, one answer at a time: every answer in fixtures/golden-judge-source.json was read IN FULL against the rubric rules R1-R6 below (the rules judge.ts itself cites) and given a reference verdict plus written reasoning; ambiguous answers carry ambiguous:true and say how the call was made. Same reference-labeler pattern as v1 (a high-effort Claude Opus session, never a maintainer and never a customer), deliberately a different model and tier from the cheap cross-family judge it grades. The production judge is measured AGAINST these labels by scripts/judge-golden.ts. Rerun on ANY judge-prompt change; a change must not lower agreement.",
+    "replaces": "A private v1 set of 45 labels over answers about five REAL companies, stored by run id, whose text scripts/judge-golden.ts had to read from our Postgres. That set could not be published (real brands' AI opinions under our byline) and could not be rerun by anyone outside our environment. v2 is public and self-contained: the raw answer text is inlined here, so the gate needs LLM keys and nothing else.",
+    "source": {
+      "bundle": "fixtures/golden-judge-source.json",
+      "run_id": "15e5d34f-96a3-45c4-bc28-e935fa8ec0b0",
+      "run_date": "2026-09-09T14:59:43.437Z",
+      "profile": "smoke",
+      "note": "One real smoke run against the fictional brand Kestrel Uptime (saylent-kestrel.vercel.app), pseudonymized by scripts/pseudonymize-run.ts — every rival name is fictional. The answer text inlined below is byte-identical to that bundle; scripts/judge-golden.test.ts asserts it. The public sample in examples/kestrel/ was re-run later (2026-09-10, with two named rivals); this golden set stays on its own frozen copy of the labeled run, fixtures/golden-judge-source.json, so the hand review remains valid byte for byte."
+    },
+    "honest_limits": [
+      "24 answers, but only 18 are judgeable: 6 engine calls failed in the source run (1 gemini 503, 5 perplexity 429) and are kept as entries with judgeable:false so the file accounts for the whole bundle. Every agreement denominator is 18.",
+      "Of those 18, the brand is deterministically absent in 12 — and code, not the judge, forces mention_type=absent/prominence=none there. Only 6 answers actually exercise the qualitative rubric, and all 6 are entity-confusion cases (the engines cannot find a brand this new and answer about something else named Kestrel).",
+      "Every reference sentiment is neutral. A brand that is absent or merely misidentified gets no sentiment, so this set CANNOT validate positive/negative calibration — the retired private set did that. Treat sentiment agreement here as a false-positive check only.",
+      "18 labels are a floor and a regression guard, not a production agreement rate. A real agreement rate needs a brand the engines actually know; this one deliberately does not have that property.",
+      "The baseline in observed_at_labeling is not a fresh judge run: it is the verdict the production judge already produced for each of these answers inside the source bundle, replayed at $0 (--offline)."
+    ],
+    "observed_at_labeling": {
+      "n": 18,
+      "mention_type": "12/18",
+      "prominence": "15/18",
+      "sentiment": "14/18",
+      "other_brands": "14/15",
+      "models_at_labeling": {
+        "chatgpt": "gpt-5.4",
+        "claude": "claude-sonnet-4-6",
+        "gemini": "gemini-3.6-flash",
+        "perplexity": "sonar",
+        "judge_anthropic": "claude-haiku-4-5",
+        "judge_openai": "gpt-5-mini",
+        "brand": "claude-haiku-4-5",
+        "drafter": "claude-sonnet-4-6"
+      },
+      "note": "Verdicts stored in fixtures/golden-judge-source.json by the 2026-09-09 run; reproduce with `--offline` (no keys, no cost). A live pass may differ."
+    },
+    "rerun": {
+      "live": "npx tsx --tsconfig scripts/tsconfig.json --env-file=.env.local scripts/judge-golden.ts",
+      "offline": "npx tsx --tsconfig scripts/tsconfig.json scripts/judge-golden.ts --offline",
+      "cost": "~18 cheap cross-family judge calls, about $0.20 per live pass. --offline is $0 and needs no keys.",
+      "flags": "--field mention_type|prominence|sentiment|other_brands (one field only) · --limit N · --min-agreement 0.8 (exit 1 below that on every scored field; default: report only) · --offline (replay judge_at_labeling instead of calling the judge)"
+    },
+    "rubric_rules_derived": [
+      "R1 SEGMENT-PICK: in an OPEN 'best X' answer, an explicit scenario/segment pick ('Best for {segment}: {brand}', '{segment}? -> {brand}', ranked #1-#2 with a Best-for endorsement) = recommended, even when another brand is the overall pick.",
+      "R2 HEAD-TO-HEAD: in an 'A vs B' answer, the brand that does NOT win the overall verdict is compared (a conditional pick inside a head-to-head does not upgrade it); a SPLIT verdict with no overall winner = compared for both.",
+      "R3 BRANDED-QUESTION: for 'What is {brand}? Is it good?' answers there is no list — an affirmative verdict ('yes, it's good/legitimately good/for most use cases') = recommended; hedged/balanced = compared; skeptical = dismissed. 'listed' is wrong for branded answers.",
+      "R4 PROMINENCE-BY-RANK: prominence follows the brand's RANK among named brands, not character offset: first brand named = first; top-3 of the named set (or #2 in a ranked list) = early; mid/low rank, single late mention, or excluded from the conclusion = buried. Never judge by answer length.",
+      "R5 BRAND-STEAL: a one-line endorsement of the audited brand inside ANOTHER brands' comparison = recommended/buried (and is high-value product signal).",
+      "R6 ENTITY-CONFUSION: when the engine mostly discusses a different sense/company of the same name, label only the audited-brand portion; note entity_confusion=true."
+    ],
+    "labeling_notes": [
+      "R6 split used throughout v2 (six answers turn on it): when the engine SUBSTITUTES another entity but still performs the comparison the question asked for, label that comparison (q09/chatgpt = compared). When the engine says it cannot find the brand and pivots to other products, the only audited-brand statement is factual, so the label is neutral (q18/chatgpt, q09/claude, q18/claude, q09/gemini, q18/gemini) — never recommended (the praise belongs to the other entity) and never dismissed (a search failure is not a negative verdict on the product).",
+      "'absent' is unavailable whenever an alias is deterministically present, however little the answer is about the brand — buildVerdict() only overrides in the other direction.",
+      "other_brands is a RECALL check on the names listed here, not an exact set: every listed name must appear in the judge's other_brands (case-insensitive substring, so 'Beacon Uptime' matches 'Beacon Uptime (Beacon Live)'). An empty list means the answer recommends no brand at all and the judge must return none. Labels with no other_brands key are not scored on it.",
+      "entity_confusion is recorded but never scored: on pseudonymized text the shared name is not always visible, so both true and false can be defensible."
+    ]
+  },
+  "brand_model": {
+    "brand": "Kestrel Uptime",
+    "domain": "saylent-kestrel.vercel.app",
+    "aliases": [
+      "Kestrel Uptime",
+      "Kestrel",
+      "saylent-kestrel"
+    ],
+    "category": "Uptime Monitoring",
+    "icp": "small engineering teams",
+    "products": [
+      "Uptime Monitoring (HTTP, TCP, Heartbeat, Certificate checks)",
+      "Alert Escalation (Push, SMS, Email)",
+      "Status Pages",
+      "Incident Timeline",
+      "On-Call Rotations",
+      "Deploy Markers"
+    ],
+    "value_props": [
+      "Find API outages before customers do",
+      "Multi-region checks reduce false alarms",
+      "Automatic status page updates",
+      "Smart escalation to the right person",
+      "No per-seat pricing",
+      "Runs outside your infrastructure"
+    ],
+    "problems": [
+      "detecting outages before customers report them",
+      "reducing false alarm fatigue from single-region monitoring",
+      "keeping status pages synchronized with reality",
+      "escalating alerts to the right team member",
+      "maintaining monitoring when it runs in your own infrastructure"
+    ],
+    "competitors": [
+      "the leading alternative"
+    ],
+    "language": "en",
+    "confidence": "ok"
+  },
+  "labels": [
+    {
+      "qid": "q01",
+      "engine": "chatgpt",
+      "qtype": "category",
+      "question": "What is the best Uptime Monitoring for small engineering teams?",
+      "answer": "For **small engineering teams**, my best overall pick is **Beacon Uptime** if you want the most complete “one tool instead of three” setup. Its pricing page says the product bundles **uptime monitoring, incident management, on-call, and status pages**, and it also offers **unlimited team members** on its plans, which matters for small teams that don’t want seat friction as they grow. Beacon Uptime also lists a broad integrations catalog, including cloud monitoring and messaging tools, so it fits well into Chatterly-centric workflows. ([beacon-uptime.example](https://beacon-uptime.example/pricing?utm_source=openai))\n\nIf your main goal is **cheap, straightforward uptime checks**, then **Upcheck** is probably the better buy. Its official pricing page shows a **free tier** and emphasizes bundled monitoring plus status pages, while its help docs show integrations for Chatterly, Teams, and webhooks. That makes it especially good for startups or small product teams that want solid coverage without buying a full incident-response stack on day one. ([upcheck.example](https://upcheck.example/pricing/?utm_source=openai))\n\nIf your team is **more developer-heavy** and wants uptime monitoring that can grow into **API checks, browser checks, and monitoring-as-code**, I’d look hard at **Hawkeye Monitor**. Its official pricing and docs show it combines uptime monitors with synthetic/API monitoring, supports Playwright-based browser checks, and includes status pages tied to monitoring results. That makes it a stronger fit than classic uptime-only tools when your team cares about user journeys, not just whether an endpoint returns 200. ([hawkeye-monitor.example](https://www.hawkeye-monitor.example/pricing/?utm_source=openai))\n\nI would put **Pingwatch** and **Sentinel Ping** a tier below for most small engineering teams. Pingwatch clearly offers uptime monitoring, alerting, public status pages, and some root-cause tooling, but its pricing is more customized and tends to feel less startup-friendly than Upcheck or Beacon Uptime. Sentinel Ping remains a credible simpler option, especially if you mostly need uptime/page speed checks, but based on its official pricing page it looks more like a traditional monitoring product than an all-in-one engineering workflow tool. ([pingwatch.example](https://www.pingwatch.example/product/uptime-monitoring/?utm_source=openai))\n\n**My practical ranking:**\n1. **Beacon Uptime** — best overall for small engineering teams  \n2. **Upcheck** — best budget/simple choice  \n3. **Hawkeye Monitor** — best for dev teams that want synthetic monitoring too  \n4. **Pingwatch** — strong, but usually less cost-effective for small teams  \n5. **Sentinel Ping** — decent, but less compelling as the default pick ([beacon-uptime.example](https://beacon-uptime.example/pricing?utm_source=openai))\n\n**My rule of thumb:**\n- Choose **Beacon Uptime** if you want **monitoring + paging + status page** in one place. ([beacon-uptime.example](https://beacon-uptime.example/pricing?utm_source=openai))\n- Choose **Upcheck** if you want **good-enough monitoring at the lowest cost/complexity**. ([upcheck.example](https://upcheck.example/pricing/?utm_source=openai))\n- Choose **Hawkeye Monitor** if your engineers want **code-driven checks and synthetic/browser testing**. ([hawkeye-monitor.example](https://www.hawkeye-monitor.example/pricing/?utm_source=openai))\n\nIf you want, I can turn this into a **“best by team size/budget” table** or give you a **specific recommendation for your stack** (for example: SaaS app, API product, internal tools, or ecommerce).",
+      "ref": {
+        "mention_type": "absent",
+        "prominence": "none",
+        "sentiment": "neutral",
+        "other_brands": [
+          "Beacon Uptime",
+          "Upcheck",
+          "Hawkeye Monitor"
+        ]
+      },
+      "reasoning": "Zero whole-word 'Kestrel' in 3581 chars; the ranking is Beacon Uptime > Upcheck > Hawkeye Monitor > Pingwatch > Sentinel Ping. Deterministic absence is code-enforced, so only sentiment and other_brands are live here.",
+      "judge_at_labeling": "absent/none/neutral",
+      "agree": true,
+      "judge_other_brands_at_labeling": [
+        "Beacon Uptime",
+        "Upcheck",
+        "Hawkeye Monitor",
+        "Pingwatch",
+        "Sentinel Ping"
+      ]
+    },
+    {
+      "qid": "q09",
+      "engine": "chatgpt",
+      "qtype": "comparison",
+      "question": "Kestrel Uptime vs the leading alternative — which is better for small engineering teams?",
+      "answer": "If by **“Kestrel Uptime”** you mean **Falconware AI’s incident response / cloud monitoring product**, then for **small engineering teams** the better choice is usually **Beacon Uptime** — unless your main problem is **Kubernetes/cloud incident investigation and AI-assisted remediation**, where Kestrel is the more specialized tool. ([docs.falconware.example](https://docs.falconware.example/introduction?utm_source=openai))\n\n**Short verdict:**\n- **Pick Beacon Uptime** if you want **simple uptime checks, status pages, on-call, and alerts** in one package with predictable small-team adoption. Beacon Uptime offers uptime monitoring, heartbeats, status pages, incident management, and a free tier with 10 monitors; paid responder seats start at **$34/mo monthly or $29/mo annually**. ([beacon-uptime.example](https://beacon-uptime.example/pricing?utm_source=openai))\n- **Pick Kestrel** if your team runs meaningful **cloud/Kubernetes infrastructure** and wants **AI-driven root-cause analysis and generated fixes**, not just “is the service up?” monitoring. Kestrel describes itself as an **AI-native cloud incident response platform** that monitors cloud/Kubernetes incidents, performs root-cause analysis, and can generate remediation steps or config fixes. ([docs.falconware.example](https://docs.falconware.example/introduction?utm_source=openai))\n\n### Why Beacon Uptime is usually better for small teams\nFor small teams, the biggest win is often **fast setup + broad utility**. Beacon Uptime’s official pricing/product pages show it bundles **uptime monitoring, status pages, Chatterly/email alerts, phone/SMS alerts, incident workflows, and heartbeats** into a familiar SaaS model aimed at teams that need operational coverage without building a platform around it. ([beacon-uptime.example](https://beacon-uptime.example/pricing?utm_source=openai))\n\n### Why Kestrel can still be the better product\nKestrel is doing a different, deeper job. Its docs say it is built to **detect, investigate, and fix cloud and Kubernetes incidents**, with **AI chat copilot**, **root-cause analysis**, and **GitOps/IaC integration**. Its pricing is also structured around products like **Workflows**, **Incident Response**, and **Cloud AI Copilot**, rather than plain monitor counts. ([docs.falconware.example](https://docs.falconware.example/introduction?utm_source=openai))  \nSo if your “small team” is actually a **high-infra-complexity team** — for example, managing multiple clusters, cloud accounts, and infra workflows — Kestrel may save more engineer time per incident. That’s an inference from its positioning and feature set, not an explicit vendor claim. ([docs.falconware.example](https://docs.falconware.example/introduction?utm_source=openai))\n\n## Head-to-head for a small engineering team\n\n| If you care most about… | Better choice |\n|---|---|\n| Website/API uptime checks | **Beacon Uptime** ([beacon-uptime.example](https://beacon-uptime.example/pricing?utm_source=openai)) |\n| Status pages for customers | **Beacon Uptime** ([beacon-uptime.example](https://beacon-uptime.example/pricing?utm_source=openai)) |\n| On-call + alerting out of the box | **Beacon Uptime** ([beacon-uptime.example](https://beacon-uptime.example/pricing?utm_source=openai)) |\n| Kubernetes/cloud RCA and remediation | **Kestrel** ([docs.falconware.example](https://docs.falconware.example/introduction?utm_source=openai)) |\n| AI-generated infra fixes / PR-oriented workflows | **Kestrel** ([docs.falconware.example](https://docs.falconware.example/introduction?utm_source=openai)) |\n| Lowest-friction adoption for a 2–10 person team | **Beacon Uptime** ([beacon-uptime.example](https://beacon-uptime.example/pricing?utm_source=openai)) |\n\n## My practical recommendation\nFor **most small engineering teams**, I’d choose **Beacon Uptime first**. It maps better to the usual small-team need: **“tell us when the app is down, page us, and update a status page.”** ([beacon-uptime.example](https://beacon-uptime.example/pricing?utm_source=openai))\n\nI’d choose **Kestrel** only if your small team is unusually infra-heavy and your pain is more like: **“our incidents are in Kubernetes/cloud internals, and debugging/remediation is eating senior engineer time.”** That’s where Kestrel’s AI-native incident response approach is more differentiated. ([docs.falconware.example](https://docs.falconware.example/introduction?utm_source=openai))\n\nIf you want, I can turn this into a **decision matrix for your exact team size, stack, and budget**.",
+      "ref": {
+        "mention_type": "compared",
+        "prominence": "first",
+        "sentiment": "neutral",
+        "entity_confusion": true,
+        "other_brands": [
+          "Beacon Uptime"
+        ]
+      },
+      "ambiguous": true,
+      "reasoning": "R6+R2: the engine resolves the audited name to Falconware AI's product but still runs the requested head-to-head, and Beacon Uptime wins the asked-for ICP ('for most small engineering teams, I'd choose Beacon Uptime first') = compared, not recommended. First brand named (char 9) = first [R4]. AMBIGUOUS sentiment: an explicit two-way split ('Pick Beacon Uptime if... Pick Kestrel if...') with real praise for the brand's niche = neutral under the split/conditional rule, not the negative a head-to-head loss would otherwise imply.",
+      "judge_at_labeling": "recommended/early/positive",
+      "agree": false,
+      "judge_other_brands_at_labeling": [
+        "Beacon Uptime"
+      ]
+    },
+    {
+      "qid": "q14",
+      "engine": "chatgpt",
+      "qtype": "problem",
+      "question": "How do I solve: detecting outages before customers report them? Which tools or providers help?",
+      "answer": "To detect outages **before customers report them**, the winning pattern is usually:\n\n1. **Synthetic monitoring** for “is the product usable right now?”\n2. **Real user monitoring (RUM)** for “are real users degrading even if checks still pass?”\n3. **APM + traces + logs + metrics** for root cause and blast radius\n4. **External Internet/provider visibility** for “is this us, or Cloudmere/ISP/CDN/DNS/SaaS?”\n5. **Alert routing/noise reduction** so engineers act on the right signal fast\n6. **SLOs/error budgets** so you alert on customer impact, not just infrastructure noise. ([docs.relaywatch.example](https://docs.relaywatch.example/docs/synthetics/synthetic-monitoring/guides/synthetic-monitoring-use-cases/?utm_source=openai))\n\n## The practical solution\n\n### 1) Put synthetic checks on your critical user journeys\nThis is the fastest way to catch issues before users do. Synthetic monitors run on a schedule and test availability, APIs, and browser flows even when there is little or no live traffic. Relaywatch, Nimbus Observe, Meridian Cloud, and Cloudmere Watch Synthetics all position synthetics for proactive detection of broken flows, outages, and regressions before customers notice. ([docs.relaywatch.example](https://docs.relaywatch.example/docs/synthetics/synthetic-monitoring/guides/synthetic-monitoring-use-cases/?utm_source=openai))\n\nWhat to monitor synthetically:\n- login\n- signup\n- checkout/payment\n- search\n- core API endpoints\n- mobile/web app home page\n- third-party dependencies like auth, payments, search, CDN-backed assets. ([docs.relaywatch.example](https://docs.relaywatch.example/docs/synthetics/synthetic-monitoring/guides/synthetic-monitoring-use-cases/?utm_source=openai))\n\n### 2) Add RUM so you see real customer pain\nSynthetics tell you whether your known paths work. RUM tells you what actual users are experiencing across browsers, devices, networks, and geographies. Cloudmere Watch explicitly pairs Synthetics with Cloudmere Watch RUM, and Nimbus Observe/Relaywatch position RUM alongside synthetic monitoring for complete digital experience coverage. ([docs.cloudmere.example](https://docs.cloudmere.example/CloudmereWatch/latest/monitoring/WhatIsCloudmereWatch.html?utm_source=openai))\n\n### 3) Instrument the app with traces, metrics, and logs\nTo solve “we detected it, now what broke?”, you need backend observability. Signaltrace is the vendor-neutral standard for generating, collecting, and exporting traces, metrics, and logs, and its Collector can forward that data to one or more backends. ([signaltrace.example](https://signaltrace.example/docs/?utm_source=openai))\n\n### 4) Watch the Internet and your providers, not just your app\nA lot of “outages” are outside your code: ISP issues, cloud provider impairments, BGP/routing trouble, DNS, CDN, or SaaS dependencies. Farsight Watch Internet Insights is specifically designed to detect widespread Internet/network/application outages and help determine provider scope and impact. Overlook Metrics also focuses on Internet performance visibility and synthetic detection. ([docs.farsightwatch.example](https://docs.farsightwatch.example/product-documentation/getting-started/getting-started-with-internet-insights?utm_source=openai))\n\n### 5) Route, dedupe, and suppress alerts before they wake everyone up\nDetection only works if responders trust the alerts. Escalytics Event Orchestration can route events, deduplicate, suppress noisy alerts, and trigger automation. Escalytics’s docs also note that its older Rulesets/Event Rules reached end-of-life on **January 31, 2025**, so Event Orchestration is the current direction. ([support.escalytics.example](https://support.escalytics.example/main/docs/event-orchestration?utm_source=openai))\n\n### 6) Alert on SLO burn, not only CPU/memory\nInfrastructure thresholds miss many customer-visible problems and create noise. Cloudmere Watch documents SLO support, and Meridian Cloud Synthetic Monitoring explicitly ties checks to SLO/SLA tracking. In practice, customer-facing alerts should be based on things like availability, latency, and error-rate burn for key journeys. ([docs.cloudmere.example](https://docs.cloudmere.example/CloudmereWatch/latest/monitoring/WhatIsCloudmereWatch.html?utm_source=openai))\n\n---\n\n## Best tools/providers by use case\n\n### If you want an all-in-one SaaS observability platform\n**Nimbus Observe**  \nGood fit if you want synthetic monitoring, RUM, and broad observability in one platform. Nimbus Observe documents synthetic alerting and promotes correlating synthetic and RUM data for critical user flows. ([docs.nimbusobserve.example](https://docs.nimbusobserve.example/getting_started/synthetics/?utm_source=openai))\n\n**Relaywatch**  \nStrong for synthetic monitoring plus APM/browser observability. Their docs are especially clear on using synthetics to catch failures early and cover low-traffic regions or pre-release scenarios. ([docs.relaywatch.example](https://docs.relaywatch.example/docs/synthetics/synthetic-monitoring/guides/synthetic-monitoring-use-cases/?utm_source=openai))\n\n**Meridian Cloud**  \nGood fit if you like an open ecosystem and want k6-powered synthetic monitoring tied closely to metrics/logs/traces and SLO workflows. ([meridian.example](https://meridian.example/docs/k6/latest/testing-guides/synthetic-monitoring/?src=youtube&utm_source=openai))\n\n### If you are Cloudmere-centric\n**Cloudmere Watch + Cloudmere Watch Synthetics + Cloudmere Watch RUM**  \nBest when most of your stack is already on Cloudmere. Cloudmere says canaries simulate customer behavior on a schedule and can discover issues before customers do; Cloudmere Watch also integrates with Cloudmere Trace and supports SLOs. ([docs.cloudmere.example](https://docs.cloudmere.example/CloudmereWatch/latest/monitoring/CloudmereWatch_Synthetics_Canaries.html?utm_source=openai))\n\n### If many incidents come from external providers or the Internet\n**Farsight Watch**  \nBest for “is it us or the Internet/cloud/SaaS provider?” questions. Internet Insights is built for major widespread outage detection and provider-level triage. ",
+      "ref": {
+        "mention_type": "absent",
+        "prominence": "none",
+        "sentiment": "neutral",
+        "other_brands": [
+          "Relaywatch",
+          "Nimbus Observe"
+        ]
+      },
+      "reasoning": "Six-layer detection playbook; zero brand mentions. Named tool picks are Nimbus Observe, Relaywatch, Meridian Cloud, Cloudmere Watch, Farsight Watch.",
+      "judge_at_labeling": "absent/none/neutral",
+      "agree": true,
+      "judge_other_brands_at_labeling": [
+        "Relaywatch",
+        "Nimbus Observe",
+        "Meridian Cloud",
+        "Cloudmere Watch",
+        "Farsight Watch",
+        "Overlook Metrics",
+        "Escalytics",
+        "Signaltrace"
+      ]
+    },
+    {
+      "qid": "q18",
+      "engine": "chatgpt",
+      "qtype": "branded",
+      "question": "What is Kestrel Uptime? Is it any good?",
+      "answer": "I couldn’t find a product clearly named **“Kestrel Uptime.”** What I *did* find is **Talon Alert**, which appears to be a UK-focused monitoring service for **company risk/events** rather than a website uptime monitor. It tracks things like **charges, overdue accounts, insolvency, strike-off activity, and director changes**, and its pricing is based on **how many companies you watch**, not servers or websites. ([talonalert.example](https://talonalert.example/pricing))\n\nSo if you meant **Talon Alert**, the short version is: it looks **specialized and straightforward**, but it is **not** a general-purpose uptime tool like Pingwatch, Upcheck, Beacon Uptime, or Watchtower Uptime. Its own status page says it runs **daily synthetic checks** against its data sources and signup flow, and publishes **90 days of history**. It also explicitly says those checks **do not measure how quickly any single alert reached you**, which is an important limitation if fast notification is what you care about. ([talonalert.example](https://talonalert.example/status))\n\n**Is it any good?**  \n- **Probably yes for its niche** if you want simple monitoring of UK company events and plain-English email alerts. The site emphasizes that every plan gets the **same alerts, speed, and dashboard**, with a free tier for **one company** and paid tiers scaling up to **500 companies**. ([talonalert.example](https://talonalert.example/pricing))  \n- **Probably not the right tool** if you were looking for **site/server uptime monitoring**, incident response, or detailed observability. Nothing I found suggests it’s a classic uptime-monitoring platform. ([talonalert.example](https://talonalert.example/pricing))\n\nMy honest take: **it seems credible but narrow**. The available public info is mostly from its own website, so I don’t have much independent evidence on reliability, customer satisfaction, or speed of alerting. ([talonalert.example](https://talonalert.example/pricing))\n\nIf you want, I can help in either of two ways:\n1. compare **Talon Alert** to similar business-risk monitoring tools, or  \n2. if you actually meant a **website uptime monitor**, suggest better alternatives for that use case.",
+      "ref": {
+        "mention_type": "neutral",
+        "prominence": "first",
+        "sentiment": "neutral",
+        "entity_confusion": true,
+        "other_brands": [
+          "Talon Alert"
+        ]
+      },
+      "ambiguous": true,
+      "reasoning": "AMBIGUOUS. The only sentence about the audited brand is \"I couldn't find a product clearly named 'Kestrel Uptime'\"; everything evaluated afterwards is Talon Alert, a different company. R3 forbids 'listed' on a branded question but its recommended/compared/dismissed all presume the engine found the brand — the honest enum value for a present-but-purely-factual mention is neutral. First brand named = first. entity_confusion is true from the run's own pseudonym map (Talon Alert replaces a same-name company), but a judge reading only this text may reasonably return false; the field is not scored.",
+      "judge_at_labeling": "recommended/first/positive",
+      "agree": false,
+      "judge_other_brands_at_labeling": [
+        "Pingwatch",
+        "Upcheck",
+        "Beacon Uptime",
+        "Watchtower Uptime"
+      ]
+    },
+    {
+      "qid": "q02",
+      "engine": "chatgpt",
+      "qtype": "category",
+      "question": "Top Uptime Monitoring options in 2026 — which do you recommend?",
+      "answer": "If you want the **short answer** for 2026:\n\n- **Best for most small teams:** **Upcheck**\n- **Best for dev/product teams that want API + browser synthetics:** **Hawkeye Monitor**\n- **Best if you already use Nimbus Observe:** **Nimbus Observe Synthetics**\n- **Best if you already use Meridian Cloud:** **Meridian Cloud Synthetic Monitoring**\n- **Best for enterprise observability suites:** **Relaywatch**\n- **Best traditional website monitoring pick:** **Pingwatch**\n- **Best budget alternative:** **Sentinel Ping**\n\nThat’s my practical recommendation based on current pricing/features I could verify from vendor pages and recent comparisons. ([sentinel-ping.example](https://www.sentinel-ping.example/pricing/?utm_source=openai))\n\n## My actual recommendation by scenario\n\n### 1) If you just need reliable uptime alerts for websites/APIs:\n**Pick: Upcheck**\n\nWhy:\n- It remains one of the simplest and strongest value options for straightforward uptime monitoring.\n- Recent 2026 comparison coverage still positions it as especially strong on value and free-plan accessibility. ([upcheck.example](https://upcheck.example/knowledge-hub/comparisons-and-alternatives/11-best-uptime-monitoring-tools-compared/?utm_source=openai))\n\nWho it’s for:\n- startups\n- side projects\n- SMBs\n- teams that want “tell me when it’s down” without buying a full observability platform\n\n### 2) If you care about broken user journeys, not just “is it up?”:\n**Pick: Hawkeye Monitor**\n\nWhy:\n- Hawkeye Monitor is built around synthetic monitoring for APIs and websites, with pricing tied to included runs and overages.\n- It’s a better fit than simple uptime tools when you want to validate flows like login, checkout, or critical API paths. ([hawkeye-monitor.example](https://www.hawkeye-monitor.example/pricing/?utm_source=openai))\n\nWho it’s for:\n- engineering-led SaaS teams\n- API-heavy products\n- teams that want monitoring-as-code / synthetic-first workflows\n\n### 3) If your company already runs on Nimbus Observe:\n**Pick: Nimbus Observe Synthetics**\n\nWhy:\n- Nimbus Observe offers API, browser, and mobile synthetic testing with managed and private locations.\n- Current list pricing shows API tests starting at **$5 per 10K runs/month** and browser tests at **$12 per 1K runs/month** when billed annually, which is competitive inside an existing Nimbus Observe estate but can get expensive at scale. ([nimbusobserve.example](https://www.nimbusobserve.example/pricing/?utm_source=openai))\n\nWho it’s for:\n- teams already using Nimbus Observe for infra/APM/logs\n- orgs that want one incident workflow and one alerting model\n- larger teams that will benefit from tight integration more than lowest cost\n\n### 4) If you’re in the Meridian ecosystem:\n**Pick: Meridian Cloud Synthetic Monitoring**\n\nWhy:\n- Meridian’s synthetic offering is now very credible if you already use Meridian Cloud.\n- The free tier includes **100k API test executions** and **10k browser test executions** per month, and paid usage starts with a **$19/month platform fee**, plus **$5 per 10k API** executions and **$50 per 10k browser** executions. ([meridian.example](https://meridian.example/products/cloud/synthetic-monitoring/?utm_source=openai))\n\nWho it’s for:\n- teams already on Meridian dashboards/alerts\n- SRE teams that want as-code workflows\n- orgs that want to correlate synthetics with metrics/logs/traces\n\n### 5) If you want a broader observability suite, not a point tool:\n**Pick: Relaywatch**\n\nWhy:\n- Relaywatch bundles synthetic monitoring into a much larger observability platform.\n- Its pricing page explicitly includes synthetic monitoring within digital experience monitoring, and platform pricing starts at **$10 per full-platform user** depending on edition; synthetic usage limits and overages are documented separately. ([relaywatch.example](https://relaywatch.example/pricing?utm_source=openai))\n\nWho it’s for:\n- teams that want one platform for APM + infra + synthetics\n- orgs with multiple stakeholders beyond ops\n- companies prioritizing deep troubleshooting over cheapest checks\n\n### 6) If you want a polished, classic website monitoring product:\n**Pick: Pingwatch**\n\nWhy:\n- Pingwatch is still a strong traditional choice for uptime plus synthetic/digital experience style monitoring.\n- Current Pingwatch pricing is customizable and centered around uptime monitoring, public status pages, reports, and broader digital experience add-ons. ([pingwatch.example](https://www.pingwatch.example/pricing/?utm_source=openai))\n\nWho it’s for:\n- teams focused on website availability and performance\n- buyers who want an established vendor\n- organizations okay with somewhat less “developer-native” positioning than Hawkeye Monitor/Meridian\n\n### 7) If budget matters more than bells and whistles:\n**Pick: Sentinel Ping**\n\nWhy:\n- Sentinel Ping still offers low-friction entry pricing and basic uptime checks.\n- Its pricing page currently shows plan tiers with monitor counts such as **10 / 100 / 300** across plans. ([sentinel-ping.example](https://www.sentinel-ping.example/pricing/?utm_source=openai))\n\nWho it’s for:\n- smaller teams\n- agencies\n",
+      "ref": {
+        "mention_type": "absent",
+        "prominence": "none",
+        "sentiment": "neutral",
+        "other_brands": [
+          "Upcheck",
+          "Hawkeye Monitor"
+        ]
+      },
+      "reasoning": "Seven scenario picks, none of them the audited brand; zero mentions.",
+      "judge_at_labeling": "absent/none/neutral",
+      "agree": true,
+      "judge_other_brands_at_labeling": [
+        "Upcheck",
+        "Hawkeye Monitor",
+        "Nimbus Observe Synthetics",
+        "Meridian Cloud Synthetic Monitoring",
+        "Relaywatch",
+        "Pingwatch",
+        "Sentinel Ping"
+      ]
+    },
+    {
+      "qid": "q10",
+      "engine": "chatgpt",
+      "qtype": "comparison",
+      "question": "the leading alternative vs another leading option: which would you pick for small engineering teams?",
+      "answer": "Which two options are you comparing?\n\n“the leading alternative vs another leading option” is too vague for me to give a real recommendation. If you send the two tools/platforms/frameworks, I can tell you which I’d pick for a **small engineering team** and why.\n\nIf helpful, I can compare them on:\n- **setup speed**\n- **learning curve**\n- **maintenance burden**\n- **cost**\n- **team productivity**\n- **scalability later**\n- **vendor lock-in**\n- **best fit for 2–10 engineers**\n\nIf you want, send them like:\n\n**Option A:**  \n**Option B:**  \n**Team size:**  \n**Use case:** web app / backend / data / mobile / infra / etc.\n\nThen I’ll give you a clear pick.",
+      "ref": {
+        "mention_type": "absent",
+        "prominence": "none",
+        "sentiment": "neutral",
+        "other_brands": []
+      },
+      "reasoning": "The pseudonymized question ('the leading alternative vs another leading option') is unanswerable, so the engine asks for the two tools and names no brand at all — other_brands must be empty.",
+      "judge_at_labeling": "absent/none/neutral",
+      "agree": true,
+      "judge_other_brands_at_labeling": []
+    },
+    {
+      "qid": "q01",
+      "engine": "claude",
+      "qtype": "category",
+      "question": "What is the best Uptime Monitoring for small engineering teams?",
+      "answer": "Here's a comprehensive breakdown of the **best uptime monitoring tools for small engineering teams** in 2026, covering different needs and budgets:\n\n---\n\n## 🏆 Best Uptime Monitoring Tools for Small Engineering Teams (2026)\n\n---\n\n### 1. 🥇 **Upcheck** — Best Free Starting Point\nUpcheck is a simple, reliable tool with a generous free tier, offering 50 monitors and 5-minute check intervals, plus easy setup and essential features. It is the most affordable option with 50 free monitors. The paid Solo plan starts at $12/month billed annually for 10 monitors at 60-second checks, and the Team plan is $39/month billed annually for 100 monitors at 30-second checks.\n\n- **Best for:** Teams that need a free option and can tolerate 5-minute intervals.\n- **Limitation:** It still lacks synthetic monitoring and on-call scheduling.\n\n---\n\n### 2. 🥈 **Beacon Uptime (Beacon Live)** — Best for Incident Management\nBeacon Uptime is a polished monitoring platform that combines uptime checks with incident management workflows. It includes on-call scheduling, escalation policies, status pages, and integrations with tools like Escalytics and Opsgenie.\n\n- **Best for:** When uptime monitoring needs to share a workflow with incident management and on-call scheduling.\n- **Also good for:** Teams that want incident management and on-call rotation in one tool.\n\n---\n\n### 3. 🥉 **Livecheck** — Best All-in-One for Small SaaS Teams\nLivecheck is the best fit for small software teams that want 30-second checks, multi-region verification, browser and cron monitoring, and status pages in one product.\n\n---\n\n### 4. ⚙️ **Hawkeye Monitor** — Best for Developer/DevOps Workflows\nHawkeye Monitor takes a code-first approach to monitoring. You define your checks as JavaScript/TypeScript files, store them in your repo, and deploy them through your CI pipeline. It supports Playwright for browser checks and has a powerful API check builder.\n\n- **Best for:** Engineering teams who want monitoring-as-code with Playwright and CI/CD integration.\n- **Limitation:** It has a steep learning curve for simple uptime checks, can be expensive for basic monitoring needs, and is overkill if you just need to know whether an endpoint is responding.\n\n---\n\n### 5. 🧰 **Wardpost** — Best All-in-One Consolidation\nWardpost is built as one platform, one bill, one dashboard, one alerting rules engine. Where most uptime tools force you to bolt on three or four other products to cover server metrics, cronjobs, SSL, and status pages, Wardpost ships them as part of the same product.\n\n- Unified scope",
+      "ref": {
+        "mention_type": "absent",
+        "prominence": "none",
+        "sentiment": "neutral",
+        "other_brands": [
+          "Upcheck",
+          "Beacon Uptime",
+          "Livecheck"
+        ]
+      },
+      "reasoning": "Ranked list of five tools (Upcheck, Beacon Uptime, Livecheck, Hawkeye Monitor, Wardpost); zero mentions of the audited brand.",
+      "judge_at_labeling": "absent/none/neutral",
+      "agree": true,
+      "judge_other_brands_at_labeling": [
+        "Upcheck",
+        "Beacon Uptime (Beacon Live)",
+        "Livecheck",
+        "Hawkeye Monitor",
+        "Wardpost"
+      ]
+    },
+    {
+      "qid": "q09",
+      "engine": "claude",
+      "qtype": "comparison",
+      "question": "Kestrel Uptime vs the leading alternative — which is better for small engineering teams?",
+      "answer": "I wasn't able to find any results for a product called **\"Kestrel Uptime\"** — the search results for \"Kestrel\" returned environmental monitoring instruments (weather meters, heat stress monitors, etc.) and a surveillance system, none of which match an uptime monitoring tool by that name.\n\nIt's possible that:\n\n1. **\"Kestrel Uptime\" doesn't exist (yet)** — It may be a product you've heard about informally, a very new or niche tool, a rebranded product, or perhaps a name that hasn't launched publicly.\n2. **The name may be slightly different** — There are many uptime monitoring tools, but none prominently marketed under the \"Kestrel\" brand came up in search results.\n3. **It may be an internal/proprietary tool** — Some organizations build and name their own internal uptime monitors.\n\n---\n\n### Here's what I *can* help with:\n\nIf you're evaluating uptime monitoring tools for a **small engineering team**, here are the leading options I can compare for you based on available information:\n\n| Tool | Best For | Free Plan | Key Strength |\n|---|---|---|---|\n| **Upcheck** | Simplicity & budget | ✅ Yes | Easy setup, broad monitor types |\n| **Beacon Uptime** | Modern teams | ✅ Limited | Clean UI, incident management |\n| **Pingwatch** | Comprehensive monitoring | ❌ No | Page speed + uptime |\n| **Quickcheck Ping** | Small teams | ✅ Yes | Generous free tier |\n| **Watchtower Uptime** | Developer-focused | ❌ No | SSL, broken links, cron jobs |\n\n---\n\n### To give you a precise comparison, could you clarify:\n\n- **Is \"Kestrel Uptime\" the exact product name?** (Or could it be a different spelling/brand?)\n- **Where did you hear about it?** (A blog post, colleague recommendation, etc.)\n- **What is your team's primary need?** (Website uptime, API monitoring, status pages, on-call alerting?)\n\nWith that info, I can give you a much more targeted and useful comparison! 🎯",
+      "ref": {
+        "mention_type": "neutral",
+        "prominence": "first",
+        "sentiment": "neutral",
+        "entity_confusion": true,
+        "other_brands": [
+          "Upcheck",
+          "Beacon Uptime"
+        ]
+      },
+      "reasoning": "R6: \"I wasn't able to find any results for a product called 'Kestrel Uptime'\" — the search returned weather instruments and a surveillance system — then a table of five other tools. The brand is deterministically present, so 'absent' is unavailable; the only audited-brand content is a not-found statement = neutral/first. 'dismissed' would read a search failure as a negative verdict on the product, which the answer never gives.",
+      "judge_at_labeling": "dismissed/first/negative",
+      "agree": false,
+      "judge_other_brands_at_labeling": [
+        "Upcheck",
+        "Beacon Uptime",
+        "Pingwatch",
+        "Quickcheck Ping",
+        "Watchtower Uptime"
+      ]
+    },
+    {
+      "qid": "q14",
+      "engine": "claude",
+      "qtype": "problem",
+      "question": "How do I solve: detecting outages before customers report them? Which tools or providers help?",
+      "answer": "Great question! Detecting outages **before** customers report them is a critical SRE/DevOps discipline. Here's a comprehensive breakdown of strategies, techniques, and tools to help you get ahead of incidents:\n\n---\n\n## 🚨 Why Reactive Detection Fails\n\n\"If you find out about outages from Perchfeed before your dashboards, you are not running DevOps — you are running cleanup.\"\n\nDashboards measure what *is* happening, not what *should* be happening. A login service can have a perfectly healthy CPU graph, normal memory usage, and zero error logs, while still being completely broken due to a misconfigured DNS record, an expired SSL certificate, or a third-party service silently changing an API contract. Real users discover those problems first.\n\n---\n\n## ✅ Core Strategies to Detect Outages Proactively\n\n### 1. 🧪 Synthetic Monitoring\nThis is the **most powerful** technique. You simulate real user actions continuously, from multiple locations.\n\n- **How it works:** Automated \"synthetic tests\" repeatedly exercise your login flows, checkout paths, APIs, etc. — even when no real user is active.\n- Synthetic tests discover problems **before** real users do.\n- It is the cheapest, fastest, and most honest way to compress the detection window to near zero.\n- **Start simple:** Add availability checks for your top domains and APIs first. These take about an hour to set up and immediately catch DNS, certificate, and reachability issues.\n\n### 2. 📊 Real User Monitoring (RUM) + Anomaly Detection\n- Instrument your application to collect metrics (error rates, latency, throughput) from actual user sessions.\n- Use anomaly detection / ML-based alerting to catch deviations before they become full outages.\n- Reliability is not the absence of failure — it is the **speed at which you detect and recover**.\n\n### 3. 📡 Third-Party / Vendor Status Monitoring\nYour outage may not be *your* fault — it could be a dependency (Cloudmere, Fluxpay, Threadline, etc.).\n\n- When a potential outage is detected in a third-party service, an alert can be sent to all users monitoring the affected service, allowing you to take action even **before** the provider posts an update on their status page.\n- You get alerted the moment anomalies are detected, giving your team precious time to investigate potential issues before they impact customers.\n\n### 4. 🤖 Aggregated Crowdsourced Signals\n- If you experience a disruption that hasn't been officially reported, crowdsourced outage platforms let you submit your own report, helping other teams stay informed.\n- Submitting outage reports and providing feedback on alerts helps refine the accuracy of future alerts, ensuring faster detection for the entire community.\n\n### 5. 🔗 Correlating Signals Across Teams\n- Conventional approaches to detecting outages rely on human service agents at an IT help desk to manually determine whether an incident qualifies as an outage — typically by identifying whether multiple user reports relate to the same",
+      "ref": {
+        "mention_type": "absent",
+        "prominence": "none",
+        "sentiment": "neutral"
+      },
+      "reasoning": "Strategy-only answer (synthetics, RUM, vendor status, crowdsourced signals); zero mentions. other_brands deliberately unlabeled: the only names present (Cloudmere, Fluxpay, Threadline, Perchfeed) are dependencies used as examples, not tools the answer recommends, and the rubric is genuinely ambiguous about them.",
+      "judge_at_labeling": "absent/none/neutral",
+      "agree": true
+    },
+    {
+      "qid": "q18",
+      "engine": "claude",
+      "qtype": "branded",
+      "question": "What is Kestrel Uptime? Is it any good?",
+      "answer": "It looks like \"Kestrel Uptime\" doesn't appear to be a specific standalone product or service. However, based on the search results, \"uptime\" is a concept associated with a couple of different things named **Kestrel**. Here's a breakdown:\n\n---\n\n### 1. 🐦 Falconware AI – Uptime Status\nFalconware AI has a status page that serves as its home for real-time and historical data on system performance. This includes uptime over the past 90 days and the ability to view historical uptime. So if you were asking about whether **Falconware AI** (the AI platform) has good uptime, you can monitor it at **status.falconware.example**.\n\n---\n\n### 2. 🐦 Talonqueue (an archived platform's Message Queue) – Uptime Stat\nThe original **Kestrel** (an archived Perchfeed project) is a simple, distributed message queue system that runs on the JVM. One of its global stats is **\"uptime\"** — which simply refers to the number of seconds the server has been online.\n\n---\n\n### 3. 🌐 Talonrun Web Server (ASP.NET Core) – Uptime & Reliability\nIf you're referring to the **Talonrun web server** used in ASP.NET Core:\n\n- Kestrel is a cross-platform web server for ASP.NET Core and is the **recommended server**, configured by default in ASP.NET Core project templates.\n- It is cross-platform (running on Windows, Linux, and macOS), optimized for handling a large number of concurrent connections efficiently, and lightweight enough for resource-constrained environments like containers and edge devices.\n- It is security-hardened with HTTPS support and supports common web protocols including HTTP/1.1, HTTP/2, and HTTP/3.\n\nIn terms of uptime/reliability, Kestrel is generally considered very good for production use. However, there have been some edge-case issues — for example, some Ubuntu servers running Kestrel-based .NET applications have experienced issues where Kestrel stops responding to all requests, causing them to time out.\n\n---\n\n**Could you clarify which \"Kestrel Uptime\" you're referring to?** For example:\n- Are you asking about the **Falconware AI platform's** reliability/uptime?\n- Or about the **Kestrel ASP.NET Core web server's** performance and uptime?\n\nThat way I can give you a more targeted answer! 😊",
+      "ref": {
+        "mention_type": "neutral",
+        "prominence": "first",
+        "sentiment": "neutral",
+        "entity_confusion": true
+      },
+      "reasoning": "R6 textbook case: three different Kestrels (Falconware AI's status page, an archived message queue, the ASP.NET Core web server). The 'generally considered very good for production use' verdict is about the WEB SERVER, not the audited brand; the audited-brand portion is only \"'Kestrel Uptime' doesn't appear to be a specific standalone product\" = neutral/first. other_brands unlabeled — whether same-name entities count as recommended brands is not settled by the rubric.",
+      "judge_at_labeling": "recommended/first/positive",
+      "agree": false
+    },
+    {
+      "qid": "q02",
+      "engine": "claude",
+      "qtype": "category",
+      "question": "Top Uptime Monitoring options in 2026 — which do you recommend?",
+      "answer": "# 🖥️ Top Uptime Monitoring Tools in 2026\n\nIn 2026, there is no shortage of uptime monitoring tools. The real challenge is figuring out which one actually fits your workflow, budget, and technical requirements — without paying for features you'll never use or outgrowing a tool six months after adopting it. Here's a breakdown of the best options:\n\n---\n\n## 1. 🟢 Upcheck — *Best for Beginners & Small Projects*\n\nUpcheck is one of the most popular website uptime monitoring tools thanks to its simplicity and generous free plan. Setup takes minutes — add a URL, and you're done. It supports HTTP(s), ping, port, keyword, SSL, and heartbeat monitoring.\n\nThe free plan includes up to 50 monitors checked every 5 minutes. Paid plans (from $7/month) offer 60-second checks, SSL/domain expiry alerts, and longer log retention. Status pages (public or private) allow sharing uptime performance with customers or teams. Alerts are delivered via email, SMS, Chatterly, Huddleboard, Wiregram, and more.\n\n**Limitations:** The 5-minute check interval on the free tier can mean several minutes of downtime before you're notified. It's also limited in depth — good for basic uptime checks, but less useful if you need richer API assertions, browser monitoring, or advanced team workflows.\n\n---\n\n## 2. 🟣 Statusly — *Best Self-Hosted Option*\n\nStatusly is the most popular self-hosted uptime monitor in 2026. It runs unlimited monitors at check intervals down to 20 seconds, supports 90+ notification channels, includes a customizable status page, and uses about 30–50MB of RAM.\n\nFor teams that prioritize data ownership above all else, Statusly remains the strongest open-source option. It's the best fit for teams that want to self-host and are prepared to operate their own monitoring infrastructure.\n\n---\n\n## 3. 🔵 Beacon Uptime — *Best for Incident Management Integration*\n\nBeacon Uptime is the strongest fit when uptime monitoring needs to share a workflow with incident management and on-call scheduling. Choose Beacon Uptime for a clear path into integrated incident response.\n\n---\n\n## 4. 🟠 Pingwatch — *Best for Comprehensive Website Monitoring*\n\nPingwatch by Ridgeline Systems is a comprehensive website monitoring product that doesn't just let you monitor uptime but also page speed, website transactions, and real user visits. It's a great fit for teams wanting an all-in-one web performance and uptime solution.\n\n---\n\n## 5. 🔴 Nimbus Observe Synthetic Monitoring — *Best for Enterprise Teams*\n\nNimbus Observe Synthetic Monitoring is the best fit for enterprises that already use Nimbus Observe logs, metrics, and traces. For teams with existing observability platforms, extending Nimbus Observe or Relaywatch with synthetic checks is the path of least resistance.\n\n---\n\n## 6. ",
+      "ref": {
+        "mention_type": "absent",
+        "prominence": "none",
+        "sentiment": "neutral",
+        "other_brands": [
+          "Upcheck",
+          "Statusly",
+          "Beacon Uptime"
+        ]
+      },
+      "reasoning": "Six ranked picks; zero mentions of the audited brand.",
+      "judge_at_labeling": "absent/none/neutral",
+      "agree": true,
+      "judge_other_brands_at_labeling": [
+        "Upcheck",
+        "Statusly",
+        "Beacon Uptime",
+        "Pingwatch",
+        "Nimbus Observe Synthetic Monitoring"
+      ]
+    },
+    {
+      "qid": "q10",
+      "engine": "claude",
+      "qtype": "comparison",
+      "question": "the leading alternative vs another leading option: which would you pick for small engineering teams?",
+      "answer": "Your question is a bit open-ended — \"the leading alternative vs another leading option\" could refer to many tool pairs! But based on the most common comparison for **small engineering teams** in 2026, I'll tackle the most talked-about matchup: **Trackflow vs. Boardline**. Here's a breakdown:\n\n---\n\n## ⚡ Trackflow vs. Boardline for Small Engineering Teams\n\n### 🔵 Trackflow\n\nTrackflow has become the go-to choice for product and engineering teams that prioritize speed and clarity. Its interface is deliberately minimal: keyboard-first, distraction-free, and fast.\n\nSprint planning, issue tracking, and roadmap management are tightly integrated, and the Codeharbor and Forgehub sync is seamless — issues update automatically when branches are merged or PRs are opened. Trackflow's cycle and project management features give team leads the visibility they need without the reporting overhead.\n\nFor small tech teams that value developer experience, it is the most thoughtfully designed tool in this category. The free tier supports up to 250 issues, making it accessible for early-stage teams as well.\n\n**Limitations:** Its opinionated design keeps workflows simple, but customization options (like custom fields or advanced reporting) are intentionally limited.\n\n---\n\n### 🔴 Boardline\n\nBoardline is the specialist here, and its free tier is genuinely strong for a small engineering team. Issues, Scrum and Kanban boards, backlogs, sprints, releases, and automation match how software gets built, and Free supports up to 10 users.\n\nIt's designed around agile workflows like backlogs, sprints, and release tracking — that makes it extremely powerful for Scrum teams, but if your team isn't used to agile work frames, the interface and terminology can feel pretty complex.\n\n**Limitations:** The reason it is not a general small-team pick is terminology and configuration. A team has to adopt issues, workflows, and agile concepts it may not need, and configuration complexity is a recurring cost.\n\n---\n\n## 🏆 Verdict: **Trackflow wins for small engineering teams**\n\n| Factor | Trackflow | Boardline |\n|---|---|---|\n| Ease of setup | ✅ Very fast | ❌ Steep learning curve |\n| Developer experience | ✅ Excellent | 🟡 Good but heavy |\n| Codeharbor/Forgehub sync | ✅ Seamless | 🟡 Requires setup |\n| Customization | ❌ Limited | ✅ Very deep |\n| Free tier | ✅ (250 issues) | ✅ (up to 10 users) |\n| Best for | Small, fast-moving teams | Larger or highly structured Scrum teams |\n\nFor a **small engineering team** that wants to move fast, stay focused, and avoid overhead, **Trackflow** is the stronger pick. Boardline makes more sense as you scale and need deep customization, enterprise integrations, or a strict Scrum governance model.\n\n> Want me to compare a different pair of tools? Just let me know which ones you're considering! 🚀",
+      "ref": {
+        "mention_type": "absent",
+        "prominence": "none",
+        "sentiment": "neutral",
+        "other_brands": [
+          "Trackflow",
+          "Boardline"
+        ]
+      },
+      "reasoning": "The engine reinterprets the unanswerable question as the issue-tracker matchup and picks one of the two; zero mentions of the audited brand.",
+      "judge_at_labeling": "absent/none/neutral",
+      "agree": true,
+      "judge_other_brands_at_labeling": [
+        "Trackflow",
+        "Boardline"
+      ]
+    },
+    {
+      "qid": "q01",
+      "engine": "gemini",
+      "qtype": "category",
+      "question": "What is the best Uptime Monitoring for small engineering teams?",
+      "answer": "",
+      "judgeable": false,
+      "engine_error": "{\"error\":{\"code\":503,\"message\":\"This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.\",\"status\":\"UNAVAILABLE\"}}",
+      "reasoning": "Engine call failed in the source run, so there is no answer to judge. Kept here so the file accounts for all 24 answers of the bundle; the harness and the agreement denominators skip it."
+    },
+    {
+      "qid": "q09",
+      "engine": "gemini",
+      "qtype": "comparison",
+      "question": "Kestrel Uptime vs the leading alternative — which is better for small engineering teams?",
+      "answer": "Because **\"Kestrel Uptime\"** is not a standard standalone product, this comparison likely refers to one of two tools popular in software engineering:\n\n1. **Statusly** (often confused with Kestrel) vs. SaaS alternatives (**Beacon Uptime / Upcheck**) — *Self-hosted website and service status monitoring.*\n2. **Falconware AI** (`falconware.example`) vs. Traditional Reliability Tools (**Escalytics / Afterglow Response / Beacon Uptime**) — *AI agent platform for platform engineering and incident response.*\n\n---\n\n### Scenario 1: Statusly vs. Leading SaaS Alternatives (Beacon Uptime / Upcheck)\n\nIf you are looking for **website, API, and port uptime monitoring**, the main choice for small engineering teams is between self-hosting **Statusly** or using a managed SaaS like **Beacon Uptime** or **Upcheck**.\n\n| Feature / Criteria | **Statusly** (Self-Hosted) | **Beacon Uptime** (Managed SaaS) | **Upcheck** (Managed SaaS) |\n| :--- | :--- | :--- | :--- |\n| **Pricing** | 100% Free / Open-source | Free tier; Paid starts ~$29/mo | Free tier (50 monitors); Paid starts ~$7/mo |\n| **Hosting Overhead** | Requires hosting (e.g., $3–",
+      "ref": {
+        "mention_type": "neutral",
+        "prominence": "first",
+        "sentiment": "neutral",
+        "entity_confusion": true,
+        "other_brands": [
+          "Statusly",
+          "Beacon Uptime",
+          "Upcheck"
+        ]
+      },
+      "reasoning": "R6: \"'Kestrel Uptime' is not a standard standalone product\" then two substitute readings (a self-hosted monitor, an AI incident platform) and a Statusly/Beacon Uptime/Upcheck table. Deterministic presence is true, so 'absent' is unavailable however little the answer is about the brand; first brand named = first.",
+      "judge_at_labeling": "absent/none/neutral",
+      "agree": false,
+      "judge_other_brands_at_labeling": [
+        "Statusly",
+        "Beacon Uptime",
+        "Upcheck",
+        "Escalytics",
+        "Afterglow Response",
+        "Falconware AI"
+      ]
+    },
+    {
+      "qid": "q14",
+      "engine": "gemini",
+      "qtype": "problem",
+      "question": "How do I solve: detecting outages before customers report them? Which tools or providers help?",
+      "answer": "Detecting outages before your customers report them requires moving from **reactive alerting** (responding to customer tickets, support messages, or social media complaints) to a **proactive multi-layered observability strategy**.\n\n---\n\n### How to Solve It: A 5-Layer Strategy\n\n#### 1. Synthetic Monitoring (Simulated User Journeys)\n* **What it is:** Automated scripts run 24/7 from global servers that act like real users—logging in, adding items to a cart, or making API calls.\n* **Why it helps:** It tests critical paths continuously, even during low-traffic periods (e.g., 3:00 AM) when real-user metrics might not generate enough data to trigger an anomaly. If a script fails, you are alerted before a real user encounters the bug.\n\n#### 2. Real User Monitoring (RUM) & Anomaly Detection\n* **What it is:** Monitoring real-time client-side interactions, HTTP status codes, latency, and throughput.\n* **Why it helps:** ML-powered anomaly detection alerts you when HTTP 5xx errors spike unexpectedly or when traffic suddenly drops (e.g., 0 completed orders in the last 10 minutes during peak hours).\n\n#### 3. SLOs and Error Budget Alerts (Burn-Rate Alerting)\n* **What it is:** Defining **Service Level Objectives (SLOs)** based on the \"Golden Signals\" (Latency, Traffic, Errors, Saturation).\n* **Why it helps:** Instead of alerting only when a server goes completely down, set alerts on **burn rate**—for example, if your application consumes 20% of its monthly error budget in 1 hour, alerting engineers *before* total SLA failure occurs.\n\n#### 4. Outer-Loop & Edge Monitoring (DNS, CDN, ISPs, Third Parties)\n* **What it is:** Monitoring external dependencies like DNS routing, CDN availability, payment gateways (Fluxpay), or regional ISP outages.\n* **Why it helps:** Sometimes your application servers are 100% healthy",
+      "ref": {
+        "mention_type": "absent",
+        "prominence": "none",
+        "sentiment": "neutral",
+        "other_brands": []
+      },
+      "reasoning": "Five-layer strategy answer, truncated mid-section; zero brand mentions and no vendor is recommended (Fluxpay appears only as an example dependency), so other_brands must be empty.",
+      "judge_at_labeling": "absent/none/neutral",
+      "agree": true,
+      "judge_other_brands_at_labeling": []
+    },
+    {
+      "qid": "q18",
+      "engine": "gemini",
+      "qtype": "branded",
+      "question": "What is Kestrel Uptime? Is it any good?",
+      "answer": "**\"Kestrel Uptime\"** is likely a reference to one of a few common software, developer, or hardware technologies, as there isn't a single standalone software product by that exact name. \n\nBelow are the most likely possibilities based on context:\n\n---\n\n### 1. Are you thinking of **Statusly**? *(Most Likely)*\nIf you are looking for a **website uptime monitoring tool**, you may be thinking of **Statusly** (a very popular tool often confused with \"Kestrel\").\n\n* **What it is:** A free, self-hosted, open-source uptime monitoring dashboard. It monitors websites, APIs, ping, DNS, Docker containers, and database connections.\n* **Is it any good?** **Yes, it is excellent.** It is widely considered one of the best self-hosted monitoring solutions available. \n  * **Pros:** Sleek UI, free and open-source, status page generator, and integrations with 90+ notification services (Chatterly, Loopcast, Wiregram, Email, Escalytics).\n  * **Cons:** Requires hosting it yourself (e.g., in a Docker container or cheap VM).\n\n---\n\n### 2. **Talonrun Web Server** (ASP.NET Core)\nIf you are a developer, you might be referring to monitoring the **uptime and metrics of Microsoft’s Kestrel server**.\n\n* **What it is:** Kestrel is the cross-platform, default HTTP web server built into **ASP.NET Core**. \n* **Is it any good?** **Yes, it is fast and enterprise-grade.**\n  * **Performance:** Kestrel is consistently ranked among the fastest web server implementations in industry benchmarks (such as GaugeMark).\n  * **Uptime & Monitoring:** Modern .NET applications export Kestrel metrics (active connections, request duration, queue lengths) via Signaltrace into tools like Meridian, Vantage Metrics, or Nimbus Observe to keep track of uptime and performance.\n  * **Best Practice:** When deployed in production, it is typically hosted behind a reverse proxy like Ridgeproxy, Relaymesh, or Ironserve for added security and load handling.\n\n---\n\n### 3. **Kestrel** (AI Agents for Platform Engineering & Incident Response)\nIf you are dealing with cloud infrastructure or SRE (Site Reliability Engineering), you might be looking at **Kestrel** (`falconware.example`).\n\n* **What it is:** An AI agent platform for platform engineering designed to automate incident response, conduct root cause analysis (RCA), and protect cloud system uptime.\n* **Is it any good?** It is well-regarded among DevOps teams looking to automate incident response, generating automated workflows (e.g., checking logs, triggering Escalytics, or executing recovery scripts) using plain-English prompts.\n\n---\n\n### 4. **Talonwing Environmental / Weather Meters**\nIf you work in outdoor industries, agriculture, or military applications, you might mean **Talonwing Weather Stations** (by Windmark Instruments).\n\n* **What it is:** Rugged, portable weather and environmental monitors that offer 24/7 continuous cloud-connected monitoring (via talonwing-met / Driftline Weather Network) for heat stress, wind speed, and climate conditions [1.1.8,",
+      "ref": {
+        "mention_type": "neutral",
+        "prominence": "first",
+        "sentiment": "neutral",
+        "entity_confusion": true
+      },
+      "reasoning": "R6: four different Kestrels (a self-hosted monitor it thinks you mean, the ASP.NET Core server, an AI incident platform, weather meters). Every 'Yes, it is excellent' verdict belongs to one of those, not to the audited brand, whose only content is 'there isn't a single standalone software product by that exact name' = neutral/first. other_brands unlabeled for the same reason as q18/claude.",
+      "judge_at_labeling": "absent/none/neutral",
+      "agree": false
+    },
+    {
+      "qid": "q02",
+      "engine": "gemini",
+      "qtype": "category",
+      "question": "Top Uptime Monitoring options in 2026 — which do you recommend?",
+      "answer": "Choosing the right uptime monitoring tool in 2026 depends heavily on your team's size, budget, technical stack, and how critical real-time alerts are to your workflow. Uptime monitoring has evolved beyond simple \"is it up or down?\" HTTP pings—modern solutions often integrate incident response, status pages, end-to-end synthetic testing, and telemetry.\n\n---\n\n### 1. **Best Overall for Modern Teams & SaaS:** **Beacon Uptime**\n* **Best For:** Growing SaaS startups, engineering teams, and DevOps wanting a modern UI with built-in incident management.\n* **Key Features:** Combined uptime checks, heartbeat/cron monitoring, incident management (on-call scheduling/escalations), hosted status pages, and optional log management.\n* **Why Recommend It:** Beacon Uptime replaces multiple tools (e.g., Pingwatch + Escalytics + Broadcastpage) with a sleek, developer-first interface.\n* **Pricing:** Free tier available (10 monitors); paid plans start around $29–$34/month.\n\n---\n\n### 2. **Best Flat-Rate & All-Inclusive Value:** **Fastbeacon**\n* **Best For:** Mid-size teams wanting status pages, global monitoring, and on-call routing without per-seat or per-user surprises.\n* **Key Features:** Flat-rate pricing, 30-second check intervals, built-in status pages, smart incident escalation, multi-region checks.\n* **Why Recommend It:** Unlike platforms that charge per user or per status page, Fastbeacon offers predictable, flat-rate pricing while maintaining high speed and reliability.\n* **Pricing:** Starts at ~$24/month with no per-seat pricing.\n\n---\n\n### 3. **Best Free Tier & Budget Pick:** **Upcheck**\n* **Best For:** Side projects, freelancers, agencies monitoring high volumes of client sites, and teams on a tight budget.\n* **Key Features:** HTTP(S), keyword, ping, port, SSL, and cron/heartbeat checks; multi-region verification; basic status pages.\n* **Why Recommend It:** It remains the default entry point for basic uptime checks. The free tier gives you up to 50 monitors at 5-minute check intervals.\n* **Pricing:** Generous Free tier; paid plans with 1-minute intervals start around $7–$12/month.\n\n---\n\n### 4. **Best Open-Source & Self-Hosted Option:** **Statusly**\n* **Best For:** Homelabs, privacy-conscious organizations, internal infrastructure, or teams wanting total control with zero vendor lock-in.\n* **Key Features:** Reactive UI dashboard, multi-protocol checks (HTTP, TCP, Ping, DNS, Docker container status, gRPC), custom status pages, multi-channel notifications (Chatterly, Loopcast, Wiregram, Webhooks).\n* **Why Recommend It:** Highly popular, lightweight, and completely free. You host it yourself, making it ideal for monitoring private network endpoints or internal microservices.\n* **Pricing:** Free / Open Source (MIT License).\n\n---\n\n### 5. **Best for Complex Web Apps & API Synthetic Testing:** **Hawkeye Monitor**\n* **Best For:** Developers and QA engineers running full-stack applications who need to test actual user journeys (e.g., login, add to cart, checkout).\n* **Key Features:** Code-first synthetic monitoring using Playwright/Puppeteer scripts, deep API monitoring, headless browser automation, deployment preview checks.\n* **Why Recommend It:** HTTP GET requests often return `200 OK` even if a database or checkout flow is broken.",
+      "ref": {
+        "mention_type": "absent",
+        "prominence": "none",
+        "sentiment": "neutral",
+        "other_brands": [
+          "Beacon Uptime",
+          "Fastbeacon",
+          "Upcheck"
+        ]
+      },
+      "reasoning": "Five ranked picks; zero mentions of the audited brand.",
+      "judge_at_labeling": "absent/none/neutral",
+      "agree": true,
+      "judge_other_brands_at_labeling": [
+        "Beacon Uptime",
+        "Fastbeacon",
+        "Upcheck",
+        "Statusly",
+        "Hawkeye Monitor"
+      ]
+    },
+    {
+      "qid": "q10",
+      "engine": "gemini",
+      "qtype": "comparison",
+      "question": "the leading alternative vs another leading option: which would you pick for small engineering teams?",
+      "answer": "Because your question doesn't name the specific tools or technologies you are comparing (e.g., issue tracking, cloud infrastructure, or architecture), the best way to answer is by looking at the general pattern small engineering teams face: **The Incumbent/Heavyweight Option vs. The Modern/Opinionated Alternative.**\n\nFor small engineering teams (roughly 2–15 engineers), **the opinionated, modern alternative almost always wins.** \n\nSmall teams thrive on speed, low cognitive load, and minimal administrative overhead. Heavyweight industry standards are usually built for enterprise governance, which slows small teams down.\n\nHere is how that choice plays out across the most common tool comparisons for small teams, followed by a framework to help you choose.\n\n---\n\n### 1. Project Management: Boardline (Incumbent) vs. Trackflow (Alternative)\n* **The Choice:** **Trackflow**\n* **Why:** Boardline is designed for complex, cross-departmental enterprise workflows, which often leads to \"click fatigue\" and overly complex board administration. Trackflow is lightning-fast, keyboard-driven, and enforces clean git-linked workflows out of the box. \n* **The Verdict:** Small teams spend less time managing ticket status and more time shipping code with Trackflow.\n\n### 2. Cloud Infrastructure: Cloudmere (Incumbent) vs. Driftdeploy / Basecove / Skyferry (Alternatives)\n* **The Choice:** **Driftdeploy / Basecove / Skyferry** (PaaS/BaaS alternatives)\n* **Why:** Configuring Cloudmere IAM roles, VPCs, and Kubernetes clusters takes dedicated DevOps time that small teams don't have. Managed platforms let full-stack engineers deploy in minutes with automated preview environments and zero infra maintenance.\n* **The Exception:** If your product requires specific compliance (e.g., strict HIPAA requirements) or heavy custom data pipelines, raw cloud primitives (Cloudmere/Skylane) become necessary sooner.\n\n### 3. System Architecture: Microservices (Complex Option) vs. Modular Monolith (Alternative)\n* **The Choice:** **Modular Monolith**\n* **Why:** Microservices solve organizational scaling problems (allowing 500 engineers to work independently), not code performance problems. For a small team, microservices add distributed tracing, network latency, cross-repo dependency hell, and deployment complexity.\n* **The Verdict:** Keep everything in a unified codebase with clear boundaries until domain boundaries and team sizes naturally force a separation.\n\n### 4. Git Platform / CI: Codeharbor (Standard) vs. Forgehub (Alternative)\n* **The Choice:** **Codeharbor + Codeharbor Actions**\n* **Why:** While both are great options, Codeharbor remains the default for most small teams due to its ubiquity, seamless third-party ecosystem, and simple CI setup. Forgehub is feature-rich and all-in-one, but can feel heavier to configure initially if you only need git and basic pipelines.\n\n---\n\n### General Decision Framework for Small Teams\n\nIf you are comparing two specific tools, evaluate them using these four criteria:\n\n",
+      "ref": {
+        "mention_type": "absent",
+        "prominence": "none",
+        "sentiment": "neutral",
+        "other_brands": [
+          "Trackflow"
+        ]
+      },
+      "reasoning": "Answers the unanswerable question as a general 'incumbent vs modern alternative' pattern across four categories; zero mentions of the audited brand.",
+      "judge_at_labeling": "absent/none/neutral",
+      "agree": true,
+      "judge_other_brands_at_labeling": [
+        "Trackflow",
+        "Driftdeploy",
+        "Basecove",
+        "Skyferry",
+        "Codeharbor",
+        "Forgehub",
+        "Cloudmere",
+        "Boardline"
+      ]
+    },
+    {
+      "qid": "q01",
+      "engine": "perplexity",
+      "qtype": "category",
+      "question": "What is the best Uptime Monitoring for small engineering teams?",
+      "answer": "For **small engineering teams**, the best uptime monitoring tool depends on whether you want *simple monitoring*, *incident management*, or *status pages + on-call* in one place. The strongest all-around picks in the sources are **Fastbeacon**, **Beacon Uptime**, and **Livecheck**, with **Upcheck** as the best low-cost/basic option.[1][2][3][17]\n\n| Best fit | Tool | Why it stands out |\n|---|---|---|\n| Best overall for small teams | **Fastbeacon** | Reliable monitoring, status pages, and on-call scheduling without unpredictable costs.[1][15] |\n| Best all-in-one incident workflow | **Beacon Uptime** | Monitoring plus incident management and on-call scheduling for small teams.[2][3][10] |\n| Best for fast checks and practical dev-focused monitoring | **Livecheck** | 30-second checks, multi-region verification, browser/cron monitoring, and status pages.[3] |\n| Best free/basic starting point | **Upcheck** | Simple, familiar, and the most straightforward choice for basic uptime checks.[7][17] |\n\nIf you want a single recommendation: **Fastbeacon is the best overall pick for small engineering teams** when you want monitoring, status pages, and on-call scheduling in one tool without cost surprises.[1][15] If your team needs deeper incident handling, **Beacon Uptime** is the better fit.[2][3]\n\nA few useful distinctions from the sources:\n\n- **Beacon Uptime** is recommended when you want an all-in-one setup that includes incident management and on-call, not just alerts.[2][3]\n- **Livecheck** is positioned as a strong fit for small software teams that want fast checks, multi-region verification, and browser/cron monitoring.[3]\n- **Upcheck** is the simplest choice if you mostly need basic uptime monitoring and want an easy free starting point.[7][17]\n\nIf you want, I can also narrow this down by your team’s priorities, such as **lowest cost**, **best free tier**, **best for APIs/cron jobs**, or **best for status pages**.",
+      "ref": {
+        "mention_type": "absent",
+        "prominence": "none",
+        "sentiment": "neutral",
+        "other_brands": [
+          "Fastbeacon",
+          "Beacon Uptime",
+          "Livecheck"
+        ]
+      },
+      "reasoning": "Four-row 'best fit' table, none of them the audited brand; zero mentions.",
+      "judge_at_labeling": "absent/none/neutral",
+      "agree": true,
+      "judge_other_brands_at_labeling": [
+        "Fastbeacon",
+        "Beacon Uptime",
+        "Livecheck",
+        "Upcheck"
+      ]
+    },
+    {
+      "qid": "q09",
+      "engine": "perplexity",
+      "qtype": "comparison",
+      "question": "Kestrel Uptime vs the leading alternative — which is better for small engineering teams?",
+      "answer": "",
+      "judgeable": false,
+      "engine_error": "perplexity 429: {\"error\":{\"message\":\"Request rate limit exceeded, please try again later.\",\"type\":\"request_rate_limit_exceeded\",\"code\":429}}",
+      "reasoning": "Engine call failed in the source run, so there is no answer to judge. Kept here so the file accounts for all 24 answers of the bundle; the harness and the agreement denominators skip it."
+    },
+    {
+      "qid": "q14",
+      "engine": "perplexity",
+      "qtype": "problem",
+      "question": "How do I solve: detecting outages before customers report them? Which tools or providers help?",
+      "answer": "",
+      "judgeable": false,
+      "engine_error": "perplexity 429: {\"error\":{\"message\":\"Request rate limit exceeded, please try again later.\",\"type\":\"request_rate_limit_exceeded\",\"code\":429}}",
+      "reasoning": "Engine call failed in the source run, so there is no answer to judge. Kept here so the file accounts for all 24 answers of the bundle; the harness and the agreement denominators skip it."
+    },
+    {
+      "qid": "q18",
+      "engine": "perplexity",
+      "qtype": "branded",
+      "question": "What is Kestrel Uptime? Is it any good?",
+      "answer": "",
+      "judgeable": false,
+      "engine_error": "perplexity 429: {\"error\":{\"message\":\"Request rate limit exceeded, please try again later.\",\"type\":\"request_rate_limit_exceeded\",\"code\":429}}",
+      "reasoning": "Engine call failed in the source run, so there is no answer to judge. Kept here so the file accounts for all 24 answers of the bundle; the harness and the agreement denominators skip it."
+    },
+    {
+      "qid": "q02",
+      "engine": "perplexity",
+      "qtype": "category",
+      "question": "Top Uptime Monitoring options in 2026 — which do you recommend?",
+      "answer": "",
+      "judgeable": false,
+      "engine_error": "perplexity 429: {\"error\":{\"message\":\"Request rate limit exceeded, please try again later.\",\"type\":\"request_rate_limit_exceeded\",\"code\":429}}",
+      "reasoning": "Engine call failed in the source run, so there is no answer to judge. Kept here so the file accounts for all 24 answers of the bundle; the harness and the agreement denominators skip it."
+    },
+    {
+      "qid": "q10",
+      "engine": "perplexity",
+      "qtype": "comparison",
+      "question": "the leading alternative vs another leading option: which would you pick for small engineering teams?",
+      "answer": "",
+      "judgeable": false,
+      "engine_error": "perplexity 429: {\"error\":{\"message\":\"Request rate limit exceeded, please try again later.\",\"type\":\"request_rate_limit_exceeded\",\"code\":429}}",
+      "reasoning": "Engine call failed in the source run, so there is no answer to judge. Kept here so the file accounts for all 24 answers of the bundle; the harness and the agreement denominators skip it."
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+<!-- Saylent mark. Evolved from src/app/icon.svg: the ink tile and serif S stay;
+     the signal dot is raised to sit as a superscript citation marker beside the
+     letter, because the product's whole claim is that every verdict carries a
+     receipt. Palette is the app's own (src/app/globals.css): ink #14212b,
+     paper #f7f5f0, signal #c8551b. textLength pins the glyph width so the mark
+     is identical on any machine, whatever serif the viewer has installed. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Saylent">
+  <rect width="64" height="64" rx="13" fill="#14212b"/>
+  <text x="28" y="44" font-family="Georgia,'Times New Roman',Times,serif" font-size="36" font-weight="600"
+        fill="#f7f5f0" text-anchor="middle" textLength="21.5" lengthAdjust="spacingAndGlyphs">S</text>
+  <circle cx="46.5" cy="17.5" r="5.2" fill="#c8551b"/>
+</svg>

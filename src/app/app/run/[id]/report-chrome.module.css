@@ -1,0 +1,18 @@
+/* The owner action row that <Dossier> (packages/report) renders for itself —
+   back link · share · CSV · JSON · print — is now rendered by the app, above
+   the view switch, so it appears on BOTH report layers and can wrap on a phone
+   (see report-actions.tsx). Two copies of the same row would be worse than one
+   in the wrong place, so the package's copy is hidden here.
+
+   The selector is anchored on the one thing that row uniquely contains: its
+   `← Brands & runs` link, the single href="/app" in dossier.tsx. It is scoped
+   to this wrapper, so the /share and /demo renders (which never mount it) are
+   untouched.
+
+   REPLACE ME: this exists only because packages/report was owned by another
+   change while this one landed. The durable version is an `ownerChrome={false}`
+   prop on <Dossier> that skips the block at dossier.tsx:523-548 — then delete
+   this file and the wrapper class. */
+.appChrome :global(#dossier > div:has(> a[href="/app"])) {
+  display: none;
+}

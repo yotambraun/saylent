@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kestrel vs the alternatives | Kestrel Uptime</title>
+<meta name="description" content="How Kestrel Uptime compares with the hosted incumbents, with the open source monitoring stacks, and with a hand rolled cron script.">
+<link rel="stylesheet" href="{{SITE_ROOT}}/styles.css">
+</head>
+<body>
+
+<header class="masthead">
+  <div class="frame">
+    <a class="wordmark" href="{{SITE_ROOT}}/">Kestrel <span>Uptime</span></a>
+    <nav>
+      <a href="{{SITE_ROOT}}/pricing/">Pricing</a>
+      <a href="{{SITE_ROOT}}/docs/">Docs</a>
+      <a href="{{SITE_ROOT}}/compare/" aria-current="page">Compare</a>
+      <a href="{{SITE_ROOT}}/changelog/">Changelog</a>
+      <a href="{{SITE_ROOT}}/about/">About</a>
+      <a href="{{SITE_ROOT}}/contact/">Contact</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+<section class="hero">
+  <div class="frame">
+    <h1>Kestrel and the alternatives</h1>
+    <p class="lede">Nobody buys monitoring because they enjoy it. Teams arrive here from one of three
+      places, and it is worth being honest about which of them Kestrel is actually better than.</p>
+  </div>
+</section>
+
+<section class="band">
+  <div class="frame wide">
+
+    <h2>Coming from the hosted incumbents</h2>
+    <p>The large hosted monitoring suites do far more than Kestrel does. They correlate traces, they
+      profile your runtime, they hold years of logs, and if your company has a platform team whose job
+      is to run that, they are a reasonable place to be. The problem small teams describe to us is not
+      capability. It is that the bill grows with things they did not choose, the setup asks for
+      decisions they are not ready to make, and the on-call configuration ends up being understood by
+      one person.</p>
+    <p>Kestrel is smaller on purpose. It answers one question, is the thing up and is anyone being
+      told, and it tries to answer that question well from four regions rather than answering ten
+      questions from one. If you need distributed tracing, you should not buy Kestrel. If you have a
+      tracing product already and still find out about outages from customers, that is the gap Kestrel
+      fills.</p>
+
+    <h2>Coming from an open source stack you run yourself</h2>
+    <p>A self hosted metrics and alerting stack is genuinely good, and it is free until you count the
+      afternoons. The failure mode we see is the one nobody plans for: the monitoring runs in the same
+      infrastructure as the thing it monitors, so the outage that matters most is the outage nobody is
+      paged for. Alert rules drift, the person who wrote them changes team, and the certificate on the
+      alert manager expires quietly.</p>
+    <p>Kestrel runs outside your infrastructure, which is the whole point of an external check. It
+      does not replace your internal metrics. It sits next to them and answers from the outside, the
+      way your customers experience the service.</p>
+
+    <h2>Coming from a cron job and a shell script</h2>
+    <p>Plenty of teams start with a script that curls an endpoint and sends an email. It works, and it
+      is the right first step. It stops working the day the script host has a network problem and
+      sends three hundred emails, or the day it silently stops running and everything looks fine
+      because no news is good news.</p>
+    <p>Kestrel is the version of that script with the boring parts finished: agreement between regions
+      before anyone is woken, escalation when the first person does not answer, a record of what
+      happened, and a status page customers can read instead of writing to support.</p>
+
+    <h2>Where Kestrel is the wrong answer</h2>
+    <p>If you need log search, if you need application performance monitoring, if you are required to
+      keep monitoring data inside your own network, or if your compliance programme needs a vendor with
+      a dedicated account team, Kestrel is not the right tool and we will say so on a call rather than
+      let you find out in month three.</p>
+
+    <div class="actions">
+      <a class="btn" href="{{SITE_ROOT}}/pricing/">See pricing</a>
+      <a class="btn quiet" href="{{SITE_ROOT}}/contact/">Ask us directly</a>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="frame">
+    <nav>
+      <a href="{{SITE_ROOT}}/">Home</a>
+      <a href="{{SITE_ROOT}}/pricing/">Pricing</a>
+      <a href="{{SITE_ROOT}}/docs/">Docs</a>
+      <a href="{{SITE_ROOT}}/compare/">Compare</a>
+      <a href="{{SITE_ROOT}}/changelog/">Changelog</a>
+      <a href="{{SITE_ROOT}}/about/">About</a>
+      <a href="{{SITE_ROOT}}/contact/">Contact</a>
+    </nav>
+    <p>Kestrel Uptime, uptime monitoring and status pages for small engineering teams.
+      Questions: <a href="mailto:hello@kestrel.example">hello@kestrel.example</a></p>
+    <p>Kestrel is a fictional company. This site exists as a public test subject for an
+      open source website audit engine, so the product, the people and the numbers on it are
+      invented.</p>
+  </div>
+</footer>
+
+</body>
+</html>

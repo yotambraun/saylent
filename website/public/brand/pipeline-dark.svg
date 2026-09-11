@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1036" height="412" viewBox="0 0 1036 412" role="img" aria-label="The nine stages of a Saylent run: crawl, brand model, questions, engines, judge, cited pages, site gates, fix plan, score">
+  <rect width="1036" height="412" fill="#16130f"/>
+  <rect x="28" y="28" width="300" height="96" rx="10" fill="#1d1a15" stroke="#332c24"/>
+  <text x="48" y="60" font-family="'DejaVu Sans Mono','Liberation Mono',Menlo,Consolas,monospace" font-size="13" fill="#e5703a">01</text>
+  <text x="78" y="62" font-family="Georgia,'Times New Roman',Times,serif" font-size="21" fill="#ece6da">crawl</text>
+  <text x="48" y="94" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="15" fill="#9c9184">your pages</text>
+  <path d="M336 76 H356" stroke="#332c24" stroke-width="2"/>
+  <path d="M352 72 l5 4 -5 4" fill="none" stroke="#332c24" stroke-width="2"/>
+  <rect x="368" y="28" width="300" height="96" rx="10" fill="#1d1a15" stroke="#332c24"/>
+  <text x="388" y="60" font-family="'DejaVu Sans Mono','Liberation Mono',Menlo,Consolas,monospace" font-size="13" fill="#e5703a">02</text>
+  <text x="418" y="62" font-family="Georgia,'Times New Roman',Times,serif" font-size="21" fill="#ece6da">brand model</text>
+  <text x="388" y="94" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="15" fill="#9c9184">category, buyers, rivals</text>
+  <path d="M676 76 H696" stroke="#332c24" stroke-width="2"/>
+  <path d="M692 72 l5 4 -5 4" fill="none" stroke="#332c24" stroke-width="2"/>
+  <rect x="708" y="28" width="300" height="96" rx="10" fill="#1d1a15" stroke="#332c24"/>
+  <text x="728" y="60" font-family="'DejaVu Sans Mono','Liberation Mono',Menlo,Consolas,monospace" font-size="13" fill="#e5703a">03</text>
+  <text x="758" y="62" font-family="Georgia,'Times New Roman',Times,serif" font-size="21" fill="#ece6da">questions</text>
+  <text x="728" y="94" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="15" fill="#9c9184">the buyer question set</text>
+  <path d="M858 130 V141 H178 V148" fill="none" stroke="#332c24" stroke-width="2"/>
+  <path d="M174 144 l4 5 4 -5" fill="none" stroke="#332c24" stroke-width="2"/>
+  <rect x="28" y="158" width="300" height="96" rx="10" fill="#1d1a15" stroke="#332c24"/>
+  <text x="48" y="190" font-family="'DejaVu Sans Mono','Liberation Mono',Menlo,Consolas,monospace" font-size="13" fill="#e5703a">04</text>
+  <text x="78" y="192" font-family="Georgia,'Times New Roman',Times,serif" font-size="21" fill="#ece6da">engines</text>
+  <text x="48" y="224" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="15" fill="#9c9184">official APIs, verbatim</text>
+  <path d="M336 206 H356" stroke="#332c24" stroke-width="2"/>
+  <path d="M352 202 l5 4 -5 4" fill="none" stroke="#332c24" stroke-width="2"/>
+  <rect x="368" y="158" width="300" height="96" rx="10" fill="#1d1a15" stroke="#332c24"/>
+  <text x="388" y="190" font-family="'DejaVu Sans Mono','Liberation Mono',Menlo,Consolas,monospace" font-size="13" fill="#e5703a">05</text>
+  <text x="418" y="192" font-family="Georgia,'Times New Roman',Times,serif" font-size="21" fill="#ece6da">judge</text>
+  <text x="388" y="224" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="15" fill="#9c9184">the other provider family</text>
+  <path d="M676 206 H696" stroke="#332c24" stroke-width="2"/>
+  <path d="M692 202 l5 4 -5 4" fill="none" stroke="#332c24" stroke-width="2"/>
+  <rect x="708" y="158" width="300" height="96" rx="10" fill="#1d1a15" stroke="#332c24"/>
+  <text x="728" y="190" font-family="'DejaVu Sans Mono','Liberation Mono',Menlo,Consolas,monospace" font-size="13" fill="#e5703a">06</text>
+  <text x="758" y="192" font-family="Georgia,'Times New Roman',Times,serif" font-size="21" fill="#ece6da">cited pages</text>
+  <text x="728" y="224" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="15" fill="#9c9184">fetched and checked</text>
+  <path d="M858 260 V271 H178 V278" fill="none" stroke="#332c24" stroke-width="2"/>
+  <path d="M174 274 l4 5 4 -5" fill="none" stroke="#332c24" stroke-width="2"/>
+  <rect x="28" y="288" width="300" height="96" rx="10" fill="#1d1a15" stroke="#332c24"/>
+  <text x="48" y="320" font-family="'DejaVu Sans Mono','Liberation Mono',Menlo,Consolas,monospace" font-size="13" fill="#e5703a">07</text>
+  <text x="78" y="322" font-family="Georgia,'Times New Roman',Times,serif" font-size="21" fill="#ece6da">site gates</text>
+  <text x="48" y="354" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="15" fill="#9c9184">AI bots, tested live</text>
+  <path d="M336 336 H356" stroke="#332c24" stroke-width="2"/>
+  <path d="M352 332 l5 4 -5 4" fill="none" stroke="#332c24" stroke-width="2"/>
+  <rect x="368" y="288" width="300" height="96" rx="10" fill="#1d1a15" stroke="#332c24"/>
+  <text x="388" y="320" font-family="'DejaVu Sans Mono','Liberation Mono',Menlo,Consolas,monospace" font-size="13" fill="#e5703a">08</text>
+  <text x="418" y="322" font-family="Georgia,'Times New Roman',Times,serif" font-size="21" fill="#ece6da">fix plan</text>
+  <text x="388" y="354" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="15" fill="#9c9184">drafted from evidence</text>
+  <path d="M676 336 H696" stroke="#332c24" stroke-width="2"/>
+  <path d="M692 332 l5 4 -5 4" fill="none" stroke="#332c24" stroke-width="2"/>
+  <rect x="708" y="288" width="300" height="96" rx="10" fill="#1d1a15" stroke="#332c24"/>
+  <text x="728" y="320" font-family="'DejaVu Sans Mono','Liberation Mono',Menlo,Consolas,monospace" font-size="13" fill="#e5703a">09</text>
+  <text x="758" y="322" font-family="Georgia,'Times New Roman',Times,serif" font-size="21" fill="#ece6da">score</text>
+  <text x="728" y="354" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="15" fill="#9c9184">share of voice, band</text>
+</svg>

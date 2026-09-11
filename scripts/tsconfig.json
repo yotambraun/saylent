@@ -1,0 +1,16 @@
+{
+  "//": "Scripts-scoped tsconfig for the tsx dev rig ONLY. Selected with `tsx --tsconfig scripts/tsconfig.json` (the npm scripts do this; for ad-hoc scripts add the flag yourself). It extends the root config and only ADDS a `server-only` -> no-op stub mapping so `import \"server-only\"` resolves under bare tsx. `next build`/`tsc` never read this file (they use the root tsconfig.json), so the real Next client-bundle guard is untouched. paths are redefined (extends replaces, not merges) and resolve relative to this scripts/ dir.",
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["../src/*"],
+      "@saylent/engine": ["../packages/engine/src/index.ts"],
+      "@saylent/engine/adapters": ["../packages/engine/src/adapters/index.ts"],
+      "@saylent/engine/adapters/*": ["../packages/engine/src/adapters/*.ts"],
+      "@saylent/engine/*": ["../packages/engine/src/*.ts"],
+      "@saylent/report": ["../packages/report/src/index.ts"],
+      "@saylent/report/*": ["../packages/report/src/*.ts"],
+      "server-only": ["./server-only.stub.ts"]
+    }
+  }
+}

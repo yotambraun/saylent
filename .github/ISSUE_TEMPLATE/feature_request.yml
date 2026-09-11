@@ -1,0 +1,41 @@
+name: Feature request
+description: Propose a new adapter, check, fix family, report block, or other capability.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        See CONTRIBUTING.md's "Adding a piece" section and ARCHITECTURE.md's
+        "Where do I extend it?" table first, most additions (an adapter, a
+        site check, a report block) fit an existing extension point and can
+        go straight to a PR without a design discussion.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve
+      description: What you are trying to do today that the project does not support.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+      description: What you would add or change. Which extension point does it fit (adapter, site check, fix family, report block, judge rule, config field, something else)?
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Anything you tried or ruled out, including workarounds.
+
+  - type: checkboxes
+    id: willing
+    attributes:
+      label: Are you willing to open a PR for this?
+      options:
+        - label: Yes, I'd like to implement it
+        - label: No, but I wanted to flag the idea

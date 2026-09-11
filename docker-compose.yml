@@ -1,0 +1,75 @@
+# Saylent — the OWN-SERVER run target.
+# Two containers: the Next app and a self-hosted Inngest server that drives the
+# durable audit jobs and the two crons.
+#
+# NOT in here, on purpose:
+#   • Supabase — bring your own project (hosted free tier is enough) and put its
+#     URL + keys in .env. Running Supabase yourself is the ADVANCED path: use
+#     Supabase's own compose stack, https://supabase.com/docs/guides/self-hosting/docker,
+#     and point the same variables at it. We do not vendor a copy of it here —
+#     a stale fork of someone else's 12-service stack helps nobody.
+#   • migrations — run `npm run db:migrate` against your database once before the
+#     first start, and again after every upgrade.
+#
+#   cp .env.example .env && $EDITOR .env
+#   docker compose up -d --build
+#   open http://localhost:3000   (first sign-up becomes the operator)
+
+services:
+  app:
+    build:
+      context: .
+      # NEXT_PUBLIC_* are inlined into the browser bundle at build time, so they
+      # are build args as well as runtime env. Rebuild after changing them.
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
+        NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-Saylent}
+        NEXT_PUBLIC_CONTACT_EMAIL: ${NEXT_PUBLIC_CONTACT_EMAIL:-}
+        NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN:-}
+    image: saylent-app
+    restart: unless-stopped
+    # Everything else (Supabase service key, provider keys, the cost-control
+    # limits) is read at runtime from your .env.
+    env_file:
+      - .env
+    environment:
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+      # Point the SDK at the self-hosted server instead of Inngest Cloud
+      # (node_modules/inngest/components/Inngest.js: INNGEST_BASE_URL).
+      INNGEST_BASE_URL: http://inngest:8288
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    depends_on:
+      - inngest
+    # The image's own HEALTHCHECK hits /api/health: 200 only when the app can
+    # reach your Supabase Postgres, so "unhealthy" here means the database.
+
+  inngest:
+    # Official self-hosted image. Pin the tag you tested before you rely on it.
+    image: inngest/inngest:latest
+    restart: unless-stopped
+    # Same invocation shape as Inngest's self-hosting docs
+    # (`docker run inngest/inngest inngest start -u <your app>/api/inngest`),
+    # with the app reachable by its compose service name.
+    command: inngest start -u http://app:3000/api/inngest
+    environment:
+      # Both keys are REQUIRED: the signing key is what authenticates
+      # /api/inngest, without which paid runs are externally triggerable
+      # (the same guard src/lib/env.ts enforces in production).
+      INNGEST_EVENT_KEY: ${INNGEST_EVENT_KEY:?set INNGEST_EVENT_KEY in .env}
+      INNGEST_SIGNING_KEY: ${INNGEST_SIGNING_KEY:?set INNGEST_SIGNING_KEY in .env}
+      # State is in-memory by default — restarts lose queued runs. For durable
+      # single-node state give it Postgres (+ optional Redis); see
+      # https://www.inngest.com/docs/self-hosting
+      # INNGEST_POSTGRES_URI: ${INNGEST_POSTGRES_URI:-}
+      # INNGEST_REDIS_URI: ${INNGEST_REDIS_URI:-}
+    ports:
+      # 8288 = the Inngest UI + event API — an operator surface, not a public
+      # one. Bound to loopback only (not 0.0.0.0): reachable from this host,
+      # never from the network. To use it remotely, put it behind your own
+      # reverse proxy with auth rather than widening this bind.
+      - "127.0.0.1:${INNGEST_PORT:-8288}:8288"

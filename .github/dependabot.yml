@@ -1,0 +1,33 @@
+# Keep pinned GitHub Actions SHAs current. Weekly PRs bump the SHA and its
+# trailing version comment in .github/workflows/*.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+
+  # npm workspaces (root, packages/*, website). Dependabot follows the
+  # workspaces field in package.json from this one root entry, so package
+  # updates for packages/cli, packages/engine, packages/report, and website
+  # all land here too, not as separate config blocks.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch
+    # Major bumps for the framework and its runtime are reviewed by hand,
+    # not auto-proposed: Next.js major versions change routing/build
+    # behavior in ways a patch bot can't safely absorb, and React majors
+    # ripple through every component in src/ and packages/report.
+    ignore:
+      - dependency-name: "next"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-dom"
+        update-types: ["version-update:semver-major"]

@@ -1,0 +1,116 @@
+---
+title: Extending Saylent
+description: One recipe per extension point - the interface, the file, and how to know you're done.
+---
+
+Three levels: configure without code, add one file, or change the core
+safely. This page covers the second level - everything below has a typed
+interface, lives in one file (plus a registration line), and has a test you
+can copy.
+
+## Add an answer engine
+
+**Interface:** `Ask` (`packages/engine/src/adapters/shared.ts`) -
+`(question: string, config: { model: string; apiKey?: string }) => Promise<AskResult>`.
+
+**Where:** a new file in `packages/engine/src/adapters/`, registered in the
+`ADAPTERS` map in `packages/engine/src/adapters/index.ts`.
+
+**Done-check:** your adapter returns an `AskResult` with `text` and a
+`citations` array populated from whatever grounding the provider's API
+gives you; a test in the same style as the shipped adapters (mock the
+provider SDK, assert the citation extraction) passes; `saylent models`
+shows your engine's model slot resolving correctly.
+
+## Add a site check
+
+**Interface:** push a `DomainCheck` from `packages/engine/src/domainChecks.ts`'s
+registry - `{ check: string; status: "pass" | "warn" | "fail"; detail: string }`.
+
+**Where:** `packages/engine/src/domainChecks.ts`, alongside the existing
+robots/JSON-LD/meta checks.
+
+**Done-check:** a unit test feeds your check a crawled page fixture and
+asserts the right status; `saylent gate-check <domain>` (or the app's
+site-gates section) shows your new row with a clear, one-line reason a
+non-technical reader understands.
+
+## Add a fix family
+
+**Interface:** a diagnosis rule inside `diagnose()` that pushes a `Fix`, plus
+its own weight in the `FIX_WEIGHTS` table and a drafter task if it should
+produce an artifact.
+
+**Where:** `packages/engine/src/fixes.ts`.
+
+**Done-check:** `diagnose()` is a pure function of five input arrays - feed
+it a fixture (`replay-diagnose.ts` replays a stored run through a changed
+`diagnose()` at $0) and assert your new fix appears with the right rank;
+weights you add are also overridable via `saylent.config` `thresholds.fixWeights`.
+
+## Add a report block
+
+**Interface:** extend the report package's typed block union (`text | stat
+| bars | list | quote | status | pages | moves | kv`) with a new case, and
+add its Markdown and HTML renderer.
+
+**Where:** the summary composer in `packages/report/src/` (the block
+case), the matching component under `packages/report/src/components/`
+(HTML), and `packages/report/src/render/markdown.ts` (Markdown).
+
+**Done-check:** your block renders in both `report.html` and `report.md`
+from the same composed data - no separate data path - and hides itself
+(returns nothing) when its input is absent, per the report's rule that a
+thin run shows fewer cards, never an empty one.
+
+## Add a judge rubric rule
+
+**Interface:** a new numbered rule (R7, R8, ...) in the judge prompt in
+`packages/engine/src/judge.ts`, proven against the golden set.
+
+**Where:** `packages/engine/src/judge.ts` for the rule text,
+`fixtures/golden-judge.json` for the labels that prove it.
+
+**Done-check:** add or update labeled cases for the scenario your rule
+covers, run `scripts/judge-golden.ts`, and confirm agreement doesn't regress
+on the existing 24 entries (18 judgeable) while your new cases pass. This is a real,
+runnable gate - not a claim you have to take on faith.
+
+## Embed the report in your own product
+
+**Interface:** `ReportHostValue` (`packages/report/src/host.tsx`) -
+`{ Link, track, faviconUrl, actions, contactEmail, methodologyUrl, refresh,
+subscribeRunFeed, notify }`.
+
+**Where:** implement it and pass it through `ReportHost`'s context provider
+around the report components; `staticReportHost` (plain anchors, a no-op
+tracker, `actions.available: false`) is the reference implementation the
+CLI's static render uses - interactive controls hide themselves instead of
+rendering dead buttons when a capability isn't available.
+
+**Done-check:** the report renders in your product with your own routing
+and tracking wired through, and every interactive element either works or
+disappears - never renders inert.
+
+## Configure without code
+
+**Interface:** `saylentConfigSchema` (`packages/engine/src/config.ts`).
+
+**Where:** a `saylent.config.json` / `.js` / `.mjs` / `.ts` file in your
+project root.
+
+**Done-check:** `saylent models` and `saylent questions` reflect your
+overrides, and a malformed config fails loudly with the exact field that's
+wrong rather than silently falling back to defaults. Full field-by-field
+reference: [Configuration](/docs/configuration).
+
+## Changing the core safely
+
+For anything bigger than these one-file additions:
+[ARCHITECTURE.md](https://github.com/yotambraun/saylent/blob/main/ARCHITECTURE.md)
+has the pipeline diagram, the stage-to-file map, and the data contracts. The
+engine is kept pure by an ESLint rule (`packages/engine/**` cannot import
+`next`, `@supabase/*`, `inngest`, or `react`), the run bundle is a versioned,
+additive-only format (`BUNDLE_VERSION`), and the test suite plus the golden
+gate are the safety net - both run in well under a minute with no keys, so
+there's no reason not to run them before every commit.

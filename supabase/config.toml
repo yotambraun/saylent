@@ -1,0 +1,117 @@
+# Local run target ("local, one machine"): `supabase start` (Docker required) boots this stack, then
+# `npm run app:local` (scripts/app-local.mjs) also starts the Inngest dev server and
+# `next dev` against it. Generated from `supabase init` (CLI 2.117.0) and trimmed to
+# what this app actually uses — everything omitted here falls back to the CLI's own
+# built-in default (config.toml only needs to state what differs). Full reference:
+# https://supabase.com/docs/guides/local-development/cli/config
+project_id = "saylent"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+health_timeout = "2m"
+# Must match the major version of whatever remote Supabase project you eventually
+# point this repo at (`SHOW server_version;` there). 17 is the CLI's current
+# default for a brand-new project.
+major_version = 17
+
+[db.migrations]
+# `supabase start` applies every supabase/migrations/*.sql (lexical filename order,
+# 0001…0041…) to the fresh local Postgres automatically — the SAME files
+# `npm run db:migrate` (scripts/apply-migrations.ts) applies to a hosted project.
+# Nothing else to run after `supabase start` finishes.
+enabled = true
+
+[db.seed]
+# No supabase/seed.sql is shipped — the schema (and the migration-0040 first-user-
+# admin trigger) is enough to get a usable local dev account from the first signup.
+enabled = false
+
+[realtime]
+# The app subscribes to `runs` progress + `notifications` via Supabase Realtime
+# (src/app/app/run/[id]/host.tsx, notifications-bell.tsx) — required, not optional.
+enabled = true
+
+[studio]
+enabled = true
+port = 54323
+api_url = "http://127.0.0.1"
+
+# Local mail catcher (Inbucket-style): magic-link / password-confirmation emails
+# sent by the local Auth stack are NOT delivered anywhere — they land here instead.
+# Open http://localhost:54324 to read them. This is the alternative to configuring
+# real SMTP for local dev; with email
+# confirmations off below, you won't even need it for the default password flow.
+[local_smtp]
+enabled = true
+port = 54324
+
+# Not used by this app (no Supabase Storage buckets, no Edge Functions, no
+# self-hosted analytics) — disabled to keep the local stack lean and fast to boot.
+[storage]
+enabled = false
+
+[edge_runtime]
+enabled = false
+
+[analytics]
+enabled = false
+
+[auth]
+enabled = true
+# scripts/app-local.mjs / next dev serves the app at :3000 — matches
+# NEXT_PUBLIC_SITE_URL for local dev (.env.example / .env.local).
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["http://localhost:3000", "http://localhost:3000/**"]
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
+enable_signup = true
+enable_anonymous_sign_ins = false
+enable_manual_linking = false
+# Supabase's own default floor; NEXT_PUBLIC_AUTH_METHODS (default "password,
+# magic-link" — see scripts/check-env.ts) controls which methods login-form.tsx
+# shows, independent of this.
+minimum_password_length = 6
+
+[auth.rate_limit]
+email_sent = 2
+anonymous_users = 30
+token_refresh = 150
+sign_in_sign_ups = 30
+token_verifications = 30
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+# OFF for local: the first operator can
+# sign up with email + password and land straight in the app — no SMTP, no mail-
+# catcher round trip needed. A hosted deployment with real SMTP configured should
+# flip this back on in its OWN project's Auth settings (this file only governs the
+# local stack).
+enable_confirmations = false
+secure_password_change = false
+max_frequency = "1s"
+otp_length = 6
+otp_expiry = 3600
+
+[auth.sms]
+enable_signup = false
+enable_confirmations = false
+
+# Disabled by default (no client_id/secret configured); enable + set the two env
+# vars below to test "Continue with Google" locally. Only shown in login-form.tsx
+# at all when NEXT_PUBLIC_AUTH_METHODS includes "google" (not the default).
+[auth.external.google]
+enabled = false
+client_id = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID)"
+secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET)"
+# Local sign-in with Google needs the nonce check off (Supabase CLI note).
+skip_nonce_check = true

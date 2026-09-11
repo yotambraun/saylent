@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Changelog | Kestrel Uptime</title>
+<meta name="description" content="What changed in Kestrel Uptime, newest first.">
+<link rel="stylesheet" href="{{SITE_ROOT}}/styles.css">
+</head>
+<body>
+
+<header class="masthead">
+  <div class="frame">
+    <a class="wordmark" href="{{SITE_ROOT}}/">Kestrel <span>Uptime</span></a>
+    <nav>
+      <a href="{{SITE_ROOT}}/pricing/">Pricing</a>
+      <a href="{{SITE_ROOT}}/docs/">Docs</a>
+      <a href="{{SITE_ROOT}}/compare/">Compare</a>
+      <a href="{{SITE_ROOT}}/changelog/" aria-current="page">Changelog</a>
+      <a href="{{SITE_ROOT}}/about/">About</a>
+      <a href="{{SITE_ROOT}}/contact/">Contact</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+<section class="hero">
+  <div class="frame">
+    <h1>Changelog</h1>
+    <p class="lede">Newest first. Anything that changes how alerting behaves is announced here before
+      it ships.</p>
+  </div>
+</section>
+
+<section class="band">
+  <div class="frame">
+
+    <div class="release">
+      <p class="stamp">2026-08-19</p>
+      <h3>São Paulo region</h3>
+      <p>Checks now run from a fourth region, gru-1. Existing checks picked it up automatically and
+        the agreement rule counts it like any other region. Response time charts show the four
+        regions separately.</p>
+    </div>
+
+    <div class="release">
+      <p class="stamp">2026-07-30</p>
+      <h3>Observation mode for new checks</h3>
+      <p>A new check watches for its first hour without paging anyone, so a typo in an expectation
+        rule cannot wake the on call engineer. You can end observation early from the check page.</p>
+    </div>
+
+    <div class="release">
+      <p class="stamp">2026-07-02</p>
+      <h3>Deploy markers on incidents</h3>
+      <p>Deploys recorded through the API are now attached to any incident that opens within 30
+        minutes, and they appear on every response time chart.</p>
+    </div>
+
+    <div class="release">
+      <p class="stamp">2026-06-11</p>
+      <h3>Private status pages</h3>
+      <p>Squadron plans can publish a status page that needs a token link and is not indexed, for
+        customers who should not see the public page.</p>
+    </div>
+
+    <div class="release">
+      <p class="stamp">2026-05-28</p>
+      <h3>Heartbeat checks</h3>
+      <p>Cron jobs and workers can call a Kestrel URL when they finish. An incident opens when the
+        call does not arrive inside the window you set.</p>
+    </div>
+
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="frame">
+    <nav>
+      <a href="{{SITE_ROOT}}/">Home</a>
+      <a href="{{SITE_ROOT}}/pricing/">Pricing</a>
+      <a href="{{SITE_ROOT}}/docs/">Docs</a>
+      <a href="{{SITE_ROOT}}/compare/">Compare</a>
+      <a href="{{SITE_ROOT}}/changelog/">Changelog</a>
+      <a href="{{SITE_ROOT}}/about/">About</a>
+      <a href="{{SITE_ROOT}}/contact/">Contact</a>
+    </nav>
+    <p>Kestrel Uptime, uptime monitoring and status pages for small engineering teams.
+      Questions: <a href="mailto:hello@kestrel.example">hello@kestrel.example</a></p>
+    <p>Kestrel is a fictional company. This site exists as a public test subject for an
+      open source website audit engine, so the product, the people and the numbers on it are
+      invented.</p>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,73 @@
+---
+title: Deploy to the cloud
+description: One click on Vercel, with your own Supabase project behind it.
+---
+
+The fastest path to a running deployment: Vercel builds and hosts the app,
+your own Supabase project is the database, and Inngest Cloud's free tier
+runs the audit jobs.
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fyotambraun%2Fsaylent&project-name=saylent&repository-name=saylent&env=NEXT_PUBLIC_APP_URL%2CNEXT_PUBLIC_SITE_URL%2CNEXT_PUBLIC_APP_NAME%2CNEXT_PUBLIC_SUPABASE_URL%2CNEXT_PUBLIC_SUPABASE_ANON_KEY%2CSUPABASE_SERVICE_ROLE_KEY%2CDATABASE_URL%2CDIRECT_DATABASE_URL%2COPENAI_API_KEY%2CANTHROPIC_API_KEY%2CINNGEST_EVENT_KEY%2CINNGEST_SIGNING_KEY&envDescription=Your%20own%20Supabase%20project%2C%20Inngest%20keys%20and%20LLM%20API%20keys%20-%20Saylent%20runs%20entirely%20on%20your%20accounts&envLink=https%3A%2F%2Fyotambraun.github.io%2Fsaylent%2Fdocs%2Fself-host%2Fenvironment)
+
+The button asks for exactly the **required** tier: your Supabase project's
+URL and keys, both connection strings, your OpenAI and Anthropic keys, and
+your Inngest keys. Optional variables - email (RESEND_API_KEY), Sentry, the feature flags,
+the throttle and spend-cap overrides, `MODEL_*` - are left out on purpose to
+keep the form short; add them later in the Vercel dashboard if you want
+them. Full reference: [Environment variables](/docs/self-host/environment).
+
+## Before you click it
+
+1. **Create a Supabase project** (free tier is enough). From
+   Project Settings → API, copy the **Project URL**. From the
+   **Publishable and secret API keys** tab (not the "Legacy" tab - this is
+   the single most common setup mistake) copy the publishable key
+   (`sb_publishable_...`) and the secret key (`sb_secret_...`, behind the
+   eye icon). From the **Connect** button, copy the *Transaction pooler*
+   connection string (port 6543, for `DATABASE_URL`) and the *Direct
+   connection* string (port 5432, for `DIRECT_DATABASE_URL`) - the app uses
+   the pooler at runtime, migrations need the direct connection, and using
+   the wrong one for either hangs.
+2. **Create free Inngest Cloud keys** at [inngest.com](https://www.inngest.com) -
+   the event key and the signing key.
+3. **Generate a cron secret:** `openssl rand -hex 24`.
+
+## After the deploy, in order
+
+1. Apply migrations against your Supabase project. The button deploy has no
+   local checkout to run `npm run db:migrate` from, so do this once from your
+   own machine:
+
+   ```bash
+   git clone https://github.com/yotambraun/saylent.git
+   cd saylent && npm install
+   echo 'DIRECT_DATABASE_URL=<your Direct connection string>' >> .env.local
+   npm run db:migrate
+   ```
+
+   Use the same *Direct connection* string (port 5432) you copied in step 1
+   above - migrations need it, not the pooler.
+
+2. In the Supabase dashboard, enable **Realtime** on the `runs` table -
+   this is what makes the in-progress run screen update live instead of
+   only on refresh, and it's easy to miss on a first deploy.
+3. In the Vercel dashboard, add the **Supabase** and **Inngest** Marketplace
+   integrations to the project (they sync your Inngest app automatically;
+   the deploy button pre-fills their environment variables but the
+   integrations themselves are one extra click after the first deploy).
+4. Open your Vercel URL and sign up. **The first account becomes the
+   operator.**
+
+No `vercel.json` is required - the one long-running route,
+`/api/inngest`, sets its own 300-second function budget in code, and every
+schedule is an Inngest cron rather than a Vercel cron.
+
+## Upgrades
+
+Pull the latest release, redeploy, then run `npm run db:migrate` again from
+your local checkout (the same one-time setup as above, if you don't still
+have it) - it's idempotent, so re-running it after every deploy is the
+routine, not a special case.
+
+Next: [Environment variables](/docs/self-host/environment) for what every
+setting does.

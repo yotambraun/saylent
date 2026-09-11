@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Docs | Kestrel Uptime</title>
+<meta name="description" content="Set up your first Kestrel check, configure alerting and escalation, and publish a status page on your own domain.">
+<link rel="stylesheet" href="{{SITE_ROOT}}/styles.css">
+</head>
+<body>
+
+<header class="masthead">
+  <div class="frame">
+    <a class="wordmark" href="{{SITE_ROOT}}/">Kestrel <span>Uptime</span></a>
+    <nav>
+      <a href="{{SITE_ROOT}}/pricing/">Pricing</a>
+      <a href="{{SITE_ROOT}}/docs/" aria-current="page">Docs</a>
+      <a href="{{SITE_ROOT}}/compare/">Compare</a>
+      <a href="{{SITE_ROOT}}/changelog/">Changelog</a>
+      <a href="{{SITE_ROOT}}/about/">About</a>
+      <a href="{{SITE_ROOT}}/contact/">Contact</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+<section class="hero">
+  <div class="frame">
+    <h1>Docs</h1>
+    <p class="lede">Everything below is what a new team does on day one: create a check, decide who
+      gets woken up, and put a status page in front of customers. Ten minutes if you already know
+      which endpoint matters most.</p>
+  </div>
+</section>
+
+<section class="band">
+  <div class="frame docs-layout">
+    <aside class="toc">
+      <ul>
+        <li><a href="#setup">Setup</a></li>
+        <li><a href="#checks">Check types</a></li>
+        <li><a href="#alerting">Alerting and escalation</a></li>
+        <li><a href="#status-pages">Status pages</a></li>
+        <li><a href="#api">API and deploy markers</a></li>
+      </ul>
+    </aside>
+
+    <div class="docs-body">
+
+      <h2 id="setup">Setup</h2>
+      <p>Create an account, then add the first check from the dashboard or from the command line. The
+        command line client is a single binary and it reads the same API the dashboard does.</p>
+      <pre>$ kestrel login
+Opening your browser to finish sign in.
+
+$ kestrel check add \
+    --name "checkout API" \
+    --url https://api.kestrel.example/healthz \
+    --expect-status 200 \
+    --expect-body '"database":"ok"' \
+    --interval 30s
+
+Check created. Watching from fra-1, iad-1, sin-1, gru-1.
+First result in about 30 seconds.</pre>
+      <p>A check starts in observation mode for its first hour. Kestrel collects results and shows
+        them, but does not page anyone, so a typo in the expectation rule does not wake your team at
+        two in the morning. You can end observation early from the check page.</p>
+
+      <h3>Expectations</h3>
+      <p>A check is healthy when the response matches every expectation you set. Available
+        expectations are the status code, a substring or regular expression in the body, a maximum
+        response time, a required response header, and a minimum number of days before an SSL
+        certificate expires. If you set none, Kestrel treats any 2xx response as healthy.</p>
+
+      <h2 id="checks">Check types</h2>
+      <p>HTTP and HTTPS checks cover most cases. TCP checks connect to a host and port and expect the
+        connection to open. Heartbeat checks invert the direction: Kestrel gives you a URL that your
+        cron job or worker calls when it finishes, and opens an incident when the call does not
+        arrive inside the window you set.</p>
+      <pre># at the end of your nightly job
+curl -fsS https://beat.kestrel.example/h/8f21c4 &gt;/dev/null</pre>
+      <p>Certificate checks run once a day against the same hostname as the HTTP check and warn at 21
+        days, 7 days and 2 days before expiry. That warning is a warning, not a page, unless you
+        change it in the alerting rules below.</p>
+
+      <h2 id="alerting">Alerting and escalation</h2>
+      <p>Alerting is defined per rotation, and every check belongs to exactly one rotation. A rotation
+        holds an ordered list of people, a schedule, and the escalation delay.</p>
+      <pre>rotation: platform
+  schedule: weekly handover, Monday 10:00 Europe/Lisbon
+  order:
+    1. on-call engineer      push, sms, email
+    2. rotation lead         push, sms
+    3. #platform-alerts      chat webhook
+  escalate_after: 5m
+  quiet_hours: 23:00-07:00 local, warnings only</pre>
+      <p>An outage ignores quiet hours. A warning, such as a slow response or a certificate nearing
+        expiry, waits until the morning. If nobody acknowledges an outage before the escalation
+        delay, Kestrel moves to the next entry and keeps going until someone does.</p>
+      <p>Acknowledging an incident stops the paging but does not close it. An incident closes when
+        the check has been healthy in at least two regions for two consecutive rounds, or when a
+        person closes it by hand with a note.</p>
+
+      <h2 id="status-pages">Status pages</h2>
+      <p>A status page is a list of components, and each component is backed by one or more checks.
+        Component status is the worst status of its checks, so a page cannot claim everything is fine
+        while a check that feeds it is failing.</p>
+      <pre>$ kestrel status-page create \
+    --name "Kestrel Status" \
+    --domain status.kestrel.example \
+    --component "API=checkout API,search API" \
+    --component "Dashboard=web app" \
+    --component "Webhooks=webhook delivery"
+
+Page created. Add a CNAME for status.kestrel.example
+pointing at pages.kestrel.example, then run:
+
+$ kestrel status-page verify status.kestrel.example</pre>
+      <p>Certificates are issued automatically once the CNAME resolves, usually within two minutes.
+        Subscribers can join by email or webhook, and they are notified when a component changes
+        state or when you post an incident note. Notes support plain text and links, and every note
+        stays on the incident timeline afterwards for your review.</p>
+      <p>Private status pages, available on Squadron, require a link with a token and are not
+        indexed. Teams use them for customers under contract who should not see the public page.</p>
+
+      <h2 id="api">API and deploy markers</h2>
+      <p>Everything the dashboard does is available over a JSON API with a bearer token. The endpoint
+        teams use most is the deploy marker, because an incident that opens four minutes after a
+        deploy is usually about that deploy.</p>
+      <pre>curl -X POST https://api.kestrel.example/v1/deploys \
+  -H "Authorization: Bearer $KESTREL_TOKEN" \
+  -d '{"service":"checkout","version":"2291","by":"ci"}'</pre>
+      <p>Deploy markers appear on every response time chart and are attached to any incident that
+        opens within 30 minutes of the marker. Rate limits are 120 requests a minute per token, and
+        the response tells you what is left.</p>
+
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="frame">
+    <nav>
+      <a href="{{SITE_ROOT}}/">Home</a>
+      <a href="{{SITE_ROOT}}/pricing/">Pricing</a>
+      <a href="{{SITE_ROOT}}/docs/">Docs</a>
+      <a href="{{SITE_ROOT}}/compare/">Compare</a>
+      <a href="{{SITE_ROOT}}/changelog/">Changelog</a>
+      <a href="{{SITE_ROOT}}/about/">About</a>
+      <a href="{{SITE_ROOT}}/contact/">Contact</a>
+    </nav>
+    <p>Kestrel Uptime, uptime monitoring and status pages for small engineering teams.
+      Questions: <a href="mailto:hello@kestrel.example">hello@kestrel.example</a></p>
+    <p>Kestrel is a fictional company. This site exists as a public test subject for an
+      open source website audit engine, so the product, the people and the numbers on it are
+      invented.</p>
+  </div>
+</footer>
+
+</body>
+</html>

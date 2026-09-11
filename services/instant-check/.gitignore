@@ -1,0 +1,4 @@
+# esbuild output + the Build Output API tree this service deploys (regenerated
+# by `npm run build`, and by Vercel on every deploy — never committed).
+.vercel/
+node_modules/

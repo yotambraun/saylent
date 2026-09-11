@@ -1,0 +1,56 @@
+name: Correction request (published sample data)
+description: Ask for a correction or takedown of something published about a real brand in a sample report or on the docs site.
+labels: ["correction-request"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This template is for real brands or people named in anything this
+        project publishes (a sample report, a docs-site page, an aggregate
+        data page), not for bugs in the software. Please read the
+        [sample-data policy page](https://yotambraun.github.io/saylent/policy/sample-data)
+        first, it explains what is published (factual, sourced data such as
+        share of voice and cited pages) and what is deliberately never
+        published about a company we do not own (verbatim negative claims,
+        generated fixes).
+
+  - type: input
+    id: page
+    attributes:
+      label: Link to the published page
+      description: The exact URL of the report, docs page, or data page in question.
+    validations:
+      required: true
+
+  - type: input
+    id: brand
+    attributes:
+      label: Brand or entity affected
+    validations:
+      required: true
+
+  - type: textarea
+    id: issue
+    attributes:
+      label: What is incorrect or should be removed
+      description: Quote or point to the specific claim, number, or citation. If it is inaccurate, say what the correct information is and how we can verify it.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: request-type
+    attributes:
+      label: What are you asking for
+      options:
+        - Correct a factual error
+        - Update stale data (a newer run would show something different)
+        - Remove this brand from the published sample entirely
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: contact
+    attributes:
+      label: How to reach you to confirm the change
+      description: An email or a way to follow up, not required if you're fine resolving entirely through this issue.

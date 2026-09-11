@@ -1,0 +1,105 @@
+---
+title: Reading a report
+description: What each section of report.html means, and what it does not claim.
+---
+
+`report.html` opens straight from disk - no server, no network request, dark
+or light by your system theme. It's the same rendering pipeline whether it
+came from the CLI or the self-hosted app, so nothing here differs between
+them.
+
+## Summary
+
+The top of the report is built to be understood, and to screenshot cleanly,
+in under a minute: the verdict headline with your real counts ("Present in 2
+of 6 answers. Recommended in 0 of 6."), the recommended band, and four
+receipts - a verdict, an answer with its citation, a site-access gate, and a
+top fix. Every number here is a summary of a section below it, never a
+separate claim.
+
+## Verdict and band
+
+The verdict is a plain sentence: how many of the scored questions named your
+brand, and how many recommended it. Only `category` and `problem` questions
+are scored - comparison, branded, and every other type are asked and judged
+but excluded from this count on purpose, so a question you add yourself can
+never move the score.
+
+The band, not a single number, is the honest part. On `full`, scored
+questions get two sampled draws per engine, and a third only when the first
+two disagree; `smoke` takes one draw per engine, with no tiebreak (its point
+is a fast, cheap read, not a precise band). Because one draw is close to a
+coin flip, the report states a `{min, max}` range across the sample sets
+rather than a single figure that implies more precision than the draws taken
+can support.
+
+## Answers
+
+Every question, every engine, every draw - verbatim, dated, with the model
+that answered it. Each answer carries a `mention_type` (recommended,
+listed, compared, neutral, dismissed, absent), a prominence rank among the
+brands actually named, and a sentiment, decided by a judge model from the *other*
+provider family (an OpenAI answer is judged by an Anthropic model and vice
+versa, a deliberate control against a model preferring its own output - see
+[Methodology](/docs/methodology)). Absence is enforced by a whole-word,
+case-insensitive alias match after the judge returns; the judge cannot
+override "absent" into "present."
+
+## Cited pages
+
+The battlefield table: every page an engine's answer pointed to, aggregated
+by normalized URL, with per-engine and per-question citation counts and
+whether your brand or a competitor is actually present on that page. When a
+fetch fails, or a page is a video shell with no readable text,
+`brand_present` reads **unverified** - never guessed as present or absent.
+This is word presence, not entailment: a page can name your brand and still
+disagree with what the engine said, so the report says "present on the cited
+page," never "supports the claim."
+
+## Site checks
+
+Whether the assistants' own crawlers can read your site, tested three ways:
+robots.txt per bot class (training crawlers like `GPTBot`; search-index
+crawlers like `OAI-SearchBot`; user-fetch agents like `ChatGPT-User`), a
+*live* per-bot probe (robots.txt is a polite request - a 403 while it says
+"allowed" means a CDN or WAF is overriding it, and the report names that
+cause), and page-level checks (JSON-LD presence, `noindex`/`nosnippet`
+meta). When the crawl read zero pages, these are reported as **skipped**,
+never as a false "failed."
+
+## Fixes
+
+Deterministic diagnosis - no model decides what's wrong, only how to phrase
+it once diagnosed. Fixes are ranked by evidence weight (a blocked gate
+outranks a missing schema tag outranks stale content), grouped so a claim
+three engines agree on outranks one only one engine made, and a page a
+competitor already owns is never pitched to you as your own - it becomes a
+counter-fix instead. The top-ranked fixes get a drafted artifact (JSON-LD, a
+comparison page, entity-clarity copy) you can ship as-is or edit.
+
+## Movement (after `saylent verify`)
+
+A verify run reuses the baseline's frozen question set verbatim - it never
+regenerates it - and shows what changed: which answers newly named you,
+which recommendation count moved, whether a blocked bot is now allowed. It
+refuses to run at all when the current template set, or the resolved sample
+count, differs from what the baseline was frozen with, unless you pass
+`--samples` explicitly to proceed at the new count. It never silently
+compares two different question sets.
+
+## The absent-brand case
+
+The most common report of all is the one where your brand is absent from
+most answers - the honest starting state for almost every small or new
+brand. The report still leads with the most useful findings in that case:
+who the engines recommend *instead*, which sources decide that, and what to
+fix first, not an empty page waiting for better news.
+
+## What this does not claim
+
+No traffic estimate, no revenue effect, no invented prompt-volume figure, no
+market ranking, and no causal claim that a fix caused a later movement - a
+movement after a fix is correlation, stated as such. One run is a snapshot;
+the signal is in frozen question sets compared as sets, run over run. The
+full list of limits, with reasoning, is in [Methodology](/docs/methodology)
+and [METHODOLOGY.md](https://github.com/yotambraun/saylent/blob/main/METHODOLOGY.md).

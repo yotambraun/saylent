@@ -1,0 +1,146 @@
+---
+title: How it works
+description: One audit, walked through stage by stage - what you see, and where you can change it.
+---
+
+Every audit - whether started from `npx saylent audit`, the self-hosted
+app's onboarding, or your own code calling `runAudit()` - moves through the
+same nine stages, in the same order, each one narrated as it happens. This
+page walks through what you actually see at each stage. For the reasoning
+behind each measurement, see [Methodology](/docs/methodology); for the code
+that implements each stage,
+[ARCHITECTURE.md](https://github.com/yotambraun/saylent/blob/main/ARCHITECTURE.md).
+
+<ThemedImage
+  light="/brand/pipeline-light.svg"
+  dark="/brand/pipeline-dark.svg"
+  alt="The nine audit stages in order: crawl, brand model, questions, engines, judge, cited pages, site gates, fix plan, score"
+  className="my-8 w-full"
+/>
+
+## 1. Crawl
+
+The homepage and a handful of prioritized internal pages are fetched.
+Schema types, meta directives, and links are extracted as each page is
+read, then the raw HTML is dropped - nothing more is kept than the pipeline
+actually needs downstream.
+
+**You see:** `01 crawl` in the CLI narration, with the elapsed time.
+**Change it:** the crawler's own identity is `SAYLENT_USER_AGENT` (see
+[Environment variables](/docs/self-host/environment)) - a self-hosted
+deployment should set its own so a site owner can trace the crawler back to
+an operator.
+
+## 2. Brand model
+
+One model call over the top crawled pages builds a structured picture of
+the brand: category, ideal customer, products, value propositions, problems
+it solves, and detected competitors. Anything you supply yourself
+(`--brand`, `--competitors`, or a brand edited in the app's onboarding)
+overrides what the model would have inferred.
+
+**You see:** `02 brand model` in the narration; `saylent questions <domain>`
+prints the resolved brand model on its own before you commit to a full
+audit.
+**Change it:** `--brand` / `--competitors` flags, or `competitors` in
+`saylent.config.*` - see [Configuration](/docs/configuration#the-complete-config-file).
+
+## 3. Questions
+
+The buyer questions get generated from a fixed template library - 23
+templates across seven types (category, comparison, problem, branded,
+integration, migration, trust) - filled in with the brand model, then
+**frozen** onto this run. A later `verify` reuses this exact frozen set,
+never a freshly generated one, so before-and-after is always set compared
+against the same set.
+
+**You see:** `03 questions` in the narration; the full set, printed, from
+`saylent questions <domain>`.
+**Change it:** `questionTemplates` in `saylent.config.*` to change quotas or
+phrasings; `--questions <file>` to hand-supply your own set entirely - see
+[Configuration](/docs/configuration#the-complete-config-file) and
+[Extending](/docs/extending).
+
+## 4. Engines
+
+Each configured answer engine (ChatGPT, Claude, Gemini, Perplexity) is
+asked every question through its official API, with the provider's own web
+search on - one step per engine, so one provider's outage costs that engine
+alone, not the whole run. Scored questions get two sampled draws per
+engine, a third only if the first two disagree.
+
+**You see:** `04 engines` with a live per-engine count
+(`chatgpt 6/6   claude 6/6`) - how many draws were sent, not how many
+succeeded, so a provider erroring on every draw still reaches `N/N` here; a
+failed engine gets its own line right after
+(`gemini 0/8 · 429 rate-limited · continuing with 3 engines`) rather than
+silently dropping out.
+**Change it:** `--engines <a,b>` or `engines` in `saylent.config.*`.
+
+## 5. Judge
+
+Presence is decided first, deterministically - a whole-word alias match the
+judge model cannot override. The qualitative fields (recommended, compared,
+dismissed, absent; prominence; sentiment) come from a judge model that
+quotes the deciding sentence before it answers, always from the *other*
+provider family than whoever answered (single-family, with a stated caveat,
+if you only have one key).
+
+**You see:** `05 judge` in the narration; every verdict, with its reasoning,
+in the report's Answers section.
+**Change it:** `models.judge` in `saylent.config.*`, or `saylent models` to
+see exactly which model is judging which engine right now - see
+[Configuration](/docs/configuration#the-complete-config-file).
+
+## 6. Cited pages
+
+Every page an engine's answer pointed to is aggregated by normalized URL,
+then the most-cited pages are fetched and checked for brand and competitor
+presence. A fetch failure reads "unverified," never a guess.
+
+**You see:** `06 cited pages`; the report's battlefield table.
+**Change it:** nothing configurable here today - this stage is pure
+aggregation over what stage 4 actually returned.
+
+## 7. Site gates
+
+Whether the assistants' own crawlers can reach the site: robots.txt per bot
+class, then a *live* probe of the same bots (catching a CDN or WAF that
+overrides robots.txt), plus JSON-LD and meta-directive checks on the
+crawled pages.
+
+**You see:** `07 site gates`; the same checks, instantly and for $0, from
+`saylent gate-check <domain>`.
+**Change it:** `extraBots` in `saylent.config.*` adds bots to the registry;
+see [Extending](/docs/extending#add-a-site-check) to add a whole new check.
+
+## 8. Fixes
+
+Deterministic diagnosis over everything gathered so far - no model decides
+what's wrong, only how to phrase the fix once diagnosed. The top-ranked
+fixes get a drafted, evidence-anchored artifact.
+
+**You see:** `08 fix plan`; the report's Fixes section, ranked.
+**Change it:** `thresholds.fixWeights` in `saylent.config.*` re-ranks the
+built-in families; see [Extending](/docs/extending#add-a-fix-family) to add
+a new one entirely.
+
+## 9. Score
+
+Scores are computed for the scored question types only, the recommended
+band is calculated across the sampled draws, and - on a `verify` - movement
+against the baseline is computed. The result is handed to whatever's
+persisting it: the CLI writes `run.json` / `report.html` / `report.md`; the
+self-hosted app writes rows and renders the run page.
+
+**You see:** the final Verdict and Band lines, the report path, the total
+elapsed time and cost.
+**Change it:** `thresholds.coverage` in `saylent.config.*` for the coverage
+gap threshold.
+
+---
+
+Reading the finished report section by section, rather than watching it get
+built: [Reading a report](/docs/reports). The full reasoning behind every
+choice above - why the full profile takes two draws and smoke takes one, why cross-family judging, what "unverified"
+means and why it's never guessed: [Methodology](/docs/methodology).

@@ -1,0 +1,44 @@
+---
+title: Docs
+description: What Saylent is, and the three ways in - run the CLI, deploy the app, or read a report.
+---
+
+Saylent asks real buyer questions to real AI assistants - ChatGPT, Claude,
+Gemini and Perplexity, through their official APIs - records every answer
+verbatim, and tells you whether your brand was recommended, mentioned or
+absent, which rival was named instead, which pages the assistants cited, and
+what to fix. It runs on your own provider keys, on your own machine or your
+own infrastructure. Nothing is sent through us and nothing is stored by us.
+
+## Start here
+
+<Cards>
+  <Card title="Run the CLI" href="/docs/quickstart" description="One command, five minutes: two keys, npx saylent audit, an open report. About $0.40 to $1.20 of your own credits." />
+  <Card title="Deploy the app" href="/docs/self-host" description="History, scheduled verifies, share links and multiple users - on infrastructure you own. Local, your own server, or a managed platform." />
+  <Card title="Understand a report" href="/docs/reports" description="Every section of report.html, in order: the verdict, the answers, the source map, the site gates and the fix plan." />
+</Cards>
+
+If you would rather see the machinery before you run it,
+[How it works](/docs/how-it-works) walks through all nine stages of one audit -
+what each one prints, and where you can change it.
+
+## Change what it asks and which models judge
+
+The questions, the sample count, the answer engines, the judge and drafter
+models, and which stages run at all are every one of them yours to set - from
+a flag, an environment variable, a `saylent.config.json`, or the app's own
+Questions page. [Configuration reference](/docs/configuration) has the
+complete config file, the default for every field, and one table saying where
+each control lives on each surface.
+
+## Before you spend anything
+
+- [What it costs](/docs/costs) - real numbers per profile, from recorded runs,
+  and the caps that stop a run before it starts.
+- [What gets sent to providers](/docs/data-sent) - exactly what leaves your
+  machine, to whom, and what never does. No telemetry, anywhere.
+- [Methodology](/docs/methodology) - how presence is decided, why a judge from
+  the other provider family scores the answer, and the limits we state out
+  loud.
+- [Compared with hosted tools](/docs/compare) - sourced prices, dated, and the
+  five things the hosted tools still do that Saylent does not.

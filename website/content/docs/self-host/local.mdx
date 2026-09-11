@@ -1,0 +1,78 @@
+---
+title: Run it on your laptop
+description: The full app, entirely local - no cloud accounts, data on disk.
+---
+
+Everything on one machine: a local Postgres (via Supabase's local stack),
+a local job runner, and the app. No cloud accounts, nothing billed but your
+LLM keys.
+
+## Prerequisites
+
+- **Docker Desktop** running (the local Supabase stack runs in containers).
+- **The Supabase CLI** installed (`supabase --version`) - it drives the
+  local stack; see [Supabase's CLI install docs](https://supabase.com/docs/guides/local-development/cli/getting-started).
+- **Node ≥ 22**, and this repository cloned with `npm install` run once at
+  the root.
+- An OpenAI and/or Anthropic key (see [Quickstart](/docs/quickstart) for
+  where to get one).
+
+## Steps
+
+1. Copy the environment template and fill in your provider keys:
+
+   ```bash
+   cp .env.example .env.local
+   ```
+
+   You don't need Supabase or Inngest values for this target - the local
+   stack fills those in for you.
+
+2. Preview the plan first (starts nothing, $0):
+
+   ```bash
+   node scripts/app-local.mjs --dry-run
+   ```
+
+   It checks for the Supabase CLI and a running Docker daemon and tells you
+   exactly what it would run.
+
+3. Start everything:
+
+   ```bash
+   npm run app:local
+   ```
+
+   One command: `supabase start` (boots local Postgres, Auth, Realtime, and
+   the Studio UI, and applies every file in `supabase/migrations/` as it
+   comes up), then the Inngest dev server, then the Next.js app. Re-running
+   `npm run db:migrate` afterward is safe (idempotent) and picks up any
+   migration added since - the routine step after pulling new code.
+
+4. Open `http://localhost:3000` and sign up. **The first account created
+   becomes the operator** - no separate admin step (see
+   [First sign-up is the operator](/docs/self-host#first-sign-up-is-the-operator)).
+
+5. Sign-in on the local stack: password auth works out of the box. Magic-link
+   needs an SMTP server; the local Supabase stack ships a mail catcher
+   (Inbucket, printed in the `supabase start` output) so magic links are
+   viewable without any real email provider.
+
+## Data lives on disk
+
+Everything - brands, runs, answers, citations - is in the local Postgres
+container's volume. Stop the stack (`supabase stop`) and it's still there
+next time; `supabase stop --no-backup` throws it away.
+
+## Troubleshooting
+
+- **Docker not running.** `app:local` fails fast with a clear message if the
+  Supabase local stack can't reach Docker - start Docker Desktop and re-run.
+- **Port already in use.** The local stack uses fixed ports for Postgres,
+  the Studio UI, and Inbucket; stop any other local Supabase project first.
+- **Migrations hang.** Migrations run against the local stack's **direct**
+  connection, not a pooler - if `db:migrate` seems stuck, confirm the local
+  stack finished starting first (`supabase status`).
+
+Next: [Environment variables](/docs/self-host/environment) for what every
+setting does.

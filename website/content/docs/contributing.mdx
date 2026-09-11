@@ -1,0 +1,114 @@
+---
+title: Contributing
+description: The $0 dev setup, the test suite, the PR checklist, and the purity rule.
+---
+
+## Dev setup - no keys, no database
+
+```bash
+git clone https://github.com/yotambraun/saylent.git
+cd saylent
+npm install
+npm test
+```
+
+`npm test` runs the full vitest suite - the engine, the report composers,
+the CLI, and the app - with no provider keys and no database. Most of a
+contribution to the engine or the CLI can be built and verified entirely
+here, at $0.
+
+Want to see the report itself without an audit? Render the repository's own
+captured fixture run to a self-contained `report.html`, `movement.html`, and
+`report.md` - no network, no keys:
+
+```bash
+npx tsx packages/report/scripts/render-fixture.ts <outDir>
+```
+
+## The gates
+
+```bash
+npm run typecheck
+npm run lint
+npm test
+npm run build
+```
+
+All four are the CI gate on every PR. `npm run lint` also enforces the
+purity rule below - a violation is a lint error, not a style note.
+
+## The purity rule
+
+`packages/engine/**` may not import `next`, `next/*`, `@supabase/*`,
+`inngest`, `react`, `react-dom`, `@/*`, or `server-only` - enforced by an
+ESLint `no-restricted-imports` rule, not just a convention. This is what
+lets the same engine run inside the self-hosted app's durable job runner,
+inside the CLI with no database, and inside your own code as a library.
+`packages/report/**` carries the same rule with React allowed, since its
+components render the report itself. Everything the engine needs from the
+outside is injected - the `ask` function, the LLM callers, the fetcher, the
+step runner, the `DbWriter` - never imported directly.
+
+## Adding an engine adapter (the shortest real contribution)
+
+One new file in `packages/engine/src/adapters/` implementing the `Ask`
+interface, plus one line registering it in `adapters/index.ts`'s `ADAPTERS`
+map. Full recipe: [Extending Saylent](/docs/extending#add-an-answer-engine).
+
+## Adding a site check
+
+One entry pushed into the `DomainCheck` registry in
+`packages/engine/src/domainChecks.ts`, with one test alongside the existing
+checks in the same style. Recipe:
+[Extending Saylent](/docs/extending#add-a-site-check).
+
+## The judge's golden set
+
+24 hand-reviewed labels in `fixtures/golden-judge.json` (v2) are the accuracy
+gate for any change to the judge prompt or rubric
+(`packages/engine/src/judge.ts`) - 18 of them are judgeable (the rest record
+an engine call that failed, so there's nothing to judge). Runnable straight
+from a clean clone, no database:
+
+```bash
+npx tsx --tsconfig scripts/tsconfig.json --env-file=.env.local scripts/judge-golden.ts --offline   # $0, no keys
+npx tsx --tsconfig scripts/tsconfig.json --env-file=.env.local scripts/judge-golden.ts              # live, ~$0.20 (cross-family judge, 18 calls)
+```
+
+`--offline` replays the verdicts already stored in the fixture (a fast
+regression check, not a live judge pass); the live pass is what actually
+exercises `packages/engine/src/judge.ts` against `ANTHROPIC_API_KEY` +
+`OPENAI_API_KEY`. If you're touching the judge, run at least `--offline` in
+the PR and the live pass if you have keys.
+
+## PR checklist
+
+- [ ] `npm run typecheck && npm run lint && npm test && npm run build` all
+      clean
+- [ ] New behavior has a test; a bug fix has a test that fails without the
+      fix
+- [ ] `packages/engine/**` and `packages/report/**` changes don't add a
+      forbidden import (lint catches this, but check the diff)
+- [ ] Docs updated in the same PR if you changed a command, a flag, an env
+      var, or a public interface
+- [ ] No new required environment variable without a line in `.env.example`
+      saying what it's for and what breaks without it
+
+## Good first issues
+
+Ten seeded starting points, labeled `good first issue` on the repository:
+a full robots.txt parser (wildcards, `Allow`, longest-match - today's parser
+only reads root-level rules), a Google AI Mode adapter, a Microsoft Copilot
+adapter, locale-aware question templates, more `domainChecks` live-probe
+test coverage, corpus-merge edge-case tests, an internationalized HTML
+report, a Docker Compose recipe for self-hosted Supabase, a local
+`saylent ui` viewer with no server, and Windows path handling in the CLI's
+config store.
+
+## Response time
+
+This is a solo-maintained project. Issues are triaged weekly; there's no
+support SLA. `engine quirk` is the label for provider-side changes (a model
+renamed, an API response shape changed) - that's the single most common
+kind of contribution this project needs, since every provider integration
+is one small, replaceable adapter file.

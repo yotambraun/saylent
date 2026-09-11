@@ -1,0 +1,57 @@
+---
+title: What gets sent to providers
+description: Exactly what leaves your machine, what stays local, and what we never see.
+---
+
+Nothing about your audit reaches Saylent. There's no telemetry, no
+phone-home, no analytics call in the CLI. Every request from an audit goes
+directly from your machine to the provider whose key you supplied.
+
+## What is sent to each provider
+
+- **The crawled page excerpts** used to build the brand model (the top few
+  pages of the site being audited) - sent once, to whichever family answers
+  the "brand model" role.
+- **The buyer questions** - sent to each answer engine you've configured a
+  key for.
+- **The brand name, domain, and named competitors** - part of the question
+  text and the brand-model prompt.
+- **The answers themselves, for judging** - an answer from one provider
+  family is sent to a judge model from the *other* family (or the same
+  family, in single-key mode) for the qualitative verdict.
+- **Evidence excerpts for a drafted fix** - the specific cited page text or
+  gate-check finding a fix artifact is based on, sent to the drafter model,
+  fenced as untrusted quoted data in the prompt so it can't be mistaken for
+  an instruction.
+
+## What never leaves your machine
+
+- Your API keys - read from the environment, `.env`, or
+  `~/.saylent/config.json`, applied to `process.env` for the provider SDKs
+  to use directly, and redacted from every log line and error message the
+  CLI prints.
+- `run.json`, `report.html`, `report.md` - written to your own output
+  directory, never uploaded anywhere by the CLI itself.
+- The local spend ledger (`~/.saylent/spend.json`) and the first-run marker.
+
+## What the self-hosted app adds
+
+The full app stores what you'd expect a dashboard to store - brand
+records, run history, answers, citations, fix state - in **your own**
+Postgres (your Supabase project or your own self-hosted instance). Nothing
+about that data reaches us either; we don't operate any part of a
+self-hosted deployment. Error tracking (Sentry) and transactional email
+(RESEND_API_KEY), if you configure them, are your own accounts, and both
+are fully inert (no code path runs) until you set their keys. See [Environment variables](/docs/self-host/environment) for
+exactly which variable turns which optional integration on.
+
+## No telemetry, anywhere
+
+No usage analytics, no crash reporting, no "phone home" of any kind ships
+in this project unless you explicitly wire up your own Sentry DSN for your
+own deployment. What the CLI prints to your terminal and what the app shows
+in its UI is the complete list of what happens with a run.
+
+Related: [What it costs](/docs/costs) for the dollar side of the same
+question, and [Methodology](/docs/methodology) for what those provider
+calls are actually measuring.

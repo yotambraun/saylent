@@ -1,0 +1,383 @@
+---
+title: CLI reference
+description: Every command, every flag, the run bundle, and where config comes from.
+---
+
+`saylent <command> [options]`. Every command that spends money prints an
+estimate and asks to confirm before it spends (skip the prompt with `--yes`).
+Run any command with `--help` for this same reference in the terminal.
+
+## `saylent audit <domain>`
+
+Runs a full audit and writes `run.json`, `report.html`, and `report.md`.
+
+| Flag | What it does |
+|---|---|
+| `--brand <name>` | Brand name (default: the domain) |
+| `--competitors <a,b>` | Comma-separated competitor domains or names |
+| `--profile <profile>` | `smoke` (default, 6 questions) or `full` (23 questions). Overrides `AUDIT_PROFILE` and `saylent.config` `profile` |
+| `--engines <a,b>` | Comma-separated: `chatgpt,claude,gemini,perplexity`. Overrides `AUDIT_ENGINES` and `saylent.config` `engines`. An unknown name is refused with a sentence, never silently dropped |
+| `--questions <file>` | Reuse a frozen question set - a previous `run.json`, a `questions.json` from `saylent questions`, or a plain text file (one question per line) |
+| `--samples <n>` | How many times each scored question is asked (1-5, default from the profile). Overrides `AUDIT_SAMPLES` and `saylent.config` `sampling` |
+| `--skip <a,b>` | Skip costly stages: `drafts,corpus,gates`. `drafts` = no drafter LLM calls (fixes list without artifacts). `corpus` = no cited-page fetches (citation presence unverified). `gates` = no site checks (never reported as a pass). Overrides `AUDIT_SKIP` and `saylent.config` `skip` |
+| `--judge <model>` | Judge model; its provider family is inferred from the name |
+| `--judge-family <fam>` | `anthropic` \| `openai`, when the judge model name is ambiguous |
+| `--model <role>=<model>` | Repeatable. `role`: `brand`, `drafter`, `chatgpt`, `claude`, `gemini`, `perplexity` |
+| `--out <dir>` | Output directory (default: `./<domain>/<YYYY-MM-DD>/`) |
+| `--format <a,b>` | Which files to write: `md,html,json` (default: all three) |
+| `--yes` | Skip the "Run it?" confirmation |
+| `--dry-run` | Print the preflight block, judge mode, and the questions it would ask (template defaults, $0, no crawl), spend nothing, exit 0 |
+| `--no-brand-model` | No further effect on `audit` - `--dry-run` already always previews with template defaults; documented for parity with `saylent questions` |
+| `--max-usd <n>` | Refuse to run if the high estimate exceeds this |
+| `--user-agent <string>` | Override the crawler's User-Agent (default: `SaylentAudit/<version> (+docs url)`, or `saylent.config` `userAgent`). Applies to the whole run's fetches - crawl, corpus, domain checks |
+| `--max-pages <n>` | Cap how many crawled pages feed the brand model and corpus (1-200; default: the profile's own budget) |
+| `--allow-private` | Allow the audited site's own host (and its www/apex sibling) to resolve to a private/internal address - for a staging server on your own network. Never on by default; prints a warning |
+| `--locale <bcp47>` | Translate the generated question set into this language once (e.g. `de`, `pt-BR`), via the drafter model. No effect with `--questions` (a reused set is never regenerated) |
+
+**Exit codes:** `0` every engine answered, `1` the run failed outright or no
+engine has a usable key, `2` the run completed but at least one requested
+engine returned zero successful answers (the report says which, and scores
+from the remaining engines).
+
+## `saylent verify <run.json>`
+
+Re-asks the exact same frozen question set from a baseline run, against the
+same engines, and writes a movement report instead of a fresh one.
+
+| Flag | What it does |
+|---|---|
+| `--samples <n>` | Frozen questions already carry their own effective count and are reused as-is; this only decides whether a resolved-default mismatch against the baseline is allowed to proceed (pass the baseline's own count, or a new one, explicitly) |
+| `--skip <a,b>` | Accepted for parity with `audit`, but has no effect here: a verify never drafts artifacts, fetches your site's corpus, or checks site gates regardless |
+| `--judge <model>` | Judge model; its provider family is inferred from the name |
+| `--judge-family <fam>` | `anthropic` \| `openai`, when the judge model name is ambiguous |
+| `--model <role>=<model>` | Repeatable. `role`: `brand`, `drafter`, `chatgpt`, `claude`, `gemini`, `perplexity` |
+| `--yes` | Skip the confirmation |
+| `--max-usd <n>` | Refuse to run if the estimate exceeds this |
+| `--user-agent`, `--max-pages`, `--allow-private`, `--locale` | Accepted for parity with `audit`, but have no effect here: verify re-asks the same frozen questions and never crawls, fetches your site's corpus, or generates a new question set |
+
+Writes into a sibling dated directory next to the baseline's own output
+directory, so re-verifying never overwrites it. Output: a new `run.json`
+(`kind: "verify"`) and `movement.html`, which shows what changed - presence,
+recommendation, band - since the baseline. If the question templates have
+changed since the baseline was frozen (you edited `saylent.config.*`'s
+`questionTemplates`, or the shipped template library changed), verify
+**refuses to run** rather than silently comparing against a question set the
+current config would no longer generate. To proceed, either re-run `saylent
+audit` to baseline against the current templates, or revert the
+`questionTemplates` change and verify again against the config that produced
+the baseline.
+
+Exit codes match `audit`: `0` / `1` / `2`.
+
+## `saylent gate-check <domain>` (alias `saylent check`)
+
+No keys, no LLM calls, $0. Crawls a handful of pages and reports what AI bots
+can actually reach:
+
+```
+Saylent · gate-check · example.com
+
+  robots.txt   training: GPTBot allowed · ClaudeBot allowed
+               search:   OAI-SearchBot allowed · PerplexityBot allowed
+               user:     ChatGPT-User allowed · Claude-User allowed
+  live probe   GPTBot 200 · ClaudeBot 403 ⚠ (robots allows -> CDN/WAF override)
+  JSON-LD      Organization ✓ · Product ✗
+  meta         noai: absent ✓ · noindex: absent ✓
+  Result       WARN · 1 blocked-at-CDN · 1 missing schema      (4.8s, $0)
+```
+
+The three bot classes: **training** crawlers (`GPTBot`, `ClaudeBot`) build
+model weights, not citations - blocking them is a legitimate choice and only
+warns. **Search-index** crawlers (`OAI-SearchBot`, `PerplexityBot`, and
+friends) and **user-fetch** agents (`ChatGPT-User`, `Claude-User`) feed live
+answers directly - blocking either one fails the check. A page allowed by
+`robots.txt` that still returns 401/403/429 to the live probe means a CDN or
+WAF is overriding robots.txt, and the line says so.
+
+**Exit code:** `1` if anything failed, `0` on pass or warn only - wire it
+into CI to fail a deploy that regresses AI-bot access.
+
+## `saylent report <run.json>`
+
+Re-renders `report.html` / `report.md` from an existing bundle. No network,
+no LLM call, $0. Useful after hand-editing a bundle, or re-rendering with a
+newer `@saylent/report` version.
+
+| Flag | What it does |
+|---|---|
+| `--format <a,b>` | `md,html` (default: both) |
+| `--out <dir>` | Output directory (default: alongside the input file) |
+
+## `saylent history <dir>`
+
+Lists past runs found in `<dir>/<YYYY-MM-DD>/run.json`:
+
+```
+  2026-09-09  smoke  present 2/6  recommended 0   $0.51
+  2026-09-16  verify present 5/6  recommended 2   $0.44   ▲
+```
+
+## `saylent keys`
+
+| Subcommand | What it does |
+|---|---|
+| `saylent keys list` | List configured providers, masked, with the source each came from |
+| `saylent keys set <provider>` | Set one key interactively (`openai`, `anthropic`, `gemini`, or `perplexity`) |
+| `saylent keys test` | Verify every configured key with a free call |
+| `saylent keys remove <provider>` | Remove a stored key |
+
+Keys resolve in order - **environment variable → `.env` in the current
+folder → `~/.saylent/config.json`** - and a later source never overrides an
+earlier one that already has a value. Keys are never printed, never written
+into `run.json` or any report, and every error message the CLI prints has
+known key values scrubbed out first. There's no `--openai-key` flag on
+purpose: a key on the command line ends up in your shell history.
+
+## `saylent questions <domain>`
+
+Prints the buyer questions an audit would ask, and writes them to a file you
+can edit by hand before spending anything on answers.
+
+| Flag | What it does |
+|---|---|
+| `--brand <name>` | Brand name (default: the domain) |
+| `--competitors <a,b>` | Comma-separated competitors |
+| `--profile <profile>` | Which profile's sampling line to print: `smoke` (default) or `full`. The printed library is the full one either way |
+| `--out <file>` | Where to write the set (default: `./questions.json`) |
+| `--no-brand-model` | Skip the crawl and brand-model call - generate from the template defaults and the domain name. $0, no keys. |
+| `--print` | Print only, write no file |
+| `--yes` | Skip the confirmation |
+
+Cost: one brand-model call (about $0.02 of your credits, plus a free crawl)
+unless you pass `--no-brand-model`, which is $0 and needs no keys at all.
+
+### The file it writes
+
+`questions.json` is a small, hand-editable envelope plus one row per question:
+
+```json
+{
+  "brand": "Kestrel Uptime",
+  "domain": "saylent-kestrel.vercel.app",
+  "version": 2,
+  "questions": [
+    {
+      "id": "q01",
+      "type": "category",
+      "text": "What is the best uptime monitoring for small SaaS teams?",
+      "source": "template"
+    },
+    {
+      "id": "q02",
+      "type": "comparison",
+      "text": "Kestrel Uptime vs Beacon Uptime - which is better for small SaaS teams?",
+      "source": "template"
+    },
+    {
+      "id": "q03",
+      "type": "problem",
+      "text": "How do I solve: alerts firing at 3am for nothing? Which tools help?",
+      "source": "template",
+      "samples": 3
+    }
+  ]
+}
+```
+
+| Field | Required | What it is |
+|---|---|---|
+| `brand` | written by the command | The brand name the questions were generated for |
+| `domain` | no | The domain they were generated for, for your own reference |
+| `version` | written by the command | The template-set version the file came from (`2`, or `"2+custom"` when a `saylent.config` `questionTemplates` key changed the library) |
+| `questions[].id` | no | `q01`, `q02`, … Any row without one is given the next free id when the file is read |
+| `questions[].type` | no | One of `category`, `comparison`, `problem`, `branded`, `integration`, `migration`, `trust`, `custom`. Missing or unrecognized becomes `custom` |
+| `questions[].text` | **yes** | The question, verbatim. An empty `text` is an error, not a skipped row |
+| `questions[].source` | no | `template` or `user`. Anything you add or edit is recorded as `user`, so the run bundle says whose question it was |
+| `questions[].samples` | no | A whole number 1-5: how many times **this one question** is asked per engine. It beats `--samples`, `AUDIT_SAMPLES` and `saylent.config` `sampling.samples`, for this row only |
+
+**Only `category` and `problem` rows are scored** and count toward the
+recommended band. Every other type - `custom` included - is asked, judged and
+reported in full, and deliberately left out of the band, so nothing you add by
+hand can inflate your own score.
+
+### Editing it: add, remove, tag
+
+Start from the generated file, then:
+
+```json
+{
+  "brand": "Kestrel Uptime",
+  "domain": "saylent-kestrel.vercel.app",
+  "version": 2,
+  "questions": [
+    {
+      "id": "q01",
+      "type": "category",
+      "text": "What is the best uptime monitoring for small SaaS teams?",
+      "source": "template"
+    },
+    {
+      "id": "q03",
+      "type": "problem",
+      "text": "How do I solve: alerts firing at 3am for nothing? Which tools help?",
+      "source": "template"
+    },
+    {
+      "type": "category",
+      "text": "Which status-page tool do developer teams actually recommend?",
+      "samples": 3
+    }
+  ]
+}
+```
+
+Three edits are shown there, and they are the whole vocabulary:
+
+- **Added** a row at the end - no `id` needed (it gets the next free one), no
+  `source` needed (a hand-written row is recorded as `user`). It is tagged
+  `category`, so it counts toward the band, and `samples: 3` asks it three
+  times per engine instead of the run default.
+- **Removed** `q02` by deleting its object. Ids do not have to be contiguous;
+  nothing renumbers.
+- **Tagged** by changing a row's `type`. Retagging `custom` → `category` or
+  `problem` pulls that question INTO the score; retagging the other way pushes
+  it out. Nothing else about the row changes.
+
+Then run it:
+
+```bash
+npx saylent audit saylent-kestrel.vercel.app --questions questions.json
+```
+
+Editing questions is the one change that makes a later `saylent verify`
+incomparable with the baseline - verify re-asks the baseline's own frozen set,
+so edit before the audit you want to measure from, not after.
+
+### What `--questions` accepts
+
+The same flag reads three shapes, told apart by their content:
+
+1. **A previous `run.json`** - the frozen set is reused verbatim, along with
+   its question-set version. This is how you re-run last month's audit
+   unchanged.
+2. **A `questions.json`** - the file above, edited or extended. A bare JSON
+   array of the same rows works too.
+3. **A plain text file** - one question per line. A line starting with `#` is a
+   comment, blank lines are skipped, and a line may be tagged by starting it
+   with a type and a colon. Untagged lines are typed `custom`.
+
+```text
+# my-questions.txt - the six I actually care about
+category: What is the best uptime monitoring for small SaaS teams?
+problem: How do I stop 3am alert noise without missing a real outage?
+comparison: Kestrel Uptime vs Beacon Uptime for a five-person team
+Which status page do developers trust most?
+```
+
+That last line has no recognized `type:` prefix, so it is asked and judged as
+`custom` and left out of the band. A prefix that is not one of the eight types
+is not treated as a tag at all - the whole line stays the question text.
+
+## `saylent models`
+
+Read-only, $0, no network: prints the model registry exactly as it resolves
+for the keys, config, and environment on this machine right now - which
+model serves which role, and whether that choice came from a flag, an env
+var, `saylent.config` `models`, or the shipped default. Also shows which
+model would judge each engine's answers, and warns if a judge would be the
+same model that answered (self-judging, not an independent check).
+
+```bash
+saylent models
+saylent models --judge claude-haiku-4-5 --model drafter=gpt-5-mini
+saylent models --judge my-fine-tune-v3 --judge-family anthropic
+```
+
+The judge is set with `--judge` (plus `--judge-family` when the model name
+does not say which provider it belongs to); `--model <role>=<id>` takes one of
+six roles - `brand`, `drafter`, `chatgpt`, `claude`, `gemini`, `perplexity`.
+There is no `judge` role on `--model`.
+
+Precedence: `--judge` / `--model role=id` flag → `MODEL_*` env var →
+`saylent.config` `models` → the shipped registry default.
+
+## `saylent mcp`
+
+Serves the same pipeline over the [Model Context
+Protocol](https://modelcontextprotocol.io) on stdio, so an agent can run an
+audit itself. No flags: everything is set by the environment it is started
+with.
+
+| Tool | What it does | Cost |
+|---|---|---|
+| `audit` | Full audit of a domain. Writes `run.json`, `report.html`, `report.md`; returns the verdict, the band, the summary blocks, the file paths and the real cost | Your own credits |
+| `verify` | Re-asks an existing run's frozen questions and writes `movement.html` | Your own credits |
+| `gate_check` | AI-bot access for a site: robots.txt per bot class, a live per-user-agent probe, JSON-LD, meta directives | **$0** |
+| `read_report` | The summary blocks of a `run.json` already on disk, whole or one named section | **$0** |
+
+`audit` and `verify` take the same arguments the flags above take, from one
+shared schema - so the two surfaces can never drift. Each tool states its own
+cost range in its description, and the estimate is checked against `max_usd`
+and the daily spend cap **before** anything reaches a provider.
+
+Three things the MCP server refuses that the CLI allows, because an agent -
+not a human - picks the arguments and the working directory:
+
+| Environment switch | Default (unset) | Set to `1` |
+|---|---|---|
+| `SAYLENT_MCP_ALLOW_PRIVATE` | `allow_private` is refused; the private-network guard stays on | `allow_private` is honored, as on the CLI |
+| `SAYLENT_MCP_ALLOW_ANY_OUT_DIR` | An `out_dir` outside the server's own working directory is refused | Any `out_dir` is allowed |
+| `SAYLENT_MCP_ALLOW_EXEC_CONFIG` | Only `saylent.config.json` is loaded; `.js`/`.mjs`/`.ts` (which execute on load) are ignored, with a log line saying so | Executable config files are loaded too |
+
+Provider keys are read from the environment, a `.env`, or
+`~/.saylent/config.json` exactly as they are for the CLI, and can never be
+passed as tool arguments. Full setup - the client config block for Claude
+Desktop and other MCP clients, and the argument table - is on
+[Integrations](/docs/integrations#mcp-server---saylent-mcp).
+
+## The run bundle (`run.json`)
+
+`run.json` is the lossless format every command reads and writes -
+`BUNDLE_VERSION: 1`. Top-level keys: `version`, `run` (id, kind, profile,
+status, brand, the frozen engine set, the model used per role, judge mode,
+timings, cost, `skip` - which stages this run skipped, if any), `brand_model`, `questions` (the frozen set), `answers`
+(every raw answer text and every sampled draw, not just the final verdict),
+`citations`, `corpus_pages`, `domain_checks`, `fixes`, `scores`, `health`.
+Nothing is summarized or dropped - this is also what a downloaded bundle
+from the full app looks like (`GET /api/runs/<id>/export?format=bundle`), so
+a CLI run and an app run produce the same artifact. Compatibility is
+additive only: a bundle with a different `version` is refused rather than
+guessed at.
+
+## Configuration
+
+Drop a `saylent.config.json` (or `.js` / `.mjs` / `.ts`, in that priority
+order when more than one exists) in the folder you run from. Every field is
+optional; an absent file means the shipped defaults. Precedence for any
+overlapping value: **CLI flag → environment variable → `saylent.config.*` →
+shipped default.**
+
+See [Configuration reference](/docs/configuration) for the complete file with
+every field, its default, and one table of where each control lives on the CLI,
+in the environment, in the config file and in the app.
+
+## Environment variables (CLI tier)
+
+| Variable | What it does |
+|---|---|
+| `OPENAI_API_KEY` | Required (one of the two) |
+| `ANTHROPIC_API_KEY` | Required (one of the two) |
+| `GEMINI_API_KEY` | Optional, adds the Gemini engine |
+| `PERPLEXITY_API_KEY` | Optional, adds the Perplexity engine |
+| `AUDIT_PROFILE` | Default `--profile` (`smoke`/`full`) when the flag isn't passed - overrides `saylent.config` `profile` |
+| `AUDIT_ENGINES` | Default `--engines` list when the flag isn't passed - overrides `saylent.config` `engines` |
+| `AUDIT_SAMPLES` | Default `--samples` value (1-5) when the flag isn't passed - overrides `saylent.config` `sampling` and the profile default |
+| `AUDIT_SKIP` | Default `--skip` value (`drafts,corpus,gates`) when the flag isn't passed - overrides `saylent.config` `skip` |
+| `SAYLENT_USER_AGENT` | Override the crawler's own User-Agent string |
+| `SAYLENT_APP_DOMAIN` | Your domain, appended to the diagnostic UA the live per-bot probe sends |
+| `DAILY_SPEND_CAP_USD` | Local daily spend ceiling (default 20) |
+| `MODEL_*` | Model registry overrides - see `saylent models` above and [Configuration](/docs/configuration) |
+
+Every one of these is a DEFAULT: the matching flag always wins, and a bad
+value is refused with the exact variable name and what was expected, never
+silently ignored.

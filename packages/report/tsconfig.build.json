@@ -1,0 +1,38 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "incremental": false,
+    "noEmit": false,
+    "declaration": true,
+    // tsup's own dts worker mis-resolves one call in src/brief.ts in isolation
+    // (a false positive: `tsc -p tsconfig.build.json` on this exact config
+    // reports zero errors, and so does the root `npm run typecheck`). Rather
+    // than fight tsup's dts pipeline, tsup emits the JS (tsup.config.ts has
+    // dts: false) and this config is run separately, declarations-only, as
+    // the package "build" script's second step.
+    "emitDeclarationOnly": true,
+    "outDir": "dist",
+    "rootDir": "src",
+    // The root tsconfig's "paths" point @saylent/engine/* at ../engine's live
+    // SOURCE (.ts), which is right for the app/tests/dev path but wrong here:
+    // with no rootDir boundary, a standalone `tsc` build of this package would
+    // pull engine's .ts files into its own program and try to emit them too
+    // (they'd land under dist/engine/, and rootDir above would then reject
+    // them with TS6059). Point at engine's OWN build output instead — pure
+    // .d.ts, never subject to emit — so this package's build is decoupled
+    // from engine's source tree. `npm run build:packages` builds engine first.
+    "paths": {
+      "@saylent/engine": ["../engine/dist/index.d.ts"],
+      "@saylent/engine/adapters": ["../engine/dist/adapters/index.d.ts"],
+      "@saylent/engine/adapters/*": ["../engine/dist/adapters/*.d.ts"],
+      "@saylent/engine/*": ["../engine/dist/*.d.ts"]
+    }
+  },
+  // packages/report/tsconfig.json's own "include" is "src/**/*.ts" only (the
+  // dev/typecheck path relies on reachability from root .ts files to reach
+  // .tsx too); explicit here so every leaf .tsx (e.g. src/ui/*, which nothing
+  // else in this package imports) gets its own .d.ts, matching tsup's entry
+  // glob in tsup.config.ts.
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "exclude": ["node_modules", "src/**/*.test.ts", "scripts"]
+}

@@ -1,0 +1,62 @@
+# Self-test for the saylent/gate-check Action (root action.yml + packages/action/**).
+# Builds the Action from source in THIS repo and runs it against the /demo domain
+# via a LOCAL path reference (`uses: ./`) - the same mechanism a consumer's
+# `uses: yotambraun/saylent@v1` resolves to, minus the network checkout (a local
+# path reference reads action.yml + dist/index.js straight off the runner's
+# filesystem, so the build step just above it is enough - no artifact publish, no
+# tag, no separate repo needed for this to prove the Action works end to end).
+#
+# No auto-commit here (unlike the docs' own snippet for a CONSUMER's badge, which
+# commits the badge back with stefanzweifel/git-auto-commit-action) - this repo's
+# own dist/badge state is a maintainer decision, not something CI should push on
+# every run; the badge is uploaded as a workflow artifact instead so a maintainer
+# can inspect it.
+name: Action self-test
+on:
+  workflow_dispatch:
+  schedule:
+    # Weekly, Monday 06:00 UTC.
+    - cron: "0 6 * * 1"
+permissions:
+  contents: read
+jobs:
+  self-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Build the Action (packages/action/src/entry.ts -> dist/index.js)
+        run: npm run build:action
+      # continue-on-error: this job self-tests that the ACTION runs correctly (builds,
+      # crawls, classifies, writes the badge, sets outputs) against a real domain - it
+      # is not a gate on that domain's current bot-access posture, which can change
+      # independently of anything in packages/action/**. A real consumer's own workflow
+      # (no continue-on-error) is the one that should turn red on a real regression.
+      - name: Run saylent/gate-check against saylent-kestrel.vercel.app
+        id: gate
+        continue-on-error: true
+        uses: ./
+        with:
+          domain: saylent-kestrel.vercel.app
+          fail_on: search,user
+          badge_path: .github/badges/ai-access.svg
+      - name: Print the outputs
+        if: always()
+        env:
+          GATE_RESULT: ${{ steps.gate.outputs.result }}
+          GATE_OUTCOME: ${{ steps.gate.outcome }}
+          GATE_CONCLUSION: ${{ steps.gate.conclusion }}
+        run: |
+          echo "result: $GATE_RESULT"
+          echo "gate step outcome: $GATE_OUTCOME (conclusion: $GATE_CONCLUSION)"
+      - name: Upload the badge
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ai-access-badge
+          path: .github/badges/ai-access.svg
+          if-no-files-found: error

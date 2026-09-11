@@ -1,0 +1,42 @@
+# Keep the build context small and keep secrets out of the image.
+# Anything the Next build actually reads must stay OUT of this list.
+
+# never copy secrets into a layer (.env.example is fine but unused at build)
+.env
+.env.*
+!.env.example
+
+# installed + generated locally; the image installs and builds its own
+node_modules
+**/node_modules
+.next
+out
+build
+packages/*/dist
+coverage
+*.tsbuildinfo
+
+# vcs + tooling
+.git
+.gitignore
+.github
+.vercel
+.claude
+.vscode
+.idea
+
+# local state that must not travel
+supabase/.temp
+.inngest
+*.run.json
+npm-debug.log*
+.DS_Store
+
+# docs, examples and the docker files themselves are not build inputs
+docs
+examples
+*.md
+!README.md
+Dockerfile
+.dockerignore
+docker-compose.yml

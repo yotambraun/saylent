@@ -1,0 +1,75 @@
+{
+  "name": "@saylent/engine",
+  "version": "0.1.0",
+  "private": false,
+  "description": "The pure audit pipeline behind Saylent: run AI-visibility audits from your own code, with zero app-framework dependencies.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yotambraun/saylent.git",
+    "directory": "packages/engine"
+  },
+  "homepage": "https://yotambraun.github.io/saylent/",
+  "bugs": {
+    "url": "https://github.com/yotambraun/saylent/issues"
+  },
+  "keywords": [
+    "ai-visibility",
+    "generative-engine-optimization",
+    "llm-seo",
+    "ai-search",
+    "chatgpt",
+    "claude",
+    "gemini",
+    "perplexity",
+    "brand-monitoring",
+    "audit"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./adapters": {
+      "types": "./dist/adapters/index.d.ts",
+      "default": "./dist/adapters/index.js"
+    },
+    "./adapters/*": {
+      "types": "./dist/adapters/*.d.ts",
+      "default": "./dist/adapters/*.js"
+    },
+    "./*": {
+      "types": "./dist/*.d.ts",
+      "default": "./dist/*.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup && node ../../scripts/fix-esm-extensions.mjs dist"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.109.1",
+    "@google/genai": "^2.10.0",
+    "cheerio": "^1.2.0",
+    "openai": "^6.45.0",
+    "undici": "^7.29.1",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "tsup": "^8.5.1",
+    "typescript": "^5"
+  }
+}

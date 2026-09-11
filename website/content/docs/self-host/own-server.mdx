@@ -1,0 +1,90 @@
+---
+title: Self-host on your server
+description: The Docker image, your own database, you manage upgrades and backups.
+---
+
+Run the app as a container on hardware you control, with your own Supabase
+project (hosted or self-hosted) as the database. This is the "advanced" path
+- you get full control of backups, TLS, and upgrade timing in exchange for
+managing them yourself.
+
+## What you need
+
+- **Docker Engine** and **Docker Compose** on your server.
+- A **Supabase project** - the free hosted tier is enough to start, or run
+  [Supabase's own self-hosted Docker stack](https://supabase.com/docs/guides/self-hosting/docker)
+  as the database layer (we don't vendor a copy of it; you point the same
+  environment variables at whichever you run).
+- A reverse proxy (nginx or Caddy) in front, for TLS and request hygiene -
+  the app itself trusts whatever `NEXT_PUBLIC_APP_URL` you give it for the
+  links it generates.
+
+## The image
+
+Three build stages on `node:22-alpine`: `deps` installs from the full
+workspace lockfile, `builder` runs `npm run build` with
+`NEXT_OUTPUT_STANDALONE=1` (only the Docker build sets this - Vercel and
+local dev are unaffected), and `runner` copies just the standalone server
+plus static assets into a non-root `nextjs` user. `NEXT_PUBLIC_*` values are
+baked into the browser bundle at build time (they're Docker build args); a
+change to one needs a rebuild. Everything secret
+(`SUPABASE_SERVICE_ROLE_KEY`, the provider keys, `INNGEST_*`)
+is runtime-only and never lands in an image layer.
+
+## Steps
+
+1. Copy the environment template and fill in every variable in the
+   `own-server` section of [Environment variables](/docs/self-host/environment)
+   - your Supabase project's keys and connection strings, your provider
+   keys, and the Docker-only build/runtime knobs:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Build and start the app plus a self-hosted Inngest:
+
+   ```bash
+   docker compose up --build
+   ```
+
+   `docker-compose.yml` runs two services: `app` (this image, port 3000)
+   and `inngest` (the official `inngest/inngest` image, wired to the app at
+   `http://app:3000/api/inngest`). Inngest's own state is in-memory by
+   default - give it its own Postgres if you need durable queues across
+   restarts.
+
+3. Apply migrations, pointed at your Supabase project's **direct**
+   connection (not the pooler - migrations need it):
+
+   ```bash
+   npm run db:migrate
+   ```
+
+4. Confirm the container is healthy:
+
+   ```bash
+   curl -s localhost:3000/api/health
+   ```
+
+   The container's own `HEALTHCHECK` hits the same endpoint - a healthy
+   process that can't reach Postgres reports unhealthy, not crashed, so you
+   can tell the two apart from `docker ps`.
+
+5. Open your domain and sign up. **The first account becomes the operator.**
+
+## Be a polite crawler
+
+Set `SAYLENT_USER_AGENT` to your own identifying string (your domain, a
+contact URL) before your first audit - the default UA identifies this
+project, not your deployment, and a crawler that can't be traced back to an
+operator is the thing every "please block us" support thread is about.
+
+## Upgrades
+
+Pull the new image, `docker compose up --build` again, then
+`npm run db:migrate` - idempotent, so re-running it is always safe. Each
+release's notes list which migrations and environment variables it adds.
+
+Next: [Environment variables](/docs/self-host/environment) for the full
+reference.

@@ -1,0 +1,78 @@
+---
+title: Compared with hosted tools
+description: Saylent next to Profound, Peec, Otterly, Scrunch, AthenaHQ, Semrush AI Toolkit, Ahrefs Brand Radar, and HubSpot AEO Grader - facts and sources, no adjectives.
+---
+
+Saylent is one shape of tool in a category that also has well-funded hosted
+products. This page states what is structurally different, and separately
+what has been reported about those products' pricing, with a source and a
+date for every number, plus the vendor's own pricing page linked where one
+exists publicly. It does not rate any product's quality - see [the
+methodology](/docs/methodology) for what Saylent itself does and does not
+claim.
+
+## What is structurally different
+
+| | Saylent | Hosted tools (Profound, Peec, Otterly, Scrunch, AthenaHQ, Semrush AI Toolkit, Ahrefs Brand Radar, HubSpot AEO Grader) |
+|---|---|---|
+| Open source | Yes - Apache-2.0, this repository | No - proprietary, closed-source products |
+| Runs on your own provider keys | Yes - every dollar goes to OpenAI/Anthropic/Google/Perplexity directly, never through us ([What it costs](/docs/costs)) | No - usage runs on the vendor's own infrastructure and account, priced into their subscription |
+| Self-hostable | Yes - CLI on your machine, or the full app on your own server, Docker, or your own Vercel/Supabase project ([Self-host](/docs/self-host)) | No - hosted SaaS only |
+| Every score has receipts | Yes - every claim traces to the answer that produced it and the citation it names ([How it works](/docs/how-it-works)) | Not published - each vendor's methodology page (linked below) is the source, not independently verified here |
+| Cross-family judge (self-preference control) | Yes when two provider keys are set - one family's answer is judged by the other; the report states `judge_mode` either way ([Methodology](/docs/methodology)) | Not published |
+| Site AI-bot-access probe (`gate-check`) | Yes - checks the three AI-bot classes, JSON-LD, and meta directives, $0, no LLM call ([How it works](/docs/how-it-works)) | Not published |
+| Drafted fixes from evidence | Yes - a fix cites the specific finding or citation it is based on | Not published |
+| Entry price | $0 - open source, self-hosted | See the table below - each vendor's reported starting price, sourced |
+
+## What the hosted tools do that Saylent does not (yet)
+
+This is the honest gap, not a hedge:
+
+- **Continuous historical tracking at scale.** Saylent's `verify` command
+  re-runs the frozen question set and diffs against one baseline run - a
+  before/after, not a running multi-week or multi-month trend line across
+  many brands.
+- **Alerts.** Saylent has two *optional*, off-by-default scheduled jobs
+  (`FLAG_SCHEDULED_RUNS`: a weekly verify, a monthly audit) on a self-hosted
+  deployment - not real-time or threshold-based alerting.
+- **Multi-tenant dashboards.** The self-hosted app is built for one operator
+  running it for their own brand(s), not a shared workspace serving many
+  client accounts from one login.
+- **Team seats and roles.** There is no multi-seat team plan or per-seat
+  role model.
+- **Vendor support.** A hosted subscription buys a support relationship;
+  an open-source project's support is public GitHub issues and (where
+  enabled) Discussions.
+
+## Entry price, by vendor
+
+| Vendor | Entry price | As reported by | As of | Vendor's own pricing page |
+|---|---|---|---|---|
+| Saylent | $0 (open source, self-hosted; provider API cost only - [What it costs](/docs/costs)) | this repository | 2026-09 | - |
+| Profound | $99/mo (Starter: ChatGPT tracking, 50 prompts) | [tryprofound.com](https://www.tryprofound.com/pricing), the vendor's own page | 2026-09 | [tryprofound.com/pricing](https://www.tryprofound.com/pricing) |
+| Peec AI | €85-89/mo (Starter, 50 prompts) | [geoptie.com review](https://geoptie.com/blog/peec-ai-review) | 2026-09 | [peec.ai/pricing](https://peec.ai/pricing) |
+| Otterly.ai | $29/mo (Lite: 15 prompts, monthly billing) | [otterly.ai](https://otterly.ai/pricing), the vendor's own page | 2026-09 | [otterly.ai/pricing](https://otterly.ai/pricing) |
+| Scrunch AI | $300/mo monthly, $250/mo billed annually | [PR Newswire](https://www.prnewswire.com/news-releases/scrunch-ai-raises-15-million-series-a-to-rebuild-the-internet-for-ai-consumption-302510915.html) | 2026-09 | [scrunch.com/pricing](https://scrunch.com/pricing/) |
+| AthenaHQ | Free "Essential" tier ($25 of credits); $295/mo Starter | [trakkr.ai pricing page](https://trakkr.ai/reviews/athenahq-review/pricing) | 2026-09 | [athenahq.ai/pricing](https://www.athenahq.ai/pricing) |
+| Semrush AI Toolkit | $99/mo (25 prompts) | [explodingtopics.com](https://explodingtopics.com/blog/ai-visibility-vs-brand-radar) | 2026-09 | [semrush.com/pricing/ai](https://www.semrush.com/pricing/ai/) |
+| Ahrefs Brand Radar | $199/mo per AI platform; $828/mo minimum for all platforms | [tryanalyze.ai comparison](https://www.tryanalyze.ai/blog/ahrefs-vs-semrush) | 2026-09 | [ahrefs.com/brand-radar](https://ahrefs.com/brand-radar/) |
+| HubSpot AEO Grader | Free one-shot 0-100 grade; $50/mo for the paid tier | [rankability.com review](https://www.rankability.com/blog/hubspot-aeo-review/) | 2026-09 | [hubspot.com/aeo-grader](https://www.hubspot.com/aeo-grader) |
+
+Numbers marked "the vendor's own page" were read directly off that vendor's
+pricing page; every other number is as reported by the linked third party
+and has not been independently re-confirmed against the vendor's own page
+for this table - the "Vendor's own pricing page" column links to it either
+way, so that is the place to check current pricing yourself. All of it is
+subject to change and none of these vendors were contacted for this
+comparison.
+
+## Why this page exists
+
+Every paid entry tier above is roughly $29-300/mo, and several already offer a free
+one-shot check as their own lead-generation ([Ahrefs' free AI visibility
+checker](https://ahrefs.com/ai-visibility-checker) is a "no signup" example).
+An "open-source alternative to an expensive incumbent" story does not
+describe this category the way it describes, say, Plausible vs Google
+Analytics - Saylent's reason to exist is different: your own keys, your own
+data, self-hostable, and the receipts behind every score, not a lower price
+for the same closed product.

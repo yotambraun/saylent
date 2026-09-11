@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kestrel Uptime | Uptime monitoring and status pages for small engineering teams</title>
+<meta name="description" content="Kestrel Uptime checks your endpoints from four regions, pages the engineer on call when two regions agree, and publishes a status page your customers can subscribe to.">
+<link rel="stylesheet" href="{{SITE_ROOT}}/styles.css">
+</head>
+<body>
+
+<header class="masthead">
+  <div class="frame">
+    <a class="wordmark" href="{{SITE_ROOT}}/">Kestrel <span>Uptime</span></a>
+    <nav>
+      <a href="{{SITE_ROOT}}/pricing/">Pricing</a>
+      <a href="{{SITE_ROOT}}/docs/">Docs</a>
+      <a href="{{SITE_ROOT}}/compare/">Compare</a>
+      <a href="{{SITE_ROOT}}/changelog/">Changelog</a>
+      <a href="{{SITE_ROOT}}/about/">About</a>
+      <a href="{{SITE_ROOT}}/contact/">Contact</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+<section class="hero">
+  <div class="frame">
+    <h1>Find out your API is down before a customer tells you.</h1>
+    <p class="lede">Kestrel Uptime watches your endpoints from four regions, wakes the engineer on
+      call only when the failure is real, and keeps a public status page current while you are busy
+      fixing things. Built for teams of two to twenty engineers who do not have a monitoring team.</p>
+
+    <div class="actions">
+      <a class="btn" href="{{SITE_ROOT}}/pricing/">See pricing</a>
+      <a class="btn quiet" href="{{SITE_ROOT}}/docs/">Read the setup guide</a>
+    </div>
+
+    <div class="strip-block">
+      <div class="strip" role="img" aria-label="Ninety days of check results for api.kestrel.example: eighty-five clean days, four days with brief degradation, and one outage day."><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="dip"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="dip"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="down"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="dip"></i><i class="dip"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="strip-legend">
+        <span>Last 90 days of <code>api.kestrel.example</code></span>
+        <span><b>99.97%</b> uptime</span>
+        <span><b>1</b> incident, 41 minutes</span>
+        <span><b>4</b> degraded days</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="band">
+  <div class="frame">
+
+    <div class="row">
+      <div>
+        <h2>A check only counts when two regions agree</h2>
+        <p>Most false alarms are network weather, not your software. Kestrel runs every check from
+          Frankfurt, Virginia, Singapore and São Paulo. One region failing is a note in the timeline.
+          Two regions failing within the same window is an incident, and only then does anyone get
+          woken up.</p>
+        <p>You can tighten that rule per check. A payment endpoint can page on the first failure. A
+          marketing page can wait for three.</p>
+      </div>
+      <div class="artefact">check   <b>api.kestrel.example/healthz</b>
+fra-1   <span class="bad">timeout</span>     10.0s
+iad-1   <span class="ok">200 OK</span>       184ms
+sin-1   <span class="ok">200 OK</span>       206ms
+gru-1   <span class="ok">200 OK</span>       311ms
+result  1 of 4 regions failing
+action  logged, no page sent</div>
+    </div>
+
+    <div class="row">
+      <div>
+        <h2>Alerts that reach a person, not a channel nobody reads</h2>
+        <p>Every check belongs to a rotation. Kestrel notifies the engineer on call by push, SMS and
+          email, waits five minutes for an acknowledgement, then escalates to the next person and the
+          team channel. Quiet hours apply to warnings, never to outages.</p>
+        <p>Alerts carry the last response body, the response time trend for the hour before the
+          failure, and the last deploy your team recorded through the API, so the first question on
+          the call is usually already answered.</p>
+      </div>
+      <div class="artefact"><b>Incident 148</b>  checkout API down
+opened  09:14  two regions agree
+paged   09:14  Dana Whitlock (on call)
+ack     09:16  Dana Whitlock
+note    09:19  rollback of build 2291
+closed  09:55  41 minutes, 3 alerts sent</div>
+    </div>
+
+    <div class="row">
+      <div>
+        <h2>A status page you never have to remember to update</h2>
+        <p>Turn on a status page and Kestrel publishes it at your own domain with your colours and
+          your wording. It updates itself from the same checks that page your team, so it can never
+          quietly disagree with reality.</p>
+        <p>Customers subscribe by email or webhook. When you write an incident note it goes to the
+          page and to every subscriber at once, which is usually enough to stop the support queue
+          filling up while you work.</p>
+      </div>
+      <div class="artefact"><b>status.kestrel.example</b>
+API              <span class="ok">operational</span>
+Dashboard        <span class="ok">operational</span>
+Webhooks         <span class="bad">degraded</span>
+Scheduled jobs   <span class="ok">operational</span>
+
+updated automatically, 30s ago
+842 subscribers notified</div>
+    </div>
+
+  </div>
+</section>
+
+<section class="band">
+  <div class="frame">
+    <h2>How a check runs</h2>
+    <p class="lede">Four steps, the same for an HTTP endpoint, a TCP port, a cron heartbeat or an SSL
+      certificate.</p>
+    <ol class="sequence">
+      <li>
+        <div>
+          <h3>Kestrel requests your endpoint from four regions</h3>
+          <p>Every 30 seconds on paid plans, every 5 minutes on the free plan. You choose the method,
+            headers, body and the response rule that counts as healthy.</p>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>The result is compared across regions</h3>
+          <p>Kestrel keeps the status code, the response time, the response body up to 8KB, and which
+            region saw it. Disagreement between regions is recorded rather than hidden.</p>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>An incident opens when your rule is met</h3>
+          <p>The default rule is two regions failing in the same 60 second window. The incident
+            collects everything Kestrel knows, including your last recorded deploy.</p>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>People and pages are told in the same second</h3>
+          <p>The on-call engineer is paged, the status page changes, subscribers are notified. When
+            the checks recover the incident closes itself and the timeline stays for the review.</p>
+        </div>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<section class="band">
+  <div class="frame">
+    <h2>Start on the free plan and stay there if it fits</h2>
+    <p>Ten checks at a five minute interval, one status page and email alerts cost nothing, with no
+      card and no trial clock. Teams move to a paid plan when they want 30 second checks, SMS and
+      push escalation, or a status page on their own domain. Full prices are on the
+      <a href="{{SITE_ROOT}}/pricing/">pricing page</a>, and the
+      <a href="{{SITE_ROOT}}/docs/">setup guide</a> takes about ten minutes end to end.</p>
+    <div class="actions">
+      <a class="btn" href="{{SITE_ROOT}}/pricing/">See pricing</a>
+      <a class="btn quiet" href="{{SITE_ROOT}}/compare/">Kestrel and the alternatives</a>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="frame">
+    <nav>
+      <a href="{{SITE_ROOT}}/">Home</a>
+      <a href="{{SITE_ROOT}}/pricing/">Pricing</a>
+      <a href="{{SITE_ROOT}}/docs/">Docs</a>
+      <a href="{{SITE_ROOT}}/compare/">Compare</a>
+      <a href="{{SITE_ROOT}}/changelog/">Changelog</a>
+      <a href="{{SITE_ROOT}}/about/">About</a>
+      <a href="{{SITE_ROOT}}/contact/">Contact</a>
+    </nav>
+    <p>Kestrel Uptime, uptime monitoring and status pages for small engineering teams.
+      Questions: <a href="mailto:hello@kestrel.example">hello@kestrel.example</a></p>
+    <p>Kestrel is a fictional company. This site exists as a public test subject for an
+      open source website audit engine, so the product, the people and the numbers on it are
+      invented.</p>
+  </div>
+</footer>
+
+</body>
+</html>

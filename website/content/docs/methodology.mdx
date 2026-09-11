@@ -1,0 +1,41 @@
+---
+title: Methodology
+description: What is measured, how, and what is not claimed - in five minutes.
+---
+
+Saylent asks four AI assistants (ChatGPT, Claude, Gemini, Perplexity) the
+questions a real buyer would ask, through each provider's own API with their
+web search on - nothing is scraped from a consumer app. It records every
+answer, fetches the pages those answers cited, and tests live whether each
+assistant's own crawler can read the brand's site. Every number in a report
+traces back to a stored answer or a fetched page you can open; nothing is
+modeled, extrapolated, or bought from a third-party panel.
+
+Presence is decided first and deterministically - a whole-word alias match,
+so "Acme" never matches "Acmeology." The qualitative fields (whether an
+answer recommends, compares, or dismisses the brand; sentiment; prominence)
+come from a judge model, quoting the deciding sentence before it emits a
+verdict, and always from the *other* provider family from whoever answered -
+an OpenAI answer is judged by an Anthropic model and vice versa, because a
+model tends to prefer its own output. Scored questions get two sampled
+draws per engine on `full`, a third only on disagreement; `smoke` takes one
+draw per engine and skips the tiebreak. The report states a `{min, max}`
+band across sample sets instead of a single number that would claim more
+precision than the draws taken can support.
+
+Fix diagnosis is deterministic - a pure function over the stored checks,
+answers, and cited pages, ranked by evidence weight; a model only drafts the
+artifact afterward, never decides what's wrong.
+
+**What is not claimed:** no traffic estimate, no revenue effect, no market
+ranking, no causal claim that a fix caused a later movement. Word presence
+on a cited page is not entailment. Google AI Overviews has no public API and
+is not measured. The judge's own accuracy is checked against a 24-entry (18 judgeable)
+hand-reviewed golden set, rerunnable from the repository (a live judge pass costs about $0.20; the offline replay is free).
+
+Full detail, every rubric rule, every weight, and the complete limitations
+list: [METHODOLOGY.md](https://github.com/yotambraun/saylent/blob/main/METHODOLOGY.md)
+in the repository. For the mechanics of how one run moves through the nine
+pipeline stages, see [How it works](/docs/how-it-works); for the code that
+implements each piece, see
+[ARCHITECTURE.md](https://github.com/yotambraun/saylent/blob/main/ARCHITECTURE.md).

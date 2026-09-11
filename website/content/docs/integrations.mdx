@@ -1,0 +1,300 @@
+---
+title: Integrations
+description: The MCP server for agents, the GitHub Action for CI, and the engine and report as libraries.
+---
+
+## `@saylent/engine` - run an audit from your own code
+
+The pure audit pipeline, with zero Next.js, Supabase, Inngest, or React
+imports - the same `runAudit()` the CLI and the self-hosted app both call.
+Supply your own persistence (`MemoryDbWriter` collects every row in memory;
+implement the eight-method `DbWriter` interface for anything else) and your
+provider keys, and get a full `RunResult` back with nothing written to disk:
+
+```ts
+import {
+  runAudit, MemoryDbWriter, ADAPTERS, MODELS,
+  brandModelCall, drafterCall, judgeCall,
+} from "@saylent/engine";
+
+const apiKey = { chatgpt: process.env.OPENAI_API_KEY, claude: process.env.ANTHROPIC_API_KEY };
+
+const result = await runAudit(
+  {
+    runId: crypto.randomUUID(),
+    kind: "audit",
+    profile: "smoke",
+    brand: { name: "Example Co", domain: "example.com", competitors: ["rival.com"] },
+  },
+  {
+    db: new MemoryDbWriter(),
+    ask: (engine, q) => ADAPTERS[engine](q, { model: MODELS[`${engine}Answer`], apiKey: apiKey[engine] }),
+    llm: { brandModel: brandModelCall, drafter: drafterCall, judge: judgeCall },
+  },
+);
+
+console.log(result.scores?.overall); // { answered, recommended, mentioned, rec_rate, mention_rate }
+```
+
+`ADAPTERS[gemini|perplexity]` need their own key the same way; omit an engine
+from your `ask` dispatch and it simply isn't asked.
+
+## `@saylent/report` - render a run without the app
+
+The same composers and React components the app and the CLI's `report.html`
+both use - pure functions over plain row arrays, no model call, no network:
+
+```ts
+import { renderReportHtml } from "@saylent/report/render/html";
+import { renderMarkdown } from "@saylent/report/render/markdown";
+import { reportDataFromBundle } from "@saylent/report/render/from-bundle";
+import { readBundle } from "@saylent/engine/bundle";
+import { readFileSync, writeFileSync } from "node:fs";
+
+const bundle = readBundle(readFileSync("run.json", "utf8"));
+const data = reportDataFromBundle(bundle);
+const html = await renderReportHtml(data, { repoRoot: process.cwd() });
+writeFileSync("report.html", html);
+writeFileSync("report.md", renderMarkdown(data));
+```
+
+The report package's own composer functions (over plain row arrays, no
+model call, no network) produce a typed union of block types - text, a
+stat, a bar chart, a list, a quote, a status line, a page list, a set of
+moves, key-value pairs - that both renderers above consume. Useful if
+you're building your own presentation of the data instead of the shipped
+one.
+
+Both packages are npm workspaces inside this repository
+(`packages/engine`, `packages/report`); import them by subpath
+(`@saylent/engine/judge`, `@saylent/report/ui/badge`) to keep your bundle to
+what you actually use.
+
+## MCP server - `saylent mcp`
+
+`saylent mcp` runs a [Model Context Protocol](https://modelcontextprotocol.io)
+server on stdio, so an agent can audit a brand, verify a fix, check bot access
+and read an existing report itself. It is the same pipeline the CLI runs: same
+key resolution, same cost estimate before the spend, same `max_usd` refusal,
+same summary blocks - handed to the agent as JSON instead of rendered to HTML.
+
+### The four tools
+
+| Tool | What it does | Cost |
+|---|---|---|
+| `audit` | Full audit of a domain. Writes `run.json`, `report.html`, `report.md`; returns the verdict, the recommended band, the summary blocks, the file paths and the real cost | Your own credits: about **$0.40 to $1.20 with four engines** (`smoke`; our recorded runs cost $0.93 and $1.11) or **$2.50 to $4.00** (`full`) |
+| `verify` | Re-asks the frozen questions of an existing `run.json` and writes `movement.html` | Your own credits: about the same as the audit it re-runs |
+| `gate_check` | robots.txt per bot class, a live per-user-agent probe, JSON-LD, meta directives | **$0** - no keys, no model calls |
+| `read_report` | The summary blocks of a `run.json` already on disk, whole or one named section | **$0** - no network, no model calls |
+
+Every tool states its cost range in its own description, so the agent knows
+before it calls. `audit` and `verify` check the estimate against `max_usd` and
+the daily spend cap **before** anything reaches a provider, and refuse with the
+same message the CLI prints.
+
+### `audit` and `verify` arguments
+
+`audit` and `verify` are built from ONE shared argument schema, the same one
+`saylent audit`/`saylent verify`'s own flags are generated from (see the CLI
+reference's `--flag` column) - the two surfaces can never accept a different
+argument set. Only `domain` is required; everything else is optional. Pass
+`dry_run: true` on `audit` for a **$0**, no-keys, no-network preflight: the
+question set it would ask and the cost estimate, nothing sent to any provider.
+
+| Argument | Tool(s) | CLI flag | Description |
+|---|---|---|---|
+| `domain` | audit | *(positional)* | The brand's domain, for example example.com |
+| `brand` | audit | `--brand` | Brand name (default: the domain) |
+| `competitors` | audit | `--competitors` | Competitor domains/names |
+| `profile` | audit | `--profile` | smoke (default, 6 questions) or full (23 questions) |
+| `engines` | audit | `--engines` | Which answer engines to ask: chatgpt, claude, gemini, perplexity |
+| `questions_file` | audit | `--questions` | Path to a run.json bundle, a questions.json (from `saylent questions`), or a text file with one question per line, to reuse instead of generating a new set |
+| `questions` | audit | *(none - MCP only)* | Inline question rows to ask instead of generating a set (`{id?, type?, text, samples?}`). The CLI takes a file path via the same `--questions` flag (`questions_file` above) |
+| `samples` | audit, verify | `--samples` | How many times each scored question is asked (1-5) |
+| `judge` | audit, verify | `--judge` | Judge model; its provider family is inferred from the name |
+| `judge_family` | audit, verify | `--judge-family` | anthropic \| openai, when the judge model name is ambiguous |
+| `models` | audit, verify | `--model` | Per-role model overrides: brand, drafter, chatgpt, claude, gemini, perplexity |
+| `locale` | audit, verify* | `--locale` | Translate the generated question set into this language once (e.g. "de", "pt-BR"), via the drafter model. No effect when a question set is reused (`questions_file`/`questions`) |
+| `user_agent` | audit, verify* | `--user-agent` | Override the crawler's User-Agent for this run's fetches (crawl, corpus, domain checks) |
+| `max_pages` | audit, verify* | `--max-pages` | Cap how many crawled pages feed the brand model and corpus (1-200) |
+| `allow_private` | audit, verify* | `--allow-private` | Allow the audited site's own host (and its www/apex sibling) to resolve to a private/internal address, for a staging server on your own network. Never on by default |
+| `skip` | audit, verify* | `--skip` | Skip costly stages: drafts, corpus, gates (`{drafts,corpus,gates}` or a list of stage names) |
+| `max_usd` | audit, verify | `--max-usd` | Refuse to run if the high cost estimate exceeds this many dollars |
+| `out_dir` | audit | `--out` | Output directory (default: ./\<domain\>/\<YYYY-MM-DD\>/) |
+| `format` | audit | `--format` | Which report files to write: md, html, json (default: all three) |
+| `dry_run` | audit | `--dry-run` | Print the plan, the questions it would ask (template defaults, $0, no crawl) and the cost estimate. Spends nothing |
+| `no_brand_model` | audit | `--no-brand-model` | Documented for parity with `saylent questions`; a dry run already always previews with template defaults, so this has no further effect on audit |
+| `bundle_path` | verify | *(positional)* | Path to the baseline run.json (or the directory containing it) |
+
+\* Accepted on `verify` for parity with `audit` (a client that always passes
+the same argument set to both tools shouldn't error), but have no effect: a
+verify re-asks the SAME frozen questions and never crawls, fetches corpus,
+checks gates, or generates a fresh question set.
+
+`read_report`'s `section` argument also accepts `"questions"`, returning the
+run's frozen question set alongside the Brief's `"hero"` and card sections.
+
+**Keys are never tool arguments.** There is no key parameter on any tool. The
+server resolves provider keys exactly like the CLI: environment variables, then
+a `.env` in its working directory, then `~/.saylent/config.json`. Put them in
+the server definition's `env` block, or run `saylent keys` once and leave the
+definition clean.
+
+### Claude Code
+
+```bash
+claude mcp add saylent -- npx saylent mcp
+```
+
+The server inherits your shell environment, so `OPENAI_API_KEY` and
+`ANTHROPIC_API_KEY` exported in your profile (or already saved by
+`saylent keys`) are picked up automatically - no key ever needs to go on the
+command line, where your shell history would keep it. To pin keys to this
+server only, run `saylent keys set openai` / `saylent keys set anthropic`
+once so `~/.saylent/config.json` holds them, or add them to this server's own
+config entry as an `env` block, the same shape the Claude Desktop and Cursor
+examples below use.
+
+### Claude Desktop
+
+Edit `claude_desktop_config.json` (macOS:
+`~/Library/Application Support/Claude/claude_desktop_config.json`, Windows:
+`%APPDATA%\Claude\claude_desktop_config.json`), then restart the app:
+
+```json
+{
+  "mcpServers": {
+    "saylent": {
+      "command": "npx",
+      "args": ["-y", "saylent", "mcp"],
+      "env": {
+        "OPENAI_API_KEY": "sk-...",
+        "ANTHROPIC_API_KEY": "sk-ant-..."
+      }
+    }
+  }
+}
+```
+
+### Cursor
+
+Same shape, in `~/.cursor/mcp.json` (every project) or `.cursor/mcp.json` (this
+project only):
+
+```json
+{
+  "mcpServers": {
+    "saylent": {
+      "command": "npx",
+      "args": ["-y", "saylent", "mcp"],
+      "env": {
+        "OPENAI_API_KEY": "sk-...",
+        "ANTHROPIC_API_KEY": "sk-ant-..."
+      }
+    }
+  }
+}
+```
+
+### What you say to the agent
+
+Free, ask any time:
+
+> Use saylent to gate-check example.com and tell me which AI bots are blocked.
+
+> Read the saylent report in ./example.com/2026-09-09/ and summarize the "who wins
+> instead" section.
+
+These two spend your own provider credits - about $0.40 to $1.20 with four
+engines for a smoke audit (our recorded runs cost $0.93 and $1.11) and about $3 for a
+full one - so say the profile you want and set a ceiling:
+
+> Run a saylent smoke audit of example.com with max_usd 1, then tell me the verdict
+> and the top three fixes.
+
+> Ship the JSON-LD fix, then run saylent verify on
+> ./example.com/2026-09-09/run.json with max_usd 1 and tell me what moved.
+
+A long audit narrates itself: the server streams its stages (crawl, brand
+model, questions, engines, judge, cited pages, site gates, fixes, score) as MCP
+log notifications while it runs.
+
+
+## GitHub Action
+
+`yotambraun/saylent@v1` runs the same fast, $0, no-LLM, no-keys check as
+`saylent gate-check` (see the [CLI reference](/docs/cli)) as a CI step: robots.txt
+per bot class (training, search-index, user-fetch), a live per-user-agent probe,
+JSON-LD presence, and meta directives. It writes an "AI access" status badge SVG
+straight into your repo - no hosted badge service, no external request when the
+badge itself is rendered.
+
+```yaml
+name: AI access gate
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 6 * * 1" # weekly
+
+jobs:
+  gate-check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: yotambraun/saylent@v1
+        id: gate
+        with:
+          domain: example.com
+      - uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: update AI-access badge"
+          file_pattern: .github/badges/ai-access.svg
+```
+
+### Inputs
+
+| Input | Default | Description |
+|---|---|---|
+| `domain` | *(required)* | The domain to check (e.g. `example.com`). |
+| `fail_on` | `search,user` | Comma-separated bot classes that fail the job when a bot of that class is **blocked**: `training`, `search`, `user`. A training-bot block (GPTBot, ClaudeBot via robots.txt) is a legitimate choice and is excluded unless you opt it in. |
+| `badge_path` | `.github/badges/ai-access.svg` | Where to write the badge SVG (relative to the repo root). |
+| `write_badge` | `true` | Whether to write the badge SVG file at all. |
+| `site_root` | *(none)* | Path prefix for a site hosted under a subpath (e.g. a GitHub Pages project site: `/docs`). robots.txt is still read from the host root; the crawl and the live probe stay inside the path. |
+
+### Outputs
+
+| Output | Description |
+|---|---|
+| `result` | Overall result: `pass`, `warn`, or `fail` - the worst status across every check (bot classes, JSON-LD, meta). |
+| `summary` | The same markdown table written to the job summary, also available as a step output. |
+
+The job **only** fails (non-zero exit) when a class listed in `fail_on` is actually
+blocked - a `warn` (an unreachable probe, a training-bot robots.txt block) never
+fails the job. `result` and the job summary report every finding regardless, so a
+`warn` is still visible without breaking CI.
+
+### The badge
+
+Commit the SVG `write_badge` produced (the workflow above does this with
+`stefanzweifel/git-auto-commit-action`; a plain `git add && git commit && git push`
+step works just as well) and embed it in your README:
+
+```md
+![AI access](.github/badges/ai-access.svg)
+```
+
+### What the live probe can and cannot know
+
+The live per-user-agent probe is one request, from GitHub's network, at the moment
+the job runs. It catches the case robots.txt alone cannot: a CDN or WAF silently
+403/429-ing a bot that robots.txt claims to allow. It cannot know what happens for
+requests that never reach your server, cannot see rate limits or IP-allowlists that
+treat CI runners differently than the real bot, and cannot prove a bot is unblocked
+in production forever - only that it wasn't blocked in this one request, right now.
+**Your server logs are ground truth.** Treat a `pass` here as "nothing observably
+wrong," not as a guarantee, and re-run the gate on a schedule (as in the example
+above) so a regression is caught within a week instead of found by an AI assistant
+that quietly stopped citing you.

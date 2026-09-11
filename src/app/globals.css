@@ -1,0 +1,356 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/* The report components + the shadcn primitives live in @saylent/report now
+   (open-source split, see ARCHITECTURE.md). Tailwind 4 detects
+   sources from this file's project, which stops at the app — name the workspace
+   package explicitly so the Brief, the dossier and the ui/* classes are generated
+   for BOTH the app and the static report.html built from the same CSS. */
+@source "../../packages/report/src";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}
+/* ===== Saylent design tokens (ink on paper; signal for evidence) =====
+   Tokens reference CSS vars so light/dark can swap them (real dark mode, no packages).
+   `@theme inline` keeps the var reference in the utility, so `.dark` overrides cascade. */
+@theme inline {
+  --color-ink: var(--ink);
+  --color-paper: var(--paper);
+  --color-signal: var(--signal);
+  --color-success: var(--success);
+  --color-wire: var(--wire);
+  --color-line: var(--line);
+  --color-pill-listed: var(--pill-listed);
+  --color-pill-dismissed: var(--pill-dismissed);
+  --color-pill-absent: var(--pill-absent);
+  --font-display: var(--font-fraunces);
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-plex-mono);
+}
+
+/* Saylent palette — light (cascade after shadcn defaults) */
+:root {
+  /* brand tokens */
+  --ink: #14212b;
+  --paper: #f7f5f0;
+  --signal: #c8551b;
+  --success: #2e6e4e;
+  /* darkened from #8c9ba5 (~2.8:1 on white — failed WCAG AA) to ≈4.5:1 on
+     paper/white; dark-mode --wire is unchanged (it already passes on #16130f) */
+  --wire: #5f6d77;
+  --line: #dad4c8;
+  --pill-listed: #5a7d9a;
+  --pill-dismissed: #a33b2e;
+  --pill-absent: #c0b9ae;
+  /* shadcn token overrides */
+  --background: #f7f5f0;
+  --foreground: #14212b;
+  --card: #ffffff;
+  --card-foreground: #14212b;
+  --primary: #14212b;
+  --primary-foreground: #f7f5f0;
+  --border: #dad4c8;
+  --input: #dad4c8;
+  --ring: #c8551b;
+  /* aliased to --wire — kept in step so muted body text also clears AA */
+  --muted-foreground: #5f6d77;
+}
+
+/* Saylent palette — dark (cascades after the shadcn .dark block above) */
+.dark {
+  /* brand tokens */
+  --ink: #ece6da;
+  --paper: #16130f;
+  --signal: #e5703a;
+  --success: #4f9e77;
+  --wire: #8f98a1;
+  --line: #34302a;
+  --pill-listed: #6f96b5;
+  --pill-dismissed: #cd5b4c;
+  --pill-absent: #47423b;
+  /* shadcn token overrides */
+  --background: #16130f;
+  --foreground: #ece6da;
+  --card: #201c17;
+  --card-foreground: #ece6da;
+  --primary: #ece6da;
+  --primary-foreground: #16130f;
+  --border: #34302a;
+  --input: #34302a;
+  --ring: #e5703a;
+  --muted-foreground: #8f98a1;
+}
+
+/* ===== report print stylesheet — the deliverable LEAVES the
+   app as a clean PDF. Collapses app chrome, expands every receipt, keeps ink-on-paper
+   even for a dark-mode reader, and prints the server-SVG charts faithfully. ===== */
+@page {
+  margin: 16mm 14mm 18mm;
+}
+@media print {
+  /* ink on paper regardless of the on-screen theme (a dark-mode reader still gets a
+     light document). Re-declaring the tokens on .dark overrides the dark cascade. */
+  html, body { background: #ffffff !important; color: #14212b !important; }
+  :root, .dark {
+    --background: #f7f5f0; --foreground: #14212b;
+    --card: #ffffff; --card-foreground: #14212b;
+    --ink: #14212b; --paper: #f7f5f0; --signal: #c8551b; --success: #2e6e4e;
+    --wire: #6b7780; --line: #cfc9bd; --border: #cfc9bd;
+    --muted-foreground: #6b7780;
+    --pill-listed: #5a7d9a; --pill-dismissed: #a33b2e; --pill-absent: #c0b9ae;
+  }
+  /* faithfully print chart fills/strokes, verdict tones and card surfaces (browsers
+     drop backgrounds/graphics on print without this). Charts are server-rendered SVG
+     using fill-* and stroke-* utilities — there is no Recharts in the codebase. */
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+
+  /* app shell — Tailwind's print:hidden already hides the report's own top bar
+     (share + print controls) and the fixed side nav; this covers the app frame.
+     The report's OWN headers (the summary hero, the delivered file's masthead)
+     carry data-report-header and stay: they are the document, not the chrome. */
+  aside, header:not([data-report-header]), nav { display: none !important; }
+
+  /* De-chrome buttons instead of hiding them: the dossier's verdict rows, battlefield
+     cells, source map and funnel strip are all <button>s WRAPPING real data — the old
+     `button { display:none }` rule deleted most of the report. Rendering them as plain
+     text keeps the evidence; the genuine action controls live in print:hidden already. */
+  #dossier button {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    color: inherit !important;
+    cursor: default !important;
+    padding: 0 !important;
+    text-align: left !important;
+    width: 100% !important;
+  }
+
+  /* receipts: force every <details> drawer open and drop the twisty marker */
+  details > *:not(summary) { display: block !important; }
+  details summary { list-style: none; }
+  details summary::-webkit-details-marker { display: none; }
+
+  /* keep atomic blocks whole; let long tables flow but repeat the header and never
+     split a row. break-inside:avoid on an over-tall block is ignored, so this is safe. */
+  #dossier figure, #dossier svg, #dossier tr, #dossier li,
+  #dossier .bg-card { break-inside: avoid; }
+  #dossier table { break-inside: auto; }
+  #dossier thead { display: table-header-group; }
+  h1, h2, h3 { break-after: avoid; }
+
+  /* major chapters start on a fresh page (the lede + verdict strip come first, so no
+     chapter is the first flow element → no leading blank page) */
+  #dossier section#voice, #dossier section#gates, #dossier section#battlefield,
+  #dossier section#verdicts, #dossier section#source-map { break-before: page; }
+
+  /* the running footer is the in-flow, brand·date `.saylent-print-footer` element
+     (rendered by dossier.tsx). The old generic `#dossier::after` fixed footer was
+     removed — it double-printed a second footer under the real one. */
+  #dossier { position: relative; }
+
+  /* print-only cover / footer HOOKS — inert until dossier.tsx adds the
+     brand-specific elements. Hidden on screen, shown in print. */
+  .saylent-print-cover { display: flex !important; }
+  .saylent-print-footer { display: block !important; }
+
+  /* The printable artifact is the WHOLE report: the summary that opens it and
+     the full report under it. Only the view-switch control drops out, because a
+     printed page cannot switch views. Where the two layers live at one URL the
+     switch chooses which is on screen; where they are stacked in one document
+     (the delivered report.html) both print, in reading order. */
+  .view-switch-bar { display: none !important; }
+
+  /* tables reflow on paper instead of clipping at the sheet edge: the on-screen
+     min-width + overflow-x wrapper hides columns silently when printed. Interactive
+     tab strips are meaningless on paper, so every tab panel prints in order. */
+  #dossier table, #brief table { min-width: 0 !important; width: 100% !important; }
+  #dossier td, #dossier th, #brief td, #brief th { overflow-wrap: anywhere; }
+  [role="tablist"] { display: none !important; }
+  [role="tabpanel"][hidden] { display: block !important; }
+  details:not([open]) > *:not(summary) { display: block !important; }
+
+  /* the summary's own atomic blocks keep the same page-break discipline as the
+     full report below it */
+  #brief figure, #brief svg, #brief tr, #brief li,
+  #brief .bg-card { break-inside: avoid; }
+  #brief ~ #dossier { break-before: page; }
+}
+.saylent-print-cover,
+.saylent-print-footer { display: none; }
+
+/* proportions: scale type up on large displays (observed feedback in testing) */
+@media (min-width: 1280px) {
+  html { font-size: 17px; }
+}
+@media (min-width: 1800px) {
+  html { font-size: 18px; }
+}
+
+/* product tour: scene-2 progress bar (global keyframes — scoped ones get renamed) */
+@keyframes tour-grow {
+  from { width: 8%; }
+  to { width: 78%; }
+}
+
+/* calm scroll-reveal for report sections (2026 report-UX; reveal.tsx)
+
+   FAIL-VISIBLE BY DEFAULT. The hidden state is gated behind `.js` on <html>,
+   which a one-line inline script sets before paint (layout.tsx's boot script in
+   the app; document.tsx's in a rendered report.html). If JavaScript is off,
+   blocked, or throws before hydration, the class is never added, the sections
+   simply stay visible, and the reader loses an animation instead of the page.
+   (A redaction pass over report.html once corrupted the hydration bundle and
+   left three quarters of the document at opacity 0 — never again.) */
+.reveal {
+  transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+}
+.js .reveal {
+  opacity: 0;
+  transform: translateY(14px);
+}
+.js .reveal-shown {
+  opacity: 1;
+  transform: none;
+}
+@media print {
+  .reveal, .js .reveal { opacity: 1 !important; transform: none !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal, .js .reveal { opacity: 1; transform: none; transition: none; }
+}
+
+/* Audit Theater — a calm fade as each new answer takes the spotlight (theater.tsx).
+   Keyed remount replays it per arrival; never a typewriter, never a flash. */
+@keyframes theater-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+.theater-fade { animation: theater-fade-in 0.4s ease-out both; }
+@media (prefers-reduced-motion: reduce) {
+  .theater-fade { animation: none; }
+}

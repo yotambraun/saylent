@@ -1,0 +1,68 @@
+name: Bug report
+description: Something is broken in the CLI, the engine, or the self-hosted app.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing this. If the issue is a provider suddenly behaving
+        differently (a new error, a changed answer shape), use the
+        "Engine quirk" template instead, it captures the fields we need for that.
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - CLI (saylent audit / verify / gate-check / report)
+        - Engine (packages/engine)
+        - Report rendering (packages/report, report.html/report.md)
+        - Self-hosted app
+        - Docs site
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: "saylent --version, or the commit hash if running from source"
+      placeholder: "0.1.0"
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, what you expected, what happened instead.
+      placeholder: |
+        Command run:
+        Expected:
+        Actual:
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Exact commands or flags. A domain that reproduces it, if relevant.
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant output
+      description: Terminal output, stack trace, or error text. Redact API keys and any brand data you don't want public.
+      render: shell
+
+  - type: input
+    id: os
+    attributes:
+      label: OS and Node version
+      placeholder: "macOS 15, Node 22.4.0"
+    validations:
+      required: true

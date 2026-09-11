@@ -1,0 +1,46 @@
+/* website/app/global.css — fumadocs-ui's structural CSS
+   (docs sidebar, search dialog, TOC — includes its own "@import tailwindcss")
+   first, then the Saylent tokens override its default color theme so the
+   docs chrome and the hand-built pages read as one product. */
+@import "fumadocs-ui/css/style.css";
+@import "../src/tokens.css";
+
+/* Wide code blocks (the pasted CLI output on Quickstart is the widest, and the
+   full saylent.config.json is the tallest) scroll inside themselves, but
+   Chromium hides the overlay scrollbar until you touch it - so the block looked
+   clipped mid-word with no hint that it continued. The element
+   that actually scrolls is Fumadocs' `.fd-scroll-container` wrapper, not the
+   <pre>. Give it, and the table wrappers, a permanently visible on-brand
+   scrollbar. */
+#nd-page .fd-scroll-container,
+#nd-page div:has(> table) {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+#nd-page .fd-scroll-container::-webkit-scrollbar,
+#nd-page div:has(> table)::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+#nd-page .fd-scroll-container::-webkit-scrollbar-thumb,
+#nd-page div:has(> table)::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 4px;
+}
+#nd-page .fd-scroll-container::-webkit-scrollbar-track,
+#nd-page div:has(> table)::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* `<div className="wrap-code">` around a fenced block in MDX: let its lines
+   wrap instead of scrolling sideways. Used for the one pasted CLI output that
+   is wider than the docs column - a horizontally scrolling code block shows no
+   scrollbar at all on a machine with overlay scrollbars, so the last words
+   simply looked cut off. Shiki renders each line as a flex row
+   inside a `w-max` <pre>, so the width cap has to be forced here. */
+.wrap-code pre {
+  width: 100% !important;
+  min-width: 0 !important;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

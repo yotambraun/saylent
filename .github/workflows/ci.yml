@@ -1,0 +1,107 @@
+# CI quality gate; Vercel does CD.
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+# Least-privilege token: CI only reads the repo (typecheck/lint/test/build).
+permissions:
+  contents: read
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    env:
+      SKIP_ENV_VALIDATION: "1"
+      # dummy publics so `next build` succeeds without real secrets
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      NEXT_PUBLIC_SUPABASE_URL: https://dummy.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: dummy
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # License gate — fail on strong-copyleft / network-copyleft licenses (GPL,
+      # AGPL, SSPL) in the production dependency tree. failOn matches the FULL SPDX
+      # id exactly, so LGPL-3.0-or-later (@img/sharp-libvips, dynamic-link) and
+      # FSL-1.1-MIT (@sentry/cli, build tool) are intentionally NOT listed and pass.
+      # Modern -only/-or-later variants are enumerated so a real GPL/AGPL package is caught.
+      - name: License check (no GPL/AGPL/SSPL)
+        run: >-
+          npx license-checker --production --excludePrivatePackages
+          --failOn "GPL-1.0;GPL-1.0-only;GPL-1.0-or-later;GPL-2.0;GPL-2.0-only;GPL-2.0-or-later;GPL-3.0;GPL-3.0-only;GPL-3.0-or-later;AGPL-1.0;AGPL-1.0-only;AGPL-1.0-or-later;AGPL-3.0;AGPL-3.0-only;AGPL-3.0-or-later;SSPL-1.0"
+      - run: npm run typecheck
+      - run: npm run lint
+      # Correctness net — the vitest suite gates merges. Pure/logic tests, no real
+      # keys needed (SKIP_ENV_VALIDATION=1 above covers any env-touching import).
+      - run: npm run test
+      - run: npm run build
+      # The GitHub Action's bundle is committed (a JavaScript action gets no
+      # `npm install`), so it can silently go stale. Rebuild it and fail if the
+      # result differs from what is in git — which also proves the build stays
+      # deterministic.
+      - name: Action bundle is current and the build is deterministic
+        run: |
+          npm run build:action
+          git diff --exit-code -- packages/action/dist
+
+  # The CLI must work unmodified on all three OSes a self-hoster or an
+  # `npx saylent` user actually runs, on every Node version the README promises.
+  # README says "Node 20+", so 20 (the floor) and 22 (current LTS) are both
+  # exercised — testing only the newest would let a 20-incompatible API land and
+  # break the exact users the floor was written for. This job is independent of
+  # the `ci` job above (Next.js app build): it only touches packages/cli,
+  # packages/engine and packages/report, and never spends against a real
+  # provider (--dry-run).
+  cli:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node: [20, 22]
+    runs-on: ${{ matrix.os }}
+    name: cli (${{ matrix.os }}, node ${{ matrix.node }})
+    defaults:
+      run:
+        # Force bash everywhere (including windows-latest, which defaults to
+        # pwsh) so one step syntax works on all three runners.
+        shell: bash
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - name: Test the CLI, engine, and report packages only
+        run: npx vitest run packages/cli packages/engine packages/report
+      - run: npm run build:cli
+      # The delivered report is a BROWSER artifact: typecheck, lint and vitest
+      # all passed while the committed sample threw a SyntaxError, never
+      # hydrated, and left 11 of its sections at opacity 0. Only a real page
+      # load catches that, so one runner opens examples/kestrel/report.html in
+      # Chromium and asserts it hydrates, reveals, tabs and toggles theme.
+      # Ubuntu + Node 22 only: the browser download is the expensive part and
+      # `--with-deps` is Linux-only, while the artifact under test is identical
+      # on every runner (it is a committed file, not a per-OS build output).
+      - name: Install Chromium for the report smoke check
+        if: matrix.os == 'ubuntu-latest' && matrix.node == 22
+        run: npx playwright install --with-deps chromium
+      - name: Rendered report.html hydrates and works in a real browser
+        if: matrix.os == 'ubuntu-latest' && matrix.node == 22
+        run: npm run check:report
+      - name: saylent --help
+        run: node packages/cli/dist/saylent.js --help
+      # --dry-run prints the plan and estimate and exits 0 without spending
+      # anything or contacting a provider (packages/cli/src/commands/audit.ts).
+      # Fake keys below are placeholders, not real credentials, so the
+      # command sees "keys present" and prints the full plan line.
+      - name: saylent audit --dry-run
+        env:
+          OPENAI_API_KEY: sk-fake-key-for-ci
+          ANTHROPIC_API_KEY: sk-ant-fake-key-for-ci
+        run: node packages/cli/dist/saylent.js audit example.com --dry-run

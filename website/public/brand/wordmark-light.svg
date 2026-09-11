@@ -1,0 +1,12 @@
+<!-- Saylent wordmark, light surfaces. The mark (icon.svg) at 0.75 scale locked to
+     the name; no gradient, no effects. Serif stack matches the site's display face
+     (Fraunces) closely enough on any OS, and textLength pins the total width so the
+     lockup never reflows: it reads the same at 24px and at 200px. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 264 64" width="264" height="64" role="img" aria-label="Saylent">
+  <rect x="0" y="8" width="48" height="48" rx="9.75" fill="#14212b"/>
+  <text x="21.75" y="41.75" font-family="Georgia,'Times New Roman',Times,serif" font-size="28.5" font-weight="600"
+        fill="#f7f5f0" text-anchor="middle" textLength="17.25" lengthAdjust="spacingAndGlyphs">S</text>
+  <circle cx="35.25" cy="20.75" r="4.125" fill="#c8551b"/>
+  <text x="62" y="43" font-family="Georgia,'Times New Roman',Times,serif" font-size="34" font-weight="600"
+        fill="#14212b" textLength="196" lengthAdjust="spacingAndGlyphs">Saylent</text>
+</svg>

@@ -1,0 +1,27 @@
+{
+  "title": "Docs",
+  "pages": [
+    "index",
+    "---Start---",
+    "quickstart",
+    "check",
+    "how-it-works",
+    "---Understand---",
+    "reports",
+    "methodology",
+    "costs",
+    "data-sent",
+    "compare",
+    "---Configure---",
+    "configuration",
+    "cli",
+    "crawler",
+    "---Self-host---",
+    "self-host",
+    "---Integrate and extend---",
+    "integrations",
+    "extending",
+    "---Project---",
+    "contributing"
+  ]
+}

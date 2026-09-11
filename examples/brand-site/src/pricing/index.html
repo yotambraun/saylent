@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pricing | Kestrel Uptime</title>
+<meta name="description" content="Kestrel Uptime pricing: a free plan for ten checks, Flight at 29 dollars a month, and Squadron at 89 dollars a month. Monthly billing, no annual contract.">
+<link rel="stylesheet" href="{{SITE_ROOT}}/styles.css">
+</head>
+<body>
+
+<header class="masthead">
+  <div class="frame">
+    <a class="wordmark" href="{{SITE_ROOT}}/">Kestrel <span>Uptime</span></a>
+    <nav>
+      <a href="{{SITE_ROOT}}/pricing/" aria-current="page">Pricing</a>
+      <a href="{{SITE_ROOT}}/docs/">Docs</a>
+      <a href="{{SITE_ROOT}}/compare/">Compare</a>
+      <a href="{{SITE_ROOT}}/changelog/">Changelog</a>
+      <a href="{{SITE_ROOT}}/about/">About</a>
+      <a href="{{SITE_ROOT}}/contact/">Contact</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+<section class="hero">
+  <div class="frame">
+    <h1>Pricing</h1>
+    <p class="lede">Three plans, billed monthly in US dollars, cancel from the dashboard. Every plan
+      includes all four checking regions and the full incident timeline. What changes is how often
+      Kestrel checks, how many people it can page, and where your status page lives.</p>
+
+    <div class="tiers">
+      <div class="tier">
+        <h3>Watch</h3>
+        <p class="price">$0</p>
+        <p class="per">free, no card, no trial clock</p>
+        <ul>
+          <li><b>10</b> checks</li>
+          <li><b>5 min</b> interval</li>
+          <li>Email alerts</li>
+          <li><b>1</b> status page on a kestrel.example address</li>
+          <li><b>30</b> days of history</li>
+        </ul>
+      </div>
+      <div class="tier">
+        <h3>Flight</h3>
+        <p class="price">$29</p>
+        <p class="per">per month, whole team included</p>
+        <ul>
+          <li><b>75</b> checks</li>
+          <li><b>30 sec</b> interval</li>
+          <li>Push, SMS and email escalation</li>
+          <li><b>3</b> status pages on your own domain</li>
+          <li><b>13</b> months of history</li>
+          <li>Chat and webhook delivery</li>
+        </ul>
+      </div>
+      <div class="tier">
+        <h3>Squadron</h3>
+        <p class="price">$89</p>
+        <p class="per">per month, whole team included</p>
+        <ul>
+          <li><b>400</b> checks</li>
+          <li><b>15 sec</b> interval</li>
+          <li>Rotations, quiet hours and per-check paging rules</li>
+          <li><b>10</b> status pages, private pages included</li>
+          <li><b>3</b> years of history</li>
+          <li>Audit log and SAML sign-in</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="band">
+  <div class="frame">
+    <h2>What counts as a check</h2>
+    <p>A check is one thing Kestrel watches on a schedule: an HTTP endpoint, a TCP port, a cron
+      heartbeat, an SSL certificate expiry, or a keyword that has to be present in a response. The
+      four regions are not four checks. One endpoint watched from Frankfurt, Virginia, Singapore and
+      São Paulo is a single check against your plan.</p>
+    <p>Seats are not counted and never will be. Adding the whole engineering team, the support lead
+      and a contractor costs the same as monitoring alone, because charging by the person is a good
+      way to end up with one exhausted person holding the pager.</p>
+
+    <h2>Questions we get asked</h2>
+
+    <h3>Is there a discount for paying yearly?</h3>
+    <p>No. Kestrel is billed monthly and you can stop at the end of any month. We would rather earn
+      the next month than lock in the next year.</p>
+
+    <h3>What happens when I pass my check limit?</h3>
+    <p>Nothing breaks. Kestrel keeps running every existing check and asks you to move up a plan
+      before adding more. We do not turn off monitoring for a billing reason.</p>
+
+    <h3>Do you charge for SMS?</h3>
+    <p>SMS to the countries listed in the docs is included on Flight and Squadron. There is no
+      per-message charge and no credit bundle to top up.</p>
+
+    <h3>Can I use my own domain for a status page?</h3>
+    <p>Yes, on Flight and Squadron. Point a CNAME at Kestrel and the certificate is issued for you,
+      usually within two minutes.</p>
+
+    <h3>What happens to my data if I cancel?</h3>
+    <p>Checks stop, the status page returns a plain notice, and the incident history stays available
+      for export for 60 days. After that it is deleted.</p>
+
+    <div class="actions">
+      <a class="btn" href="{{SITE_ROOT}}/docs/">Read the setup guide</a>
+      <a class="btn quiet" href="{{SITE_ROOT}}/contact/">Ask a pricing question</a>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="frame">
+    <nav>
+      <a href="{{SITE_ROOT}}/">Home</a>
+      <a href="{{SITE_ROOT}}/pricing/">Pricing</a>
+      <a href="{{SITE_ROOT}}/docs/">Docs</a>
+      <a href="{{SITE_ROOT}}/compare/">Compare</a>
+      <a href="{{SITE_ROOT}}/changelog/">Changelog</a>
+      <a href="{{SITE_ROOT}}/about/">About</a>
+      <a href="{{SITE_ROOT}}/contact/">Contact</a>
+    </nav>
+    <p>Kestrel Uptime, uptime monitoring and status pages for small engineering teams.
+      Questions: <a href="mailto:hello@kestrel.example">hello@kestrel.example</a></p>
+    <p>Kestrel is a fictional company. This site exists as a public test subject for an
+      open source website audit engine, so the product, the people and the numbers on it are
+      invented.</p>
+  </div>
+</footer>
+
+</body>
+</html>

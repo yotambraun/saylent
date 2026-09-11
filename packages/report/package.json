@@ -1,0 +1,106 @@
+{
+  "name": "@saylent/report",
+  "version": "0.1.0",
+  "private": false,
+  "description": "Render a Saylent audit report - HTML or Markdown - from a run bundle, with no app and no model calls.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yotambraun/saylent.git",
+    "directory": "packages/report"
+  },
+  "homepage": "https://yotambraun.github.io/saylent/",
+  "bugs": {
+    "url": "https://github.com/yotambraun/saylent/issues"
+  },
+  "keywords": [
+    "ai-visibility",
+    "generative-engine-optimization",
+    "llm-seo",
+    "ai-search",
+    "chatgpt",
+    "claude",
+    "gemini",
+    "perplexity",
+    "brand-monitoring",
+    "audit"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./host": {
+      "types": "./dist/host.d.ts",
+      "default": "./dist/host.js"
+    },
+    "./components/*": {
+      "types": "./dist/components/*.d.ts",
+      "default": "./dist/components/*.js"
+    },
+    "./ui/*": {
+      "types": "./dist/ui/*.d.ts",
+      "default": "./dist/ui/*.js"
+    },
+    "./render": {
+      "types": "./dist/render/index.d.ts",
+      "default": "./dist/render/index.js"
+    },
+    "./render/html": {
+      "types": "./dist/render/html.d.ts",
+      "default": "./dist/render/html.js"
+    },
+    "./render/movement": {
+      "types": "./dist/render/movement.d.ts",
+      "default": "./dist/render/movement.js"
+    },
+    "./render/markdown": {
+      "types": "./dist/render/markdown.d.ts",
+      "default": "./dist/render/markdown.js"
+    },
+    "./render/static-host": {
+      "types": "./dist/render/static-host.d.ts",
+      "default": "./dist/render/static-host.js"
+    },
+    "./*": {
+      "types": "./dist/*.d.ts",
+      "default": "./dist/*.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup && tsc -p tsconfig.build.json && node ../../scripts/fix-esm-extensions.mjs dist"
+  },
+  "dependencies": {
+    "@saylent/engine": "^0.1.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.23.0",
+    "radix-ui": "^1.6.1",
+    "tailwind-merge": "^3.6.0",
+    "zod": "^4.4.3"
+  },
+  "peerDependencies": {
+    "react": "^19",
+    "react-dom": "^19"
+  },
+  "devDependencies": {
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "tsup": "^8.5.1",
+    "typescript": "^5"
+  }
+}

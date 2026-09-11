@@ -1,0 +1,72 @@
+---
+title: Provider status
+description: Weekly live check of the four answer-engine providers, on the maintainer's own keys.
+---
+
+import statusData from "../../public/status/status.json";
+
+This checks **the maintainer's own provider keys**, not yours. It exists so you
+can see, before you spend anything, which providers currently answer with the
+registry's default models (`packages/engine/src/models.ts`) - not a claim
+about your own account, quota, or billing status.
+
+A weekly [GitHub Action](https://github.com/yotambraun/saylent/actions/workflows/provider-status.yml)
+sends one minimal question to every configured provider and writes the result
+here (`website/public/status/status.json`, committed to `main`). It costs
+about $0.05 per run. You can also run it yourself against your own keys:
+
+```bash
+npx tsx --tsconfig scripts/tsconfig.json --env-file=.env.local scripts/provider-status.ts
+```
+
+## Last checked
+
+{statusData.checked_at
+  ? `${new Date(statusData.checked_at).toISOString().replace("T", " ").slice(0, 16)} UTC - CLI ${statusData.cli_version}`
+  : "Not checked yet: the weekly workflow has not run. This page is not linked from the docs sidebar until it has one week of real results - it would be a table of empty rows, which tells you nothing."}
+
+{statusData.checked_at ? (
+  <table>
+    <thead>
+      <tr>
+        <th>Provider</th>
+        <th>Model (registry default)</th>
+        <th>Status</th>
+        <th>Latency</th>
+      </tr>
+    </thead>
+    <tbody>
+      {Object.entries(statusData.providers).map(([id, p]) => (
+        <tr key={id}>
+          <td>{id}</td>
+          <td>
+            <code>{p.model}</code>
+          </td>
+          <td>
+            {p.ok
+              ? "OK"
+              : p.error === "not_configured"
+                ? "Not configured in this run"
+                : `Error: ${p.error}`}
+          </td>
+          <td>{p.ok && p.latency_ms != null ? `${p.latency_ms} ms` : "-"}</td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+) : null}
+
+## What this does not tell you
+
+- **Not your keys.** A green row here says the maintainer's key and the
+  registry default worked this week - it says nothing about your own
+  account's quota, billing, or region.
+- **Not an SLA.** One question, once a week. A provider having a bad five
+  minutes at another time of day would not show up here.
+- **Not model quality.** This checks that the API call succeeds and returns
+  text with the current registry default model - see
+  [Configuration](/docs/configuration) for how to override any model, and
+  `saylent models` for what your own deployment is actually using.
+
+See [What it costs](/docs/costs) for the cost of a real audit, and
+[Configuration](/docs/configuration) for the full `MODEL_*` override list.

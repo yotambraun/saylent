@@ -1,0 +1,94 @@
+---
+title: Environment variables
+description: Every setting the full app reads - required for, default, what breaks without it.
+---
+
+Copy `.env.example` to `.env.local` (local/cloud) or `.env` (own-server,
+Docker Compose) and fill in what your target needs. Check what's missing for
+either tier at any time:
+
+```bash
+npm run check-env -- --profile cli     # what `npx saylent audit` needs
+npm run check-env -- --profile app     # what the full app needs
+```
+
+## Required
+
+| Variable | Required for | What breaks without it |
+|---|---|---|
+| `NEXT_PUBLIC_APP_URL` | every target | Links the app generates (emails, share links) point at the wrong place |
+| `NEXT_PUBLIC_SITE_URL` | every target | Layout, sitemap, and `robots.txt` use the wrong origin |
+| `NEXT_PUBLIC_APP_NAME` | every target | Falls back to "Saylent" - the product name shown in the UI, emails, and the Inngest app id |
+| `NEXT_PUBLIC_SUPABASE_URL` | every target | The app can't reach your database at all |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | every target | The publishable key from the **Publishable and secret API keys** tab (`sb_publishable_...`) - not the legacy tab |
+| `SUPABASE_SERVICE_ROLE_KEY` | every target | The secret key from the same tab (`sb_secret_...`) - admin actions and the audit pipeline write through this |
+| `DATABASE_URL` | every target | The Transaction pooler string (port 6543) - the app's own runtime queries |
+| `DIRECT_DATABASE_URL` | every target | The Direct connection string (port 5432) - migrations only; using the pooler here hangs |
+| `INNGEST_EVENT_KEY` | cloud, own-server (production) | Local dev needs neither Inngest key - `npx inngest-cli dev` reads none |
+| `INNGEST_SIGNING_KEY` | cloud, own-server (production) | Required so `/api/inngest` is authenticated; without it in production, paid runs are externally triggerable |
+| `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` | every target | One of the two is enough to run an audit; both give cross-family judging |
+
+## Optional
+
+| Variable | Default | What it's for |
+|---|---|---|
+| `GEMINI_API_KEY` / `PERPLEXITY_API_KEY` | unset | Two more answer engines. Gemini's free tier answers unreliably - turn on billing |
+| `NEXT_PUBLIC_OPERATOR_NAME` | unset | The legal entity or person operating this deployment, printed on `/privacy` and `/terms`. Unset, those two pages refuse to render a policy and say so - they never publish one attributed to nobody |
+| `NEXT_PUBLIC_CONTACT_EMAIL` | `hello@example.com` | Correction/support address on public pages and error pages |
+| `APP_SECRET` | unset | The pgcrypto passphrase that encrypts provider API keys saved from `/admin/providers`, so an operator can change a key or a per-role model with no redeploy. Generate with `openssl rand -hex 32` (min 16 chars). Unset = keys are environment-only and the console says so; models stay editable either way. Never stored in the database - losing or changing it makes every console-saved key unreadable |
+| `RESEND_API_KEY` + `EMAIL_FROM` | unset | Transactional email (welcome, report-ready, movement, verify reminders) - inert without both |
+| `INNGEST_DEV` | unset | Forces the Inngest SDK's local-dev mode outside its own auto-detection |
+| `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` | unset | Server and browser error tracking - every Sentry variable is inert until `SENTRY_DSN` is set |
+| `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT` | unset | Source-map upload at build time (read by the Sentry build plugin) |
+| `SENTRY_TRACES_SAMPLE_RATE` | 0.2 in prod, 0 elsewhere | Performance trace sampling, 0–1 |
+| `DEMO_RUN_ID` | unset | Points the sample report at a real consented run instead of the shipped illustrative sample |
+| `BRAND_LIMIT` | 5 | Brand-count cap per account (no separate plan tiers) |
+| `RUN_THROTTLE_WINDOW_HOURS` / `RUN_THROTTLE_AUDITS` / `RUN_THROTTLE_VERIFIES` | 24 / 3 / 3 | Rolling-window throttle on manual runs, per brand |
+| `DAILY_SPEND_CAP_USD` | 20 | Global daily provider-spend ceiling - crossing it trips the kill switch |
+| `FLAG_EMAILS` | on | Kill switch for transactional email, independent of whether RESEND_API_KEY is set |
+| `AUDIT_PROFILE` | full | The app runs the full profile (23 questions, about $2.50 to $4.00 per run) and shows the estimate before every run. `smoke` (6 questions) is a development profile and is refused for real users in production |
+| `FLAG_SCHEDULED_RUNS` | off | The weekly-verify and monthly-audit schedules. Off by default so nothing spends your keys unattended; set `1` when you want scheduled runs. Once on, a brand is eligible as soon as it has one completed audit. The pre-rename name is still read as an alias for one release (`LEGACY_ENV_ALIASES` in `src/lib/flags.ts`) |
+| `FLAG_CSP_ENFORCE` | on | Enforced Content-Security-Policy vs. Report-Only fallback |
+| `FLAG_COVE_AUDIT` | off | An extra evidence-check pass over each drafted fix (one more model call per artifact when on) |
+| `MODEL_*` (ten variables) | the shipped registry | Override which model serves which role - see [Configuration](/docs/configuration) |
+| `SAYLENT_USER_AGENT` | `SaylentAudit/<version> (+https://yotambraun.github.io/saylent/docs/crawler)` | Your crawler's own identity - set this to something that traces back to you |
+| `SAYLENT_APP_DOMAIN` | unset | Your domain, appended to the diagnostic UA the live per-bot probe sends |
+
+## Own-server (Docker) only
+
+| Variable | Default | What it's for |
+|---|---|---|
+| `NEXT_OUTPUT_STANDALONE` | unset | Set to `1` only when building the Docker image - enables Next's standalone output. Vercel and local dev never set this |
+| `INNGEST_BASE_URL` | unset | Points the app at the self-hosted Inngest container (`http://inngest:8288` in `docker-compose.yml`) instead of Inngest Cloud |
+| `APP_PORT` / `INNGEST_PORT` | 3000 / 8288 | Which host ports Compose exposes |
+| `NEXT_PUBLIC_AUTH_METHODS` | `password,magic-link` | Which login methods the sign-in page shows (add `google` if you've configured that provider) |
+
+## Hosted read-only demo (optional)
+
+Leave every one of these empty on a normal deployment - unset means the demo
+does not exist and nothing else changes.
+
+| Variable | Default | What it's for |
+|---|---|---|
+| `NEXT_PUBLIC_DEMO_READONLY` | unset | `1` turns the whole deployment into a public read-only demo: an unauthenticated visitor to `/app` is signed in as the shared demo account below, a banner says so, and every write (settings, brands, fixes, shares, support, account delete/export, and `createRun` - so every LLM call) is refused. $0 per visitor |
+| `DEMO_USER_EMAIL` / `DEMO_USER_PASSWORD` | unset | The shared demo account the proxy signs visitors in as. Create or repair it with `npx tsx --tsconfig scripts/tsconfig.json scripts/seed-demo.ts`, which also seeds the Kestrel Uptime fixture as its brand and finished run. Server-only; use a throwaway account on a throwaway Supabase project - it is demoted to `role=user` on every seed |
+| `NEXT_PUBLIC_DEMO_DOCS_URL` | the public docs site | Where the demo banner's "Read the docs" link points |
+
+## The docs site's own instant check
+
+One more variable, read only by the public docs/marketing site's build
+(`website/`, a separate workspace from the app above), not by the
+self-hosted app:
+
+| Variable | Default | What it's for |
+|---|---|---|
+| `NEXT_PUBLIC_INSTANT_CHECK_URL` | unset | The base URL of the deployed `services/instant-check` service. Set this after deploying that service - the docs site's home-page widget degrades to printing the `saylent gate-check` command instead of a broken input when it's unset, so a fork or a local `npm run site:dev` is never wrong about what works |
+
+## The platform variables
+
+`HOME` / `USERPROFILE` are read by the CLI's own key store to find your
+per-OS config directory - you never set these. `NODE_ENV`, `NEXT_RUNTIME`,
+and `VERCEL_ENV` are set by the platform, not by you. `SKIP_ENV_VALIDATION`
+lets a build run without every required variable present (used by CI and
+the Docker build, which must build without secrets); don't set it for a
+real deployment.

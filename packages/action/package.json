@@ -1,0 +1,18 @@
+{
+  "name": "@saylent/action",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "saylent/gate-check GitHub Action - the $0, no-LLM, no-keys AI-access gate as a CI step.",
+  "license": "Apache-2.0",
+  "scripts": {
+    "build": "node scripts/build.mjs"
+  },
+  "dependencies": {
+    "@actions/core": "^3.0.1",
+    "@saylent/engine": "*"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
+  }
+}

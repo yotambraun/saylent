@@ -1,0 +1,78 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# Build output + local run output (~/.saylent lives outside the repo, so it needs
+# no entry here).
+packages/*/dist/
+*.run.json
+
+# EXCEPTION — the GitHub Action's bundle is a COMMITTED artifact. A JavaScript
+# action resolved as `uses: yotambraun/saylent@v1` gets only a checkout of this
+# repo: GitHub never runs `npm install` for it, so the self-contained bundle
+# (and the one-line package.json that pins its CommonJS format) has to be in git
+# or the action cannot run at all. Rebuild with `npm run build:action`; the build
+# is deterministic, so the diff is empty unless the sources changed.
+!packages/action/dist/
+packages/action/dist/*
+!packages/action/dist/index.js
+!packages/action/dist/package.json
+
+# keep the committed env template despite .env* above
+!.env.example
+
+# Supabase CLI local run target (supabase/config.toml, `supabase start`) —
+# per-machine cache/state, never checked in.
+supabase/.temp/
+
+# AI assistant project tooling (reinstall: npx -y ui-ux-pro-max-cli init --ai claude --offline)
+.claude/
+
+# website/ — docs site (RELEASE.md §10). Static export output + fumadocs-mdx's
+# generated content collection; both are build artifacts, never source.
+website/.next/
+website/out/
+website/.source/
+
+# the Kestrel sample report, copied into website/public/ by `npm run
+# site:build` (scripts/copy-kestrel-sample.mjs) from the committed source at
+# examples/kestrel/report.html — never itself the source, never committed.
+website/public/samples/

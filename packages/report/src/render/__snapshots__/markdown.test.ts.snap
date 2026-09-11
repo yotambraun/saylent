@@ -1,0 +1,637 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`renderMarkdown > matches the fixture golden 1`] = `
+"# Kestrel Uptime · Saylent report
+
+saylent-kestrel.vercel.app · measured 09 Sept 2026 · profile smoke · 24 asked · 18 answered · 6 engine failures · 9 scored
+
+## The summary
+
+### Kestrel Uptime is in none of the 9 scored answers. Upcheck and Beacon Uptime are named most, 9 times each, and upcheck.example is the page they cite most.
+
+Recommended in 0 of 9 scored answers, and mentioned in 0 of 9. First move: Unblock the AI crawlers your buyers' engines depend on.
+
+- **0 of 9** Recommended
+- **0 of 9** Mentioned
+- **Upcheck · 9 mentions (tied)** Top rival
+
+In the 3 answers to questions that name you, the engines back you in 2.
+
+In the 6 head-to-head answers, the engines back you in 1.
+
+> This run: 24 asked · 18 answered · 6 engine failures · 9 scored. How to read the numbers: every count here is out of the scored answers, the what-to-buy and problem questions, one answer per question and engine. Branded and head-to-head questions are counted separately and labelled wherever they appear.
+
+### When buyers ask without naming me, am I in the answer?
+
+Recommended in 0 of 9 scored answers.
+
+These are your scored answers: the what-to-buy and problem questions, where a buyer who never names you can still be sent to you. Head-to-head and branded questions are counted separately.
+
+**0 of 9** Recommended
+
+**0 of 9** Mentioned but not recommended
+
+- ChatGPT: not recommended in a scored answer
+- Claude: not recommended in a scored answer
+- Gemini: not recommended in a scored answer
+- Perplexity: not recommended in a scored answer
+
+### When the engines skip me, who do they pick instead, and why?
+
+Across all question types, Upcheck appears in 7 of the 14 answers that skip you.
+
+- Upcheck: 7
+- Beacon Uptime: 5
+- Hawkeye Monitor: 4
+- Statusly: 4
+- Pingwatch: 3
+
+Across the 14 answers you never appear in, counting every question type and not only the 9 scored ones, these rivals keep coming back.
+
+> best budget/simple choice; free tier; straightforward uptime checks; good for startups
+
+_Upcheck_
+
+> simplest and strongest value option for straightforward uptime monitoring
+
+_Upcheck_
+
+> best overall for small engineering teams; bundles uptime, incident management, on-call, status pages; unlimited team members
+
+_Beacon Uptime_
+
+### Which pages decide these answers, and am I on them?
+
+8 pages 2+ engines trust cite rivals, not you.
+
+| Page | Cited | Engines | You appear | Decides |
+| --- | --- | --- | --- | --- |
+| 11 Best Uptime Monitoring Tools in 2026 (Ranked & Compared) - Upcheck Knowledge Hub (https://upcheck.example/knowledge-hub/comparisons-and-alternatives/11-best-uptime-monitoring-tools-compared/) | 5 | Claude, ChatGPT, Perplexity | no | decides q01 · q09 · q02 |
+| 10 Best Uptime Monitoring Tools 2026 (Free & Paid) \\| Amberharbour (https://amberharbour.example/en/blog/best-uptime-monitoring-tools/) | 4 | Claude, Gemini, Perplexity | no | decides q01 · q02 |
+| 5 Best Uptime Monitoring Tools in 2026 (https://fastbeacon.example/blog/best-uptime-monitoring-software-for-every-use) | 4 | Claude, Gemini, Perplexity | no | decides q01 · q02 |
+| 10 Best Uptime Monitoring Tools for 2026 - Livecheck (https://livecheck.example/uptime-monitoring-tools) | 4 | Claude, Gemini, Perplexity | no | decides q01 · q02 |
+| Best Free Uptime Tools 2026: Limits \\| Amberhollow (https://amberhollow.example/blog/best-free-uptime-monitoring-tools-2026) | 3 | Claude, Gemini, Perplexity | no | decides q02 · q01 |
+| The 11 Best Website Uptime Monitoring Tools Compared (2026) (https://brighthollow.example/blog/top-website-uptime-monitoring-tools) | 3 | Claude, Gemini, Perplexity | no | decides q02 · q01 |
+
+Each row shows how many engines cite that page. Two or more of them cite every page here, so winning one moves several engines at once. The table shows the top 6; 2 more are in the full report.
+
+### Where do the engines get their answers?
+
+82% of the pages behind your answers are best-of listicles.
+
+Where each engine drew its answers from, most-cited hosts first:
+
+| Measure | Value |
+| --- | --- |
+| ChatGPT | beacon-uptime.example, hawkeye-monitor.example, upcheck.example |
+| Claude | upcheck.example, amberharbour.example, fastbeacon.example |
+| Gemini | umberhollow.example, amberharbour.example, amberhollow.example |
+| Perplexity | amberharbour.example, amberhollow.example, brighthollow.example |
+
+82% of the pages behind these answers are best-of listicles. You appear on 0 of the 9 we could verify.
+
+### What should I fix first, and what will it move?
+
+Your top 3 moves, ranked by the evidence behind each.
+
+| # | Move | Effort | Time to impact | Engines | Draft |
+| --- | --- | --- | --- | --- | --- |
+| 1 | Unblock the AI crawlers your buyers' engines depend on | S | days–2 weeks (bots recrawl quickly once allowed) | ChatGPT, Claude, Perplexity, Gemini | ready |
+| 2 | Take back the 2 questions the engines answer without you | M | 2–4 weeks (ChatGPT) → 4–8 weeks (Gemini) (typical range) | ChatGPT, Claude, Gemini | ready |
+| 3 | Correct the record: engines repeat negative or wrong claims about Kestrel Uptime | M | 2–4 weeks (Claude) (typical range) | Claude, ChatGPT |  |
+
+2 of these moves ship with a drafted pitch. Copy it from the full plan.
+
+### For which buyers do the engines steer to someone else?
+
+Upcheck wins 4 of the 27 steer conditions the engines named.
+
+- Upcheck: 4
+- Beacon Uptime: 3
+- Hawkeye Monitor: 3
+- Fastbeacon: 2
+- Trackflow: 2
+
+You stay the default for AI-generated infra fixes / PR-oriented workflows, infra-heavy small teams with Kubernetes/cloud pain, Kubernetes/cloud RCA and remediation.
+
+> want good-enough monitoring at lowest cost/complexity: free tier and straightforward uptime checks
+
+_Upcheck · ChatGPT_
+
+> small teams needing reliable uptime alerts for websites/APIs: simplest and strongest value option; strong on value and free-plan accessibility
+
+_Upcheck · ChatGPT_
+
+> want monitoring + paging + status page in one place: bundles uptime monitoring, incident management, on-call, and status pages
+
+_Beacon Uptime · ChatGPT_
+
+> Growing SaaS startups, engineering teams, DevOps: Modern UI with built-in incident management
+
+_Beacon Uptime · Gemini_
+
+> engineers want code-driven checks and synthetic/browser testing: combines uptime with synthetic/API monitoring and Playwright-based browser checks
+
+_Hawkeye Monitor · ChatGPT_
+
+> teams that care about broken user journeys, not just uptime: built around synthetic monitoring for APIs and websites; better for validating flows like login, checkout, or critical API paths
+
+_Hawkeye Monitor · ChatGPT_
+
++13 more rivals were steered a single segment each.
+
+### What do the engines tell buyers I cost?
+
+The engines describe your fees 2 different ways.
+
+2 distinct fee claims are circulating, and buyers see whichever one their engine repeats.
+
+> free tier for one company and paid tiers scaling up to 500 companies
+
+> pricing is based on how many companies you watch, not servers or websites
+
+### Can the AI crawlers even read my site?
+
+1 blocked in a way that costs you citations; 1 more blocked by choice.
+
+Not crawled = not cited. We read saylent-kestrel.vercel.app's robots.txt on 09 Sept 2026: PerplexityBot is blocked, blocking removes Perplexity citation eligibility within hours-days
+
+3 fail · 3 warn · 2 info · 15 pass of 23 checks.
+
+Both rows are true for PerplexityBot and ClaudeBot: your server answers us, and robots.txt tells the crawler not to ask. The crawler obeys robots.txt, so the page is never fetched.
+
+| Check | State | Detail |
+| --- | --- | --- |
+| robots: PerplexityBot | fail | blocked — blocking removes Perplexity citation eligibility within hours-days |
+| JSON-LD Organization | fail | No Organization schema found on any crawled page — engines can't resolve who you are. |
+| content coverage | fail | No page on saylent-kestrel.vercel.app answers 2 of your 5 buyer questions. Top gaps: [q14] How do I solve: detecting outages before customers report them? Which tools or providers help? · [q10] the leading alternative vs another leading option: which would you pick for small engineering teams? |
+| robots: ClaudeBot | warn | blocked — feeds future Anthropic model weights; blocking is a legitimate choice |
+| JSON-LD Product | warn | No Product schema found on crawled pages. |
+| JSON-LD FAQPage | warn | No FAQPage schema found on crawled pages. |
+| robots: Google-Extended | info | not mentioned — note: it is a Gemini-training opt-out token only, not a crawler. |
+| live-fetch caveat | info | IP-verifying CDNs may treat our test differently than real bots; your server logs are ground truth. |
+| robots: GPTBot | pass | allowed |
+| robots: OAI-SearchBot | pass | allowed |
+| robots: Claude-SearchBot | pass | allowed |
+| robots: Bingbot | pass | allowed |
+| robots: ChatGPT-User | pass | allowed |
+| robots: Claude-User | pass | allowed |
+| robots: Perplexity-User | pass | allowed |
+| live fetch as OAI-SearchBot | pass | HTTP 200 |
+| live fetch as ChatGPT-User | pass | HTTP 200 |
+| live fetch as Claude-SearchBot | pass | HTTP 200 |
+| live fetch as PerplexityBot | pass | HTTP 200 |
+| live fetch as GPTBot | pass | HTTP 200 |
+| live fetch as ClaudeBot | pass | HTTP 200 |
+| homepage entity clarity | pass | "Uptime" appears in the first 800 chars. |
+| freshness | pass | No page titles carry years older than 2025. |
+
+### How do the engines describe me to buyers?
+
+The engines' main doubt: it is not a general-purpose uptime tool like Pingwatch, Upcheck…
+
+Tone in the 6 answers that name you, across every question type:
+
+| Measure | Value |
+| --- | --- |
+| Positive | 3 of 6 |
+| Neutral | 2 of 6 |
+| Negative | 1 of 6 |
+
+5 of those 6 are about a different company that shares the name Kestrel Uptime (see entity clarity).
+
+The doubts the engines repeat to buyers:
+
+> it is not a general-purpose uptime tool like Pingwatch, Upcheck, Beacon Uptime, or Watchtower Uptime
+
+_ChatGPT_
+
+> those checks do not measure how quickly any single alert reached you
+
+_ChatGPT_
+
+> I don't have much independent evidence on reliability, customer satisfaction, or speed of alerting
+
+_ChatGPT_
+
+> "Kestrel Uptime" doesn't exist (yet) — It may be a product you've heard about informally, a very new or niche tool, a rebranded product, or perhaps a name that hasn't launched publicly.
+
+_Claude_
+
+What the engines credit you for:
+
+> AI-native cloud incident response platform that monitors cloud/Kubernetes incidents, performs root-cause analysis, and can generate remediation steps or config fixes
+
+_ChatGPT_
+
+> built to detect, investigate, and fix cloud and Kubernetes incidents, with AI chat copilot, root-cause analysis, and GitOps/IaC integration
+
+_ChatGPT_
+
+> Kestrel's AI-native incident response approach is more differentiated
+
+_ChatGPT_
+
+> Kestrel may save more engineer time per incident
+
+_ChatGPT_
+
+- Claude confused you with another brand in 2 answers.
+- Gemini confused you with another brand in 2 answers.
+- ChatGPT confused you with another brand in 1 answer.
+
+### How much can I trust this?
+
+One labelled snapshot of 9 scored answers, no trend implied.
+
+This is one run, a labelled snapshot, not a trend. Movement is only ever measured by re-asking the exact same questions later and comparing the two runs.
+
+| Measure | Value |
+| --- | --- |
+| Sampled | every scored question re-asked; the number held |
+| Stable at | 0 of 9 |
+| Calls made | 24 |
+| Calls that returned nothing | 6 of 24 |
+| Scored answers | 9 |
+| What counts as scored | the what-to-buy and problem questions, one answer per question and engine; branded and head-to-head questions are counted separately |
+| Method | the same frozen questions, re-asked on every run |
+
+## The answers
+
+Verbatim excerpts of what each engine returned, with the engine and the date. They document what the AI said; they are not statements of fact.
+
+How to read the verdicts: **absent** = not in the answer at all · **mentioned / listed / compared** = named but not recommended · **recommended** = the engine tells the buyer to pick you · **dismissed** = named and ruled out · **no answer** = the call returned nothing.
+
+6 of the 24 calls returned no answer (an engine error or an empty response), so they are counted nowhere below.
+
+### q01 · What is the best Uptime Monitoring for small engineering teams?
+
+| Engine | Date | You appear | Mention | Excerpt |
+| --- | --- | --- | --- | --- |
+| ChatGPT | 09 Sept 2026 | no | absent | For small engineering teams, my best overall pick is Beacon Uptime if you want the most complete “one tool instead of three” setup. Its pricing page says the product bundles uptime monitoring, incident managemen |
+| Claude | 09 Sept 2026 | no | absent | Here's a comprehensive breakdown of the best uptime monitoring tools for small engineering teams in 2026, covering different needs and budgets: --- 🏆 Best Uptime Monitoring Tools for Small Engineering Teams (20 |
+| Gemini | 09 Sept 2026 | no answer | the call returned nothing |  |
+| Perplexity | 09 Sept 2026 | no | absent | For small engineering teams, the best uptime monitoring tool depends on whether you want simple monitoring, incident management, or status pages + on-call in one place. The strongest all-around picks in the sou |
+
+### q02 · Top Uptime Monitoring options in 2026 — which do you recommend?
+
+| Engine | Date | You appear | Mention | Excerpt |
+| --- | --- | --- | --- | --- |
+| ChatGPT | 09 Sept 2026 | no | absent | If you want the short answer for 2026: - Best for most small teams: Upcheck - Best for dev/product teams that want API + browser synthetics: Hawkeye Monitor - Best if you already use Nimbus Observe: Nimbus Observe |
+| Claude | 09 Sept 2026 | no | absent | 🖥️ Top Uptime Monitoring Tools in 2026 In 2026, there is no shortage of uptime monitoring tools. The real challenge is figuring out which one actually fits your workflow, budget, and technical requirements — without |
+| Gemini | 09 Sept 2026 | no | absent | Choosing the right uptime monitoring tool in 2026 depends heavily on your team's size, budget, technical stack, and how critical real-time alerts are to your workflow. Uptime monitoring has evolved beyond simple "is it u |
+| Perplexity | 09 Sept 2026 | no answer | the call returned nothing |  |
+
+### q09 · Kestrel Uptime vs the leading alternative — which is better for small engineering teams?
+
+| Engine | Date | You appear | Mention | Excerpt |
+| --- | --- | --- | --- | --- |
+| ChatGPT | 09 Sept 2026 | yes | recommended | If by “Kestrel Uptime” you mean Falconware AI’s incident response / cloud monitoring product, then for small engineering teams the better choice is usually Beacon Uptime… |
+| Claude | 09 Sept 2026 | yes | dismissed | I wasn't able to find any results for a product called "Kestrel Uptime" — the search results for "Kestrel" returned environmental monitoring instruments (weather meters, heat stress monitors, etc.) and a surveillance system,… |
+| Gemini | 09 Sept 2026 | yes | absent | Because "Kestrel Uptime" is not a standard standalone product, this comparison likely refers to one of two tools popular in software engineering: 1. Statusly (often… |
+| Perplexity | 09 Sept 2026 | no answer | the call returned nothing |  |
+
+### q10 · the leading alternative vs another leading option: which would you pick for small engineering teams?
+
+| Engine | Date | You appear | Mention | Excerpt |
+| --- | --- | --- | --- | --- |
+| ChatGPT | 09 Sept 2026 | no | absent | Which two options are you comparing? “the leading alternative vs another leading option” is too vague for me to give a real recommendation. If you send the two tools/platforms/frameworks, I can tell you which I’d pick f |
+| Claude | 09 Sept 2026 | no | absent | Your question is a bit open-ended — "the leading alternative vs another leading option" could refer to many tool pairs! But based on the most common comparison for small engineering teams in 2026, I'll tackle the mos |
+| Gemini | 09 Sept 2026 | no | absent | Because your question doesn't name the specific tools or technologies you are comparing (e.g., issue tracking, cloud infrastructure, or architecture), the best way to answer is by looking at the general pattern small eng |
+| Perplexity | 09 Sept 2026 | no answer | the call returned nothing |  |
+
+### q14 · How do I solve: detecting outages before customers report them? Which tools or providers help?
+
+| Engine | Date | You appear | Mention | Excerpt |
+| --- | --- | --- | --- | --- |
+| ChatGPT | 09 Sept 2026 | no | absent | To detect outages before customers report them, the winning pattern is usually: 1. Synthetic monitoring for “is the product usable right now?” 2. Real user monitoring (RUM) for “are real users degrading even |
+| Claude | 09 Sept 2026 | no | absent | Great question! Detecting outages before customers report them is a critical SRE/DevOps discipline. Here's a comprehensive breakdown of strategies, techniques, and tools to help you get ahead of incidents: --- |
+| Gemini | 09 Sept 2026 | no | absent | Detecting outages before your customers report them requires moving from reactive alerting (responding to customer tickets, support messages, or social media complaints) to a proactive multi-layered observability s |
+| Perplexity | 09 Sept 2026 | no answer | the call returned nothing |  |
+
+### q18 · What is Kestrel Uptime? Is it any good?
+
+| Engine | Date | You appear | Mention | Excerpt |
+| --- | --- | --- | --- | --- |
+| ChatGPT | 09 Sept 2026 | yes | recommended | I couldn’t find a product clearly named “Kestrel Uptime.” What I did find is Talon Alert, which appears to be a UK-focused monitoring service for company risk/events rather than a website uptime… |
+| Claude | 09 Sept 2026 | yes | recommended | It looks like "Kestrel Uptime" doesn't appear to be a specific standalone product or service. However, based on the search results, "uptime" is a concept associated with a couple of… |
+| Gemini | 09 Sept 2026 | yes | absent | "Kestrel Uptime" is likely a reference to one of a few common software, developer, or hardware technologies, as there isn't a single standalone software product by that… |
+| Perplexity | 09 Sept 2026 | no answer | the call returned nothing |  |
+
+## Cited pages
+
+| Host | URL | Title | Cited | Engines | You appear | Decides |
+| --- | --- | --- | --- | --- | --- | --- |
+| upcheck.example | https://upcheck.example/knowledge-hub/comparisons-and-alternatives/11-best-uptime-monitoring-tools-compared/ | 11 Best Uptime Monitoring Tools in 2026 (Ranked & Compared) - Upcheck Knowledge Hub | 5 | Claude, ChatGPT, Perplexity | no | q01, q09, q02 |
+| livecheck.example | https://livecheck.example/uptime-monitoring-tools | 10 Best Uptime Monitoring Tools for 2026 - Livecheck | 4 | Claude, Gemini, Perplexity | no | q01, q02 |
+| fastbeacon.example | https://fastbeacon.example/blog/best-uptime-monitoring-software-for-every-use | 5 Best Uptime Monitoring Tools in 2026 | 4 | Claude, Gemini, Perplexity | no | q01, q02 |
+| amberharbour.example | https://amberharbour.example/en/blog/best-uptime-monitoring-tools/ | 10 Best Uptime Monitoring Tools 2026 (Free & Paid) \\| Amberharbour | 4 | Claude, Gemini, Perplexity | no | q01, q02 |
+| brighthollow.example | https://brighthollow.example/blog/top-website-uptime-monitoring-tools | The 11 Best Website Uptime Monitoring Tools Compared (2026) | 3 | Claude, Gemini, Perplexity | no | q02, q01 |
+| amberhollow.example | https://amberhollow.example/blog/best-free-uptime-monitoring-tools-2026 | Best Free Uptime Tools 2026: Limits \\| Amberhollow | 3 | Claude, Gemini, Perplexity | no | q02, q01 |
+| umberhollow.example | https://umberhollow.example/blog/best-uptime-monitoring-tools/ | The 7 Best Uptime Monitoring Tools in 2026: I Tested Each \\| Umberhollow | 3 | Claude, Gemini | no | q02, q09, q18 |
+| beacon-uptime.example | https://beacon-uptime.example/pricing?utm_source=openai | Pricing \\| Beacon Uptime | 2 | ChatGPT | no | q01, q09 |
+| hawkeye-monitor.example | https://www.hawkeye-monitor.example/pricing/?utm_source=openai | Hawkeye Monitor Pricing Plans: Flexible Synthetic Monitoring Solution | 2 | ChatGPT | no | q01, q02 |
+| medium.com | https://medium.com/author-profile | medium.com | 2 | Claude | no | q01, q02 |
+| wardpost.example | https://wardpost.example/blog/top-10-uptime-monitoring-tools-in-2026-the-consolidation-era | Top 10 Uptime Monitoring Tools 2026 \\| Wardpost | 2 | Claude, Perplexity | no | q01 |
+
+## Site gates
+
+**3 fail · 3 warn · 2 info · 15 pass** of 23 checks.
+
+Both rows are true for PerplexityBot and ClaudeBot: your server answers us, and robots.txt tells the crawler not to ask. The crawler obeys robots.txt, so the page is never fetched.
+
+| Check | Status | Detail |
+| --- | --- | --- |
+| robots: PerplexityBot | fail | blocked — blocking removes Perplexity citation eligibility within hours-days |
+| JSON-LD Organization | fail | No Organization schema found on any crawled page — engines can't resolve who you are. |
+| content coverage | fail | No page on saylent-kestrel.vercel.app answers 2 of your 5 buyer questions. Top gaps: [q14] How do I solve: detecting outages before customers report them? Which tools or providers help? · [q10] the leading alternative vs another leading option: which would you pick for small engineering teams? |
+| robots: ClaudeBot | warn | blocked — feeds future Anthropic model weights; blocking is a legitimate choice |
+| JSON-LD Product | warn | No Product schema found on crawled pages. |
+| JSON-LD FAQPage | warn | No FAQPage schema found on crawled pages. |
+| robots: Google-Extended | info | not mentioned — note: it is a Gemini-training opt-out token only, not a crawler. |
+| live-fetch caveat | info | IP-verifying CDNs may treat our test differently than real bots; your server logs are ground truth. |
+| robots: GPTBot | pass | allowed |
+| robots: OAI-SearchBot | pass | allowed |
+| robots: Claude-SearchBot | pass | allowed |
+| robots: Bingbot | pass | allowed |
+| robots: ChatGPT-User | pass | allowed |
+| robots: Claude-User | pass | allowed |
+| robots: Perplexity-User | pass | allowed |
+| live fetch as OAI-SearchBot | pass | HTTP 200 |
+| live fetch as ChatGPT-User | pass | HTTP 200 |
+| live fetch as Claude-SearchBot | pass | HTTP 200 |
+| live fetch as PerplexityBot | pass | HTTP 200 |
+| live fetch as GPTBot | pass | HTTP 200 |
+| live fetch as ClaudeBot | pass | HTTP 200 |
+| homepage entity clarity | pass | "Uptime" appears in the first 800 chars. |
+| freshness | pass | No page titles carry years older than 2025. |
+
+## Fixes
+
+| Fix | Factor | Effort | Time to impact | Engines | Draft | Shipped |
+| --- | --- | --- | --- | --- | --- | --- |
+| Unblock the AI crawlers your buyers' engines depend on | access_blocked | S | days–2 weeks (bots recrawl quickly once allowed) | ChatGPT, Claude, Perplexity, Gemini | ready |  |
+| Take back the 2 questions the engines answer without you | coverage_gap | M | 2–4 weeks (ChatGPT) → 4–8 weeks (Gemini) (typical range) | ChatGPT, Claude, Gemini | ready |  |
+| Correct the record: engines repeat negative or wrong claims about Kestrel Uptime | negative_or_wrong | M | 2–4 weeks (Claude) (typical range) | Claude, ChatGPT |  |  |
+| Add Organization + Product + FAQPage JSON-LD to saylent-kestrel.vercel.app | schema_missing | S | 2–6 weeks (typical range) | ChatGPT, Claude, Perplexity, Gemini | ready |  |
+
+### Draft: Unblock the AI crawlers your buyers' engines depend on
+
+\`\`\`markdown
+# ✅ Allow AI search crawlers — robots.txt block
+#
+# Paste this into your robots.txt (or merge with existing rules).
+# Placement: before any Disallow rules that might otherwise catch these agents.
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: Claude-SearchBot
+Allow: /
+
+User-agent: Claude-User
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Perplexity-User
+Allow: /
+
+# ── Optional: training crawlers (separate decision from search crawlers) ──────
+# Unblock only if you want your content used for model training.
+# Remove the leading # on both lines to activate each one.
+#
+# User-agent: GPTBot
+# Allow: /
+#
+# User-agent: ClaudeBot
+# Allow: /
+#
+# User-agent: Google-Extended
+# Allow: /
+# ─────────────────────────────────────────────────────────────────────────────
+\`\`\`
+
+---
+
+#### 3-Step Verification Checklist
+
+##### Step 1 — Confirm the live file serves the new rules
+
+\`\`\`
+curl -A "PerplexityBot" https://saylent-kestrel.vercel.app/robots.txt
+\`\`\`
+
+Scan the output. You must see \`User-agent: PerplexityBot\` followed by \`Allow: /\` with **no** subsequent \`Disallow: /\` overriding it. Repeat the \`curl\` command substituting each agent name above.
+
+---
+
+##### Step 2 — Check your CDN's "AI bots" toggle
+
+| CDN | Where to look |
+| --- | --- |
+| Edgeshield | Security → Bots → "AI Scrapers and Crawlers" — set to **Allow** or **Managed Challenge** (not Block) |
+| Skyroute Edge | Edge configuration → Bot management rules — verify no rule matches the agent strings above |
+| Northrelay | Bot Manager → Bot definitions → confirm none of the six agents above are set to **Deny** |
+| Cloudmere CDN | WAF → Managed rule groups — check Bot Control rule group; set AI crawler actions to **Count** or **Allow** |
+
+> **Why this matters:** A CDN-level block returns a 403 before your robots.txt is even read, so fixing robots.txt alone is not enough.
+
+---
+
+##### Step 3 — Verify actual crawl access in server logs
+
+Filter your access logs for each agent string over the past 7 days:
+
+\`\`\`bash
+# ridgeproxy / Palisade access log example
+grep -iE "OAI-SearchBot|ChatGPT-User|Claude-SearchBot|Claude-User|PerplexityBot|Perplexity-User" \\
+  /var/log/ridgeproxy/access.log | awk '{print $1, $7, $9}' | sort | uniq -c | sort -rn
+\`\`\`
+
+**What to check:**
+
+- ✅ HTTP status codes should be \`200\` (or \`301\`/\`302\` to a crawlable destination) — not \`403\`, \`429\`, or \`503\`.
+- ✅ You see at least one hit from \`PerplexityBot\` within 48–72 hours of unblocking; citation eligibility can recover within hours to days of access being restored.
+- ✅ No agent appears only on paths you intended to block — if so, audit your ordered \`Disallow\` rules for unintended catch-alls.
+
+---
+
+*Note: the evidence used to inform timing claims (PerplexityBot citation recovery window) was sourced from third-party crawl-behavior data, not independently verified. Treat the hours-to-days recovery estimate as approximate.*
+
+### Draft: Take back the 2 questions the engines answer without you
+
+\`\`\`\`markdown
+# Uptime Monitoring for Small Engineering Teams: Detect Outages Before Your Customers Do
+
+Kestrel Uptime runs outside your infrastructure, checks your APIs from multiple regions to cut false alarms, and automatically updates your status page — so your team finds outages first. No per-seat pricing. No dedicated DevOps required. One tool built for lean engineering teams.
+
+---
+
+## How do I detect outages before customers report them?
+
+Kestrel Uptime monitors your APIs and endpoints from multiple regions continuously. Because it runs entirely outside your infrastructure, it catches real outages — including failures caused by third-party dependencies like Cloudmere — without relying on the same systems that just went down. When something fails, smart escalation routes the alert to the right person immediately.
+
+**How Kestrel solves this specifically:**
+
+- **Multi-region checks** confirm an outage is real before paging anyone, reducing alert fatigue from false positives
+- **External vantage point** means a failure in your cloud provider or a third-party dependency is visible to Kestrel even when your own monitoring is blind
+- **Automatic status page updates** keep customers informed without manual intervention, reducing inbound support noise during an incident
+- **Smart escalation** routes alerts to the engineer on call — not everyone on Chatterly at 2 a.m.
+
+---
+
+## Kestrel Uptime vs. the leading alternatives: which is better for small engineering teams?
+
+For small engineering teams, the right uptime monitor is the one your team will actually maintain. Enterprise-grade platforms are built on raw cloud primitives that require dedicated DevOps time most small teams don't have. Kestrel is purpose-built for lean teams: no per-seat pricing, no infrastructure to run, and setup that doesn't require a platform engineer.
+
+**Where the tradeoffs land:**
+
+| Capability | Enterprise / DIY tools | Kestrel Uptime |
+|---|---|---|
+| Infrastructure to manage | Yes — runs on your stack | No — fully external |
+| Pricing model | Per-seat or usage tiers | No per-seat pricing |
+| DevOps overhead | High (raw cloud primitives) | Minimal |
+| False-alarm reduction | Varies | Multi-region checks built in |
+| Status page automation | Manual or add-on | Automatic |
+| Third-party outage visibility | Limited if co-hosted | Visible — runs outside your infra |
+
+The common justification for choosing a hyperscaler-based solution — that Cloudmere is a known, trusted dependency — cuts both ways: when Cloudmere itself is the source of an outage, monitoring that lives inside Cloudmere is the last thing to tell you. Kestrel's external, multi-region approach is specifically designed for this scenario.
+
+---
+
+## FAQ
+
+**Q: Will Kestrel alert us when a third-party dependency like Cloudmere causes an outage, not just our own code?**
+A: Yes. Because Kestrel runs entirely outside your infrastructure, it detects failures regardless of their origin — your application code, your cloud provider, or any upstream API dependency. If your endpoint stops responding, Kestrel sees it.
+
+**Q: How does multi-region monitoring reduce false alarms?**
+A: A single-region check can flag an outage caused by a network blip local to that region. Kestrel checks from multiple regions simultaneously and only escalates when the failure is confirmed across locations, so your team isn't paged for noise.
+
+**Q: Do we need a DevOps engineer to set up and maintain Kestrel?**
+A: No. Kestrel is built for small engineering teams without dedicated platform or DevOps staff. There is no infrastructure to provision, configure, or maintain — setup is handled through the Kestrel dashboard.
+
+**Q: How does "no per-seat pricing" work in practice for a growing team?**
+A: You are not charged based on how many engineers have access to Kestrel. Adding a new team member to alerts or the dashboard does not increase your bill, which keeps costs predictable as your team scales.
+
+---
+
+\`\`\`json
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Will Kestrel alert us when a third-party dependency like Cloudmere causes an outage, not just our own code?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. Because Kestrel runs entirely outside your infrastructure, it detects failures regardless of their origin — your application code, your cloud provider, or any upstream API dependency. If your endpoint stops responding, Kestrel sees it."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How does multi-region monitoring reduce false alarms?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "A single-region check can flag an outage caused by a network blip local to that region. Kestrel checks from multiple regions simultaneously and only escalates when the failure is confirmed across locations, so your team isn't paged for noise."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Do we need a DevOps engineer to set up and maintain Kestrel?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. Kestrel is built for small engineering teams without dedicated platform or DevOps staff. There is no infrastructure to provision, configure, or maintain — setup is handled through the Kestrel dashboard."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How does no per-seat pricing work in practice for a growing team?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "You are not charged based on how many engineers have access to Kestrel. Adding a new team member to alerts or the dashboard does not increase your bill, which keeps costs predictable as your team scales."
+      }
+    }
+  ]
+}
+\`\`\`\`
+
+> **Page schema note:** This page should carry \`@type: FAQPage\` JSON-LD (stub above) plus a \`WebPage\` or \`SoftwareApplication\` type for the product entity.
+
+\`\`\`
+
+\`\`\`
+
+### Draft: Add Organization + Product + FAQPage JSON-LD to saylent-kestrel.vercel.app
+
+Paste-ready JSON-LD for the schema types missing on saylent-kestrel.vercel.app: Organization, Product, FAQPage. Fields come only from your brand model — verify any value marked TODO-VERIFY before shipping; never publish an invented fact.
+
+**Organization** (add to your homepage \`<head>\`):
+
+\`\`\`html
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "Kestrel Uptime",
+  "url": "https://saylent-kestrel.vercel.app",
+  "description": "Kestrel Uptime — Uptime Monitoring"
+}
+</script>
+\`\`\`
+
+**Product** (add to your main product page):
+
+\`\`\`html
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Product",
+  "name": "Uptime Monitoring (HTTP, TCP, Heartbeat, Certificate checks)",
+  "brand": {
+    "@type": "Brand",
+    "name": "Kestrel Uptime"
+  },
+  "url": "https://saylent-kestrel.vercel.app",
+  "category": "Uptime Monitoring"
+}
+</script>
+\`\`\`
+
+**FAQPage** (add to a page that answers buyer questions; replace the TODO-VERIFY answer with a real, sourced sentence):
+
+\`\`\`html
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "What is Kestrel Uptime?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "TODO-VERIFY: one-sentence description of Kestrel Uptime (Uptime Monitoring)."
+      }
+    }
+  ]
+}
+</script>
+\`\`\`
+
+---
+
+Measured on 09 Sept 2026: 24 asked · 18 answered · 6 engine failures · 9 scored. Engine answers vary between runs; scores are directional. This report records what the assistants answered on this date. It is not an assessment of the company named.
+
+Saylent is the open-source audit of what AI assistants say about your brand, with the receipts. Docs: https://yotambraun.github.io/saylent/ · Code: https://github.com/yotambraun/saylent
+
+\`\`\`
+npx saylent audit <your domain>
+\`\`\`
+"
+`;

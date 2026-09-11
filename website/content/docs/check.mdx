@@ -1,0 +1,169 @@
+---
+title: Instant check
+description: The free, keyless AI-access check on this site - what it reads, what it cannot know, and the API behind it.
+---
+
+Once the check service is deployed and its URL is configured, a box appears on
+the [home page](/): type a domain and you get an answer in a few seconds - which
+AI crawlers your site lets in, and which ones it turns away without telling you.
+Until then the home page prints the equivalent `saylent gate-check` command
+instead.
+
+No sign-up, no keys, no LLM calls, nothing stored. It runs the same code as
+`saylent gate-check`, so the verdict you see here is the verdict you get in your
+own terminal.
+
+The widget on the home page is a thin client over a separately deployed
+service (`services/instant-check`), pointed at by `NEXT_PUBLIC_INSTANT_CHECK_URL`
+(set after deploying the service - see [Environment
+variables](/docs/self-host/environment)). Unset - a fork, a local `npm run
+site:dev`, or before the service is deployed - the widget degrades to
+printing the `saylent gate-check` command instead of showing a broken input.
+
+## What it checks
+
+Four rows, the same four the CLI prints.
+
+| Row | What it reads | Why it matters |
+|---|---|---|
+| **robots.txt** | Every crawler in the bot registry, grouped as training / search-index / user-fetch | A blocked **training** bot is a legitimate choice. A blocked **search-index** or **user-fetch** bot silently removes you from AI answers |
+| **live probe** | A real HTTP request to your site as each crawler's exact User-Agent | robots.txt can say "allowed" while your CDN or WAF returns 403 to the same agent. Only a live fetch finds that |
+| **JSON-LD** | Organization, Product and FAQPage schema on the pages it crawled | Schema is how an engine resolves *who you are* rather than guessing |
+| **meta** | `noindex` and `nosnippet` directives on those pages | `noindex` kills AI-search visibility outright; `nosnippet` means you can be indexed but never quoted |
+
+The verdict is the worst of those four: **pass**, **warn** or **fail**.
+
+## What it cannot know
+
+This is the honest half, and it is the reason the check is free.
+
+- **It reads your gates, not your answers.** It cannot tell you whether ChatGPT,
+  Claude, Gemini or Perplexity actually recommend you, who they recommend
+  instead, or which sources they cite. That is what `saylent audit` is for - it
+  asks the engines real buyer questions and scores what comes back.
+- **A 200 to our User-Agent is evidence, not proof.** Some CDNs decide by IP
+  range as well as by name; an engine fetching from its own network can still be
+  refused. The live probe finds the common failure, not every one.
+- **It crawls three pages**, starting at your site root, because the hosted check
+  has a ten-second budget. `saylent gate-check` crawls five and the full audit
+  crawls far more, so both can find schema this misses. robots.txt and the live
+  probe are identical either way.
+- **It does not check content coverage or entity clarity.** Both need a brand
+  model and a generated question set, which need an LLM call. They belong to the
+  full audit, not to a keyless check - reporting them here would mean reporting
+  a warning about nothing.
+- **It is a snapshot.** Gates change when your CDN config changes. `saylent
+  verify` is how you watch that over time.
+
+Run the whole thing yourself, with no rate limit and more of your site read:
+
+```bash
+npx saylent gate-check example.com   # the same check, $0, no keys
+npx saylent audit example.com        # what the engines actually say (needs one key)
+```
+
+## The API
+
+The widget is a thin client over one public endpoint. It is a plain GET, so
+`curl` works as well as a browser.
+
+```bash
+curl "https://<service>/api/check?domain=example.com"
+```
+
+| | |
+|---|---|
+| **Method** | `GET` (plus `OPTIONS` for the CORS preflight). Anything else is `405` |
+| **Query** | `domain` - a public hostname. `example.com`, `www.example.com` and `https://example.com` all normalise to the same value |
+| **Rejected** | IP addresses, `localhost`, `.local` / `.internal` / `.lan` / `.onion` and friends, ports, paths, query strings, credentials, non-http schemes, anything over 253 characters |
+| **CORS** | Browser reads are allowed from this docs site only. A server-side caller (curl, your own script) has no Origin and is unaffected |
+
+A successful response:
+
+```json
+{
+  "domain": "example.com",
+  "result": "warn",
+  "robots": {
+    "status": "warn",
+    "readable": true,
+    "training": [{ "agent": "GPTBot", "status": "warn", "detail": "blocked - feeds future OpenAI model weights; blocking is a legitimate choice" }],
+    "search":   [{ "agent": "OAI-SearchBot", "status": "pass", "detail": "allowed" }],
+    "user":     [{ "agent": "ChatGPT-User", "status": "pass", "detail": "allowed" }],
+    "notes": ["Google-Extended present - a training token, not a crawler"]
+  },
+  "probe": {
+    "status": "pass",
+    "agents": [{ "agent": "OAI-SearchBot", "http": "200", "status": "pass", "detail": "HTTP 200" }],
+    "notes": ["a 200 to our User-Agent is evidence, not proof"]
+  },
+  "jsonld": {
+    "status": "warn",
+    "checked": true,
+    "types": [{ "type": "Organization", "present": true, "status": "pass", "detail": "present" }]
+  },
+  "meta": { "status": "pass", "checked": true, "noindex": false, "nosnippet": false, "findings": [] },
+  "notes": [],
+  "checked_at": "2026-09-09T12:00:00.000Z",
+  "cached": false,
+  "elapsed_ms": 4820,
+  "pages_crawled": 3
+}
+```
+
+`jsonld.checked` and `meta.checked` are `false` when not one page of the site
+could be read at all (a WAF blocked us, the site was unreachable, the crawl
+timed out). When that happens `types` and `findings` come back empty and both
+sections report `"warn"` - never `"pass"` - so a blocked site cannot look
+clean. `notes` carries the reason. This mirrors `saylent gate-check`'s own
+honesty guard: an empty crawl is reported as "not checked," not as "checked
+and fine."
+
+`checked_at` is when the check actually ran. On a cache hit `cached` is `true`
+and `checked_at` stays at the original time - it is never rewritten to look
+fresher than it is.
+
+Every error has the same shape:
+
+```json
+{ "error": { "code": "rate_limited", "message": "...", "retry_after": 12 } }
+```
+
+| Status | `code` | When |
+|---|---|---|
+| `400` | `missing_domain` | No `?domain=` |
+| `422` | `invalid_domain` | Not a public hostname (the message says why) |
+| `429` | `rate_limited` | Over the per-IP limit. `retry_after` and the `Retry-After` header carry the wait in seconds |
+| `405` | `method_not_allowed` | Not a GET |
+| `504` | `timeout` | The site did not answer within ten seconds |
+| `502` | `check_failed` | The check itself failed |
+
+## Rate limit and cache
+
+**Five checks per IP, refilling one every twelve seconds.** Over that you get a
+`429` with `Retry-After`. It is a politeness limit, not a security control: it
+lives in one server instance's memory, so a burst that lands on a second
+instance gets its own allowance. If you want volume, run the CLI - it has no
+limit at all and never asks us for anything.
+
+**One check per domain per 24 hours.** A repeat within that window is answered
+from cache (`"cached": true`) and never touches the site again - so re-checking
+costs the site owner nothing, and costs you no rate-limit token either.
+
+## Privacy
+
+We log a counter and nothing else.
+
+- No domain, no IP address, no User-Agent, no request body is written to any
+  store. The service has no database.
+- Nothing is sent to any third party. The only outbound requests are to the site
+  you asked about - its `robots.txt`, its home page, and a handful of pages
+  linked from it.
+- Those requests identify themselves honestly, as a crawler with a contact URL.
+  They are subject to the same SSRF guard the CLI uses, so a hostname that
+  resolves to a private address is never fetched.
+- There is no cookie, no analytics tag and no account. Nothing about your check
+  can be traced back to you later, because nothing about it was kept.
+
+If you would rather not send us the domain at all, that is exactly what the CLI
+is for: `npx saylent gate-check <domain>` talks only to your own site.

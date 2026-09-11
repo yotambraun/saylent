@@ -1,0 +1,93 @@
+---
+title: What it costs
+description: Real numbers, by profile and engine count, before you run anything.
+---
+
+Saylent runs on your own provider keys - every dollar goes to OpenAI,
+Anthropic, Google, or Perplexity directly, never through us. The CLI always
+prints its estimate and asks you to confirm before it sends anything.
+
+## By profile
+
+| Profile | Questions | What it does | Estimated cost |
+|---|---|---|---|
+| `smoke` (default) | 6 | A quick read: is the brand present at all - the two required engines, or all four | **about $0.40 to $1.20 with four engines** |
+| `full` | 23 | The complete question set across up to 4 engines, for a real gate or a client report | **$2.50 to $4.00** |
+
+Two real recorded runs: `smoke` audits of a fictional test brand across all
+four engines (cross-family judge, one draw per scored question, since
+`smoke` samples once) cost **$0.93** in 392 seconds and **$1.11** in 232
+seconds - both inside the printed estimate range. That's the honest shape of the number: the CLI's
+estimate is a range because sampling itself is variable, and the run's
+*actual* cost is always what gets recorded and shown to you, never the
+estimate.
+
+## What drives the cost
+
+- **Engine count.** Each additional answer engine (Gemini, Perplexity) adds
+  its own answer calls on top of the two required ones.
+- **Draws per question.** Only `category` and `problem` questions are
+  scored. `smoke` takes **1 draw** per engine, no tiebreak. `full` takes
+  **2 draws** per engine, with a 3rd only when the first two disagree - most
+  scored questions on `full` cost 2 draws, not 3.
+- **Samples.** `--samples <n>` (1-5, also `AUDIT_SAMPLES` or `saylent.config`
+  `sampling`) directly scales the printed estimate before you spend anything
+  - raising it beyond 2 asks every scored question more times per engine and
+  always majority-votes over every draw it takes, with no separate tiebreak
+  step.
+- **The judge.** One judge call per answer, on the cheaper "judge" tier
+  model, not the answering model.
+- **Fixes.** A handful of drafted artifacts (the top-ranked fixes only), one
+  call each.
+- **The brand model.** One call, roughly $0.02, built once per audit (or
+  reused verbatim on a `verify`).
+
+## The daily cap
+
+A local ledger at `~/.saylent/spend.json` tracks what you've spent today and
+refuses to start a run that would push you over `DAILY_SPEND_CAP_USD`
+(default **$20**) - raise it, lower it, or override a single run with
+`--max-usd <n>`. The self-hosted app has the same idea at the deployment
+level: an operator-set daily cap that pauses every run (not just new ones)
+when crossed.
+
+## See the cost before you spend anything
+
+```bash
+npx saylent audit example.com --dry-run
+```
+
+Prints the full preflight block - keys, engines, judge mode, the cost
+estimate - and exits. $0 sent to any provider.
+
+```bash
+npx saylent questions example.com --no-brand-model --print
+```
+
+Prints the question set itself for $0 and no keys at all (template defaults
+instead of a brand-model call), so you can see exactly what would be asked
+before spending anything on answers.
+
+## How to reduce it
+
+- Stay on `smoke` for iterating; save `full` for a gate or a client-facing
+  report.
+- Use one provider (`OPENAI_API_KEY` or `ANTHROPIC_API_KEY` alone) while
+  testing your setup - the report says `judge_mode: single-family` and the
+  band is honestly wider, but nothing else changes, and it's roughly half
+  the cost of cross-family.
+- `saylent verify` reuses the frozen question set and answering pattern from
+  the baseline, so it costs about the same as the original `smoke` run -
+  there's no separate "cheap re-check" mode, because the whole point is
+  asking the identical questions again.
+- Skip engines you don't need: `--engines chatgpt,claude` runs exactly the
+  two required ones.
+- `--skip drafts` drops the single most expensive stage per run (the drafter
+  writes copy-ready artifacts for the top fixes) - diagnosis still runs, so
+  the fix plan is unchanged except for the drafted copy. `--skip corpus,gates`
+  cost $0 in LLM spend either way (they're fetches and deterministic checks,
+  not billed roles), but skip them anyway to save the time. Preflight and
+  `--dry-run` show the lower estimate before you commit.
+
+See [What gets sent to providers](/docs/data-sent) for exactly what those
+dollars buy - no cost is hidden behind a call the docs don't mention.

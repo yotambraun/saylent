@@ -1,0 +1,72 @@
+---
+title: The Saylent crawler
+description: What SaylentAudit reads when someone runs an audit, its User-Agent string, its rate, and how to allow or block it.
+---
+
+When someone runs `npx saylent audit <domain>` (or the equivalent in the
+self-hosted app) against a site, the engine reads a handful of that site's own
+pages to build the brand model and the evidence corpus a report is grounded
+in. This page is what a site owner needs: what gets read, how the requests
+identify themselves, how fast they run, and how to allow or block them.
+
+It is not a background crawler. It never visits a domain on its own - only
+when a person explicitly runs an audit, a gate-check, or a verify against that
+domain.
+
+## What it reads
+
+Up to **25 pages** for a full audit, **8** for a smoke run - the homepage
+first, then internal links the crawler judges relevant to a buyer's
+decision (pricing, product, features, comparisons, docs, about). It also
+reads `robots.txt` and `sitemap.xml` to find those links, and stops at a few
+hundred candidate URLs either way. See [Methodology](/docs/methodology) for
+what the pages are used for once fetched.
+
+## The User-Agent string
+
+```
+Mozilla/5.0 (compatible; SaylentAudit/<version>; +https://yotambraun.github.io/saylent/docs/crawler)
+```
+
+`<version>` is the running `@saylent/engine` package version. The contact URL
+in the UA string always points here, to this page - not to a form, an email
+address, or a domain we don't own.
+
+A self-hosted deployment can (and should) identify itself instead: set
+`SAYLENT_USER_AGENT` to your own string (your domain, your own contact URL) -
+see [Environment variables](/docs/self-host/environment). A request that can't
+be traced back to whoever is running it is the thing every "please block us"
+support thread is about.
+
+## Rate
+
+**One page at a time, with a 200ms politeness delay between requests** - a
+25-page full audit takes at least 5 seconds of crawl time, never a burst.
+Each response body is capped (~2MB) and the whole crawl gives up on a page
+rather than retrying indefinitely.
+
+## How to allow it
+
+Nothing special - the crawler behaves like any well-mannered scraper: one
+identifiable UA, one request at a time, a small, bounded number of pages per
+run. If your CDN or WAF challenges unrecognized user agents, add the UA
+string above (or your own override) to whatever allow-list you use for
+legitimate tools.
+
+## How to block it
+
+The crawler only runs when someone points an audit at your domain, so the
+first question is usually "who, and why" (see Contact below) rather than
+"how do I block it." If you do want to block it outright: match on the UA
+string at your edge (CDN, WAF, or reverse proxy) the same way you'd block any
+other named scraper - a 403 to that UA is enough, no robots.txt entry
+required, since the fetch discipline above already gives up on a failed page
+rather than retrying around a block.
+
+## Contact
+
+Saylent is open source with no dedicated domain or support inbox. If a crawl
+against your site caused a problem, or you want to report abuse of the
+`SaylentAudit` UA string, [open a GitHub
+issue](https://github.com/yotambraun/saylent/issues/new) - that's the only
+contact channel, and it's read by the maintainer.

@@ -1,0 +1,49 @@
+# Runs scripts/provider-status.ts on the MAINTAINER's own provider keys, weekly and
+# on demand. Writes website/public/status/status.json (one minimal call per
+# configured provider — see the script header for the exact cost shape) and
+# commits ONLY that file straight to main, dated "works with these models" for
+# website/content/docs/status.mdx to statically import at the next Pages build.
+#
+# A provider secret left unset is not an error — the script reports it
+# "not_configured" and moves on, so this workflow is safe to run with any
+# subset of the four provider secrets populated.
+name: Provider status
+on:
+  schedule:
+    # Weekly, Monday 07:00 UTC (after the Action self-test's 06:00 slot).
+    - cron: "0 7 * * 1"
+  workflow_dispatch:
+# Least-privilege token: read the repo, write only the one file this job commits.
+permissions:
+  contents: write
+concurrency:
+  group: provider-status
+  cancel-in-progress: false
+jobs:
+  status:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Run provider status check
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          PERPLEXITY_API_KEY: ${{ secrets.PERPLEXITY_API_KEY }}
+        run: npx tsx --tsconfig scripts/tsconfig.json scripts/provider-status.ts
+      - name: Commit status.json (path-scoped)
+        run: |
+          if git diff --quiet -- website/public/status/status.json; then
+            echo "No change in provider status; nothing to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add website/public/status/status.json
+          git commit -m "chore: weekly provider status refresh"
+          git push
