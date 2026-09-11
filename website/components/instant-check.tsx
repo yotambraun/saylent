@@ -239,7 +239,12 @@ export function InstantCheck({ serviceUrl = SERVICE_URL }: { serviceUrl?: string
     setError(null);
     setResult(null);
     try {
-      const res = await fetch(`${serviceUrl}?domain=${encodeURIComponent(value)}`, {
+      // the variable is the service's BASE url (docs, .env.example); accept the
+      // full endpoint too, so neither form breaks the widget
+      const endpoint = /\/api\/check\/?$/.test(serviceUrl)
+        ? serviceUrl.replace(/\/$/, "")
+        : `${serviceUrl.replace(/\/+$/, "")}/api/check`;
+      const res = await fetch(`${endpoint}?domain=${encodeURIComponent(value)}`, {
         headers: { accept: "application/json" },
       });
       const body = (await res.json()) as InstantCheckResult | { error: { message: string; retry_after?: number } };
