@@ -72,9 +72,10 @@ jobs:
           if [ -n "${NPM_TOKEN}" ]; then
             echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
           fi
+          # "./" matters: a bare owner/name is a GitHub shorthand to npm, not a folder
           for pkg in packages/cli packages/engine packages/report; do
             echo "Publishing ${pkg}"
-            npm publish "${pkg}" --provenance --access public
+            npm publish "./${pkg}" --provenance --access public
           done
 
       - name: Extract release notes from CHANGELOG.md
