@@ -19,8 +19,8 @@
 <p align="center">
   <a href="https://github.com/yotambraun/saylent/actions/workflows/ci.yml"><img src="https://github.com/yotambraun/saylent/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://www.npmjs.com/package/saylent"><img src="https://img.shields.io/npm/v/saylent" alt="npm version"></a>
-  <a href="https://www.npmjs.com/package/saylent"><img src="https://img.shields.io/npm/dm/saylent" alt="npm downloads per month"></a>
-  <a href="https://www.npmjs.com/package/saylent"><img src="https://img.shields.io/npm/dt/saylent" alt="npm downloads, all time"></a>
+  <a href="https://www.npmjs.com/package/saylent"><img src="https://img.shields.io/npm/dm/saylent?label=downloads%2Fmonth" alt="npm downloads per month"></a>
+  <a href="https://www.npmjs.com/package/saylent"><img src="https://img.shields.io/npm/dt/saylent?label=downloads%20total" alt="npm downloads, all time"></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/yotambraun/saylent" alt="License Apache-2.0"></a>
 </p>
 

@@ -4,6 +4,13 @@ All notable changes to Saylent are documented in this file. The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this
 project uses [Semantic Versioning](https://semver.org/).
 
+## [0.1.1] - 2026-09-13
+
+### Fixed
+
+- The GitHub Action is consumed as `yotambraun/saylent@v0`, the floating tag that follows this 0.x line; the README shipped inside the npm package said `@v1`.
+- The CLI's `bin` entry is stored in the form npm expects, so publishing no longer reports an auto-correction.
+
 ## [0.1.0] - 2026-09-11
 
 First public release. Saylent is an open-source audit of what AI assistants
@@ -63,4 +70,5 @@ and a fix.
   methodology behind what is measured, sampled, and diagnosed, and what is
   explicitly not claimed.
 
+[0.1.1]: https://github.com/yotambraun/saylent/releases/tag/v0.1.1
 [0.1.0]: https://github.com/yotambraun/saylent/releases/tag/v0.1.0

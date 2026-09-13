@@ -1,6 +1,6 @@
 {
   "name": "@saylent/engine",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": false,
   "description": "The pure audit pipeline behind Saylent: run AI-visibility audits from your own code, with zero app-framework dependencies.",
   "license": "Apache-2.0",

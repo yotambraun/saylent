@@ -1,6 +1,6 @@
 {
   "name": "@saylent/action",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
   "description": "saylent/gate-check GitHub Action - the $0, no-LLM, no-keys AI-access gate as a CI step.",

@@ -1,6 +1,6 @@
 {
   "name": "saylent",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": false,
   "type": "module",
   "description": "Audit what AI assistants say about your brand, with the receipts.",

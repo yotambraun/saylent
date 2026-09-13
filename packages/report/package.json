@@ -1,6 +1,6 @@
 {
   "name": "@saylent/report",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": false,
   "description": "Render a Saylent audit report - HTML or Markdown - from a run bundle, with no app and no model calls.",
   "license": "Apache-2.0",
