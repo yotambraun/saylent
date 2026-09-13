@@ -65,13 +65,14 @@ jobs:
       # version, files/exports); this step does not edit those files, so a
       # release requires the version already bumped in each package.json
       # ahead of tagging.
+      # actions/setup-node (registry-url above) points npm at its own config file,
+      # which reads the token from NODE_AUTH_TOKEN; a hand-written ~/.npmrc is
+      # ignored, and npm would publish anonymously (the registry answers 404).
+      # An empty NODE_AUTH_TOKEN falls through to OIDC trusted publishing.
       - name: Publish packages
         env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          if [ -n "${NPM_TOKEN}" ]; then
-            echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
-          fi
           # "./" matters: a bare owner/name is a GitHub shorthand to npm, not a folder
           for pkg in packages/cli packages/engine packages/report; do
             echo "Publishing ${pkg}"
