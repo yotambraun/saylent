@@ -17,7 +17,7 @@ jobs:
   ai-access:
     runs-on: ubuntu-latest
     steps:
-      - uses: yotambraun/saylent@v1
+      - uses: yotambraun/saylent@v0
         with:
           domain: example.com
 ```

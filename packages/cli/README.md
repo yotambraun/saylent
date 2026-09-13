@@ -48,7 +48,7 @@ Every other flag, and the `verify`, `history`, `report`, `keys`, `models`,
 - **This command.** No install, no account, no database.
   [Quickstart](https://yotambraun.github.io/saylent/docs/quickstart)
 - **The app, on your own infrastructure.** History across runs, scheduled verifies, a fixes tracker, rival comparison and an operator console with spend caps. [Self-host](https://yotambraun.github.io/saylent/docs/self-host)
-- **The GitHub Action.** `yotambraun/saylent@v1` runs the AI-access checks on every push. No LLM calls, no API keys, $0. [Integrations](https://yotambraun.github.io/saylent/docs/integrations)
+- **The GitHub Action.** `yotambraun/saylent@v0` runs the AI-access checks on every push. No LLM calls, no API keys, $0. [Integrations](https://yotambraun.github.io/saylent/docs/integrations)
 - **The docs.** Methodology, costs, what is sent where, and how to extend it. [Docs](https://yotambraun.github.io/saylent/docs)
 
 `import { runAudit } from "@saylent/engine"` and `saylent mcp` expose the same

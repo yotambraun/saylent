@@ -222,7 +222,7 @@ log notifications while it runs.
 
 ## GitHub Action
 
-`yotambraun/saylent@v1` runs the same fast, $0, no-LLM, no-keys check as
+`yotambraun/saylent@v0` runs the same fast, $0, no-LLM, no-keys check as
 `saylent gate-check` (see the [CLI reference](/docs/cli)) as a CI step: robots.txt
 per bot class (training, search-index, user-fetch), a live per-user-agent probe,
 JSON-LD presence, and meta directives. It writes an "AI access" status badge SVG
@@ -244,7 +244,7 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
-      - uses: yotambraun/saylent@v1
+      - uses: yotambraun/saylent@v0
         id: gate
         with:
           domain: example.com
