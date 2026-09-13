@@ -27,7 +27,7 @@
     "audit"
   ],
   "bin": {
-    "saylent": "./dist/saylent.js"
+    "saylent": "dist/saylent.js"
   },
   "files": [
     "dist",
