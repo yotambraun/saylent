@@ -11,10 +11,13 @@
 // Chromium.
 //
 // HONESTY NOTES — read these before changing a number here:
-//   * Every count comes from run.json: 23 questions frozen, 6 asked on smoke
-//     (24 answers / 4 engines), 24 draws, 112 citations, 11 corpus pages, 23
-//     domain checks, 4 fixes, and the 0-of-9 verdict. The closing Total is the
-//     run's own start/end timestamps and its own est_cost_usd.
+//   * Every count comes from run.json, read at build time — none of them is
+//     typed here: questions frozen, questions asked on smoke (answers /
+//     engines), draws, citations, corpus pages, domain checks, fixes, and the
+//     verdict ("recommended N of M scored answers"). For the sample bundle
+//     shipping today those come out as 23 frozen / 6 asked / 24 draws / 204
+//     citations / 11 pages / 23 checks / 8 fixes / 0 of 11. The closing Total
+//     is the run's own start/end timestamps and its own est_cost_usd.
 //   * run.json does NOT carry per-stage durations, so the stage lines show
 //     real counts and NO elapsed column, and the live engines line shows no
 //     running-cost column either (the real CLI prints one only once measured
@@ -23,7 +26,7 @@
 //     preflight.ts's estimateCostRange() returns for smoke with all four
 //     engines: answers 1.3c-4c x 24 draws, plus brand 2c, judge 0.4c/call and
 //     drafter 2.5c x 2 (run-audit.ts ROLE_COST_CENTS) => $0.38-$1.13. The
-//     recorded run cost $0.93, inside that range.
+//     recorded run cost $1.11, inside that range.
 //   * The two engine-failure lines use the CLI's own wording for the kinds
 //     this bundle's errors state (Gemini HTTP 503 = server, Perplexity HTTP
 //     429 = rate_limit; errors.ts MESSAGES). The bundle predates the adapters
@@ -225,7 +228,13 @@ function frameSvg(lines, height, { caret = false } = {}) {
  *  line under it, so the recording does not open on a dead beat. */
 function storyboard(lines) {
   const frames = [];
-  for (let i = 1; i <= lines.length; i += 1) {
+  // Open on the whole preflight block (through "Run it? [Y/n] y"), so the still
+  // first frame a README or a landing page shows is the command and its plan,
+  // not an empty terminal; the stages then arrive one by one.
+  const runIt = lines.findIndex((l) => /Run it\?/.test(l.text));
+  const start = runIt >= 0 ? runIt + 1 : 1;
+  frames.push({ lines: lines.slice(0, start), delay: 1400, caret: false });
+  for (let i = start + 1; i <= lines.length; i += 1) {
     const last = lines[i - 1];
     if (last.text === "" && i !== lines.length) continue;
     const isPause = last.tone === "signal" || last.tone === "prompt" || /^  0[19] /.test(last.text);

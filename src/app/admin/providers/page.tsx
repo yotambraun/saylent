@@ -18,7 +18,7 @@ import {
 } from "@/lib/provider-settings";
 import { KeysPanel, ModelsPanel } from "./providers-client";
 
-export const metadata = { title: "Providers & models · Admin · Saylent" };
+export const metadata = { title: "Providers & models · Operator console · Saylent" };
 
 export default async function AdminProvidersPage() {
   await requireAdmin();

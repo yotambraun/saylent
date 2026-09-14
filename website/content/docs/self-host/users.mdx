@@ -1,0 +1,69 @@
+---
+title: Users and access
+description: Who can create an account on your deployment, how to limit that, how a teammate joins, and what a user can do next to an operator.
+---
+
+A deployment you put on the internet is reachable by whoever finds it. This
+page is exactly who can get in, the three ways to narrow that, and what the
+accounts that do get in are allowed to do.
+
+## Who can sign up
+
+Anyone who can reach your `/login` page can create an account. The sign-in
+card offers whichever methods `NEXT_PUBLIC_AUTH_METHODS` lists - a
+comma-separated set of `password`, `magic-link` and `google`, defaulting to
+`password,magic-link` - and the password path creates the account directly.
+There is no invite code, no allowlist and no email-domain restriction in the
+app, and no feature flag that adds one. If your deployment is on a public URL,
+treat it as open to the public.
+
+Three ways to limit that, in order of how much they cost you:
+
+1. **Do not put it on a public URL.** A deployment behind your own network, or
+   behind your platform's access protection, is only reachable by people you
+   already let in. This is the only one that stops an account being created in
+   the first place.
+2. **Close signups in Supabase.** Sign-ups are your Supabase project's `auth`
+   setting (`enable_signup`, on by default), not an app setting. Turning it
+   off closes them for everyone, including you, so sign up yourself and check
+   that you have the operator role before you flip it.
+3. **Disable the account afterwards.** In the operator console, open the user
+   and press Disable account. Sign-in stops immediately and nothing is
+   deleted. This is a reaction, not a gate - the account, and anything it
+   already ran, existed first.
+
+Whatever you choose, check the Operator account row on `/setup`. A deployment
+with accounts but no admin hands `/admin` to whoever signs up next.
+
+## How a teammate joins
+
+They open your deployment's URL and sign up like anyone else. There is no
+invite flow to send. Once they have signed up you see them under Users in the
+operator console, with their spend and last activity, and you can open their
+account, re-run a brand for them, or generate a sign-in recovery link if they
+lock themselves out.
+
+Tell them the URL, and tell them to use the email address you expect. That is
+the whole process.
+
+## What a normal user can and cannot do
+
+A normal user owns their own brands and runs and nothing else. Row-level
+security in Postgres, not a UI check, is what makes another user's rows
+invisible to them.
+
+| | A user | An operator |
+|---|---|---|
+| Add brands, run audits and verifies, read their own reports | Yes | Yes |
+| Publish, revoke, export and print their own reports | Yes | Yes |
+| See anyone else's brands, runs or reports | No | Yes, through the console |
+| See the `/admin` link, or reach any `/admin` page | No, they are redirected to `/app` | Yes |
+| Change the spend cap, the kill switch, provider keys or models | No | Yes |
+| Change their own throttles or brand limit | No. `/app/settings/limits` shows them read-only, as "your limits, set by your operator" | Only by changing the environment variable for everyone |
+| Promote another admin | No | Yes, with `scripts/grant-admin.ts` against the database |
+
+## How many brands per user
+
+Five, by default. `BRAND_LIMIT` sets it, deployment-wide, for every account.
+A user at the cap is told to edit or remove one, or to ask you to raise the
+limit. The count and the cap are both shown on the user's page in the console.

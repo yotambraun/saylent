@@ -1,0 +1,97 @@
+---
+title: Verify and history
+description: Ship a fix, ask the same frozen questions again, and read what moved - plus every run you have in one folder.
+---
+
+An audit is one date. The measurement starts on the second run: the same
+questions, the same engines, after you changed something. `saylent verify`
+does that, and `saylent history` is the list of every run you have kept.
+
+## Ship a fix, then re-ask
+
+```bash
+npx saylent verify ./example.com/2026-09-14/run.json --yes
+```
+
+That is the whole command. It takes the baseline bundle, reuses its **frozen
+question set verbatim** - it never generates a new one - asks the same engines
+again, and writes a movement report instead of a fresh audit.
+
+It costs about what the original run cost, because it is the same questions
+asked again. There is no cheaper re-check mode, because asking different
+questions would not be a re-check.
+
+A verify never crawls your site, never fetches the pages an answer cites, and
+never runs the site-gate checks. `--user-agent`, `--max-pages`,
+`--allow-private`, `--locale` and `--skip` are accepted for parity with
+`audit` and have no effect here. The full flag list is in
+[the CLI reference](/docs/cli#saylent-verify-runjson).
+
+## When verify refuses to run
+
+Verify compares two runs of the *same* question set, so it stops rather than
+compare two different ones. It refuses when the question templates have
+changed since the baseline was frozen - you edited `questionTemplates` in
+`saylent.config.*`, or the shipped template library changed in a newer CLI
+version.
+
+Two ways out, and you pick deliberately:
+
+- Re-baseline: run `saylent audit` again against the current templates and
+  measure from there.
+- Revert the `questionTemplates` change and verify against the config that
+  produced the baseline.
+
+The resolved sample count is checked the same way. Pass `--samples` explicitly
+- the baseline's own count, or a new one - to proceed at a count that differs
+from the baseline's default.
+
+Editing the questions is therefore the one change to make *before* the audit
+you want to measure from, never after.
+
+## Where the movement report lands
+
+A verify writes into a dated folder beside the baseline's own folder, so it
+never overwrites what it is comparing against. A baseline at
+`./example.com/2026-09-14/run.json` verified on 15 October writes
+`./example.com/2026-10-15/movement.html` and a new
+`./example.com/2026-10-15/run.json` (`kind: "verify"`).
+
+`movement.html` shows what changed since the baseline: which answers newly
+named you, which recommendation count moved, whether a blocked bot is now
+allowed. It never claims the fix caused the movement - a movement after a fix
+is correlation, and the report says so. The reasoning behind the band and what
+is deliberately not claimed is in [Methodology](/docs/methodology).
+
+Exit codes match `audit`: `0` every engine answered, `1` the run failed
+outright, `2` the run completed but at least one requested engine returned no
+answers.
+
+## Every run in one folder
+
+```bash
+npx saylent history ./example.com
+```
+
+```
+  2026-09-09  smoke  present 2/6  recommended 0   $0.51
+  2026-09-16  verify present 5/6  recommended 2   $0.44   ▲
+```
+
+One row per `<dir>/<YYYY-MM-DD>/run.json`, with its kind, its counts and what
+it cost. A folder of run bundles is real history: nothing is uploaded, nothing
+expires, and `saylent report <run.json>` re-renders any of them offline for
+$0.
+
+## Keep it going without you
+
+One command against one file is small enough for a cron entry or a scheduled
+GitHub Actions job - no database, no deployment.
+[Check again next month](/docs/scheduled-checks) is that setup, both ways,
+with the two flags that make it safe unattended.
+
+When you want several brands, several people, a fix tracker that spans runs
+and a spend cap that holds across everyone, the answer is
+[Deploy the app](/docs/self-host): it keeps the same runs as rows and
+draws the movement for you on
+[the brand page](/docs/tour#the-brand-page).

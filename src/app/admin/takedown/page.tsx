@@ -9,7 +9,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { LoadError } from "../load-error";
 import { BlockDomainForm, TakedownActions } from "./takedown-client";
 
-export const metadata = { title: "Takedowns · Admin · Saylent" };
+export const metadata = { title: "Takedowns · Operator console · Saylent" };
 
 export default async function AdminTakedownPage() {
   await requireAdmin();

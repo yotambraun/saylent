@@ -1,5 +1,15 @@
 // Settings › Notifications — email_reports toggle (auto-saves). Read uses the
 // USER's session client (RLS = own row).
+//
+// The "Email reports" copy names the emails that ACTUALLY send. Two templates
+// exist and are never called (`welcome`, `movement` in src/emails/templates.ts),
+// and the old copy promised one of them ("Report-ready and movement emails
+// arrive at public launch") — a promise nothing in src/inngest/functions.ts
+// keeps. The only two sends are the report-ready email at the end of an audit
+// and the day-10 verify reminder. emailConfigured() (src/lib/email.ts) is the
+// same three-condition check sendEmail itself makes, so the row can say plainly
+// when this deployment cannot send at all instead of implying it will.
+import { emailConfigured } from "@/lib/email";
 import { createClient } from "@/lib/supabase/server";
 import { SettingRow, SettingsSection } from "../setting-row";
 import { BrowserNotificationsRow, EmailReportsToggle } from "./notifications-client";
@@ -27,7 +37,11 @@ export default async function NotificationsPage() {
       </SettingRow>
       <SettingRow
         label="Email reports"
-        description="Report-ready and movement emails arrive at public launch. Receipts always included."
+        description={
+          emailConfigured()
+            ? "Two emails: your report when an audit finishes, and one reminder to re-measure ten days later. Turning this off stops both."
+            : "Two emails would send: your report when an audit finishes, and one reminder to re-measure ten days later. This deployment has no email configured, so neither sends today."
+        }
       >
         <EmailReportsToggle initial={profile?.email_reports ?? true} />
       </SettingRow>

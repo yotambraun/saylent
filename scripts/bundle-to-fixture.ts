@@ -29,6 +29,10 @@ export interface CapturedFixture {
     stage: string;
     scores: unknown;
     est_cost_usd: number | null;
+    /** runs.created_at. Seeded from the bundle's own start time (rather than
+     *  left to the table's `default now()`) so the dashboard's run date, the
+     *  report header and the sample bundle all print ONE date for one run. */
+    created_at: string;
     finished_at: string | null;
   };
   brand: {
@@ -64,6 +68,7 @@ export function bundleToFixture(bundle: RunBundleV1): CapturedFixture {
       stage,
       scores: bundle.scores,
       est_cost_usd: bundle.run.est_cost_usd,
+      created_at: bundle.run.started_at,
       finished_at: bundle.run.finished_at,
     },
     brand: {

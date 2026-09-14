@@ -18,13 +18,18 @@ const WORDMARK_DARK = `${BASE_PATH}/brand/wordmark-dark.svg`;
 export const REPO_URL = "https://github.com/yotambraun/saylent";
 export const LICENSE_URL = "https://github.com/yotambraun/saylent/blob/main/LICENSE";
 
-// `narrow` links are hidden below sm: at 390px a four-item nav wraps each
-// label onto two lines. Docs and GitHub are the two a stranger actually wants.
+// Every label here is the TITLE of the page it opens, so a reader never lands
+// somewhere called something else: Quickstart is /docs/quickstart, "The app" is
+// the app tour, "Live demo" is the hosted read-only copy.
+//
+// `narrow` links survive below sm:; at 390px a four-item nav wraps each label
+// onto two lines, so only three stay: Docs, Live demo (the link that proves the
+// product exists) and GitHub.
 const LINKS: [label: string, href: string, narrow?: boolean][] = [
   ["Docs", "/docs", true],
-  ["How it works", "/docs/how-it-works"],
-  ["Self-host", "/docs/self-host"],
-  ["Live demo", "https://saylent-demo.vercel.app/app"],
+  ["Quickstart", "/docs/quickstart"],
+  ["The app", "/docs/tour"],
+  ["Live demo", "https://saylent-demo.vercel.app/app", true],
 ];
 
 export function SiteHeader() {

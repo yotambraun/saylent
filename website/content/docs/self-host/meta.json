@@ -1,1 +1,4 @@
-{ "title": "Self-host", "pages": ["index", "local", "own-server", "cloud", "environment"] }
+{
+  "title": "Deploy the app",
+  "pages": ["index", "local", "own-server", "cloud", "environment", "users", "admin"]
+}

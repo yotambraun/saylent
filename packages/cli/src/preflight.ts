@@ -45,13 +45,19 @@ export interface CostRange {
 /** THE one place the smoke profile's price is written as prose. Every surface
  *  that quotes a smoke price — the MCP tool descriptions, `saylent mcp
  *  --help`, the docs table — reads this string, so three places can never
- *  advertise three different numbers again. The range is what
- *  estimateCostRange() produces for smoke with all four engines; the recorded
- *  figure is what our own published sample run actually cost. */
-export const SMOKE_COST_SENTENCE = "about $0.40 to $1.20 with four engines; our recorded runs cost $0.93 and $1.11";
+ *  advertise three different numbers again.
+ *
+ *  The two ranges below are the published ones: what the app's own pre-spend
+ *  estimator returns for the shipped 23-question set across four engines,
+ *  rounded outward to the nearest $0.10 and widened to cover the runs we
+ *  recorded. The published CLI cannot import from the app, so this is a copy of
+ *  src/lib/cost-copy.ts — and src/lib/question-options.test.ts recomputes both
+ *  from the estimator and fails the suite if either drifts. */
+export const SMOKE_COST_SENTENCE = "about $0.60 to $1.20 with four engines; our recorded runs cost $0.93 and $1.11";
 
-/** The same for `full`, as a plain range (no published run to quote yet). */
-export const FULL_COST_SENTENCE = "about $2.50 to $4.00 with four engines";
+/** The same for `full`: 23 questions, four engines, two samples per scored
+ *  question plus the adaptive tiebreak. */
+export const FULL_COST_SENTENCE = "about $3.70 to $5.50 with four engines";
 
 /** A deliberately approximate range built from the SAME per-answer fallback
  *  rates the engine bills a run with (answer-cost.ts COST_CENTS) plus the

@@ -3,6 +3,11 @@ title: Compared with hosted tools
 description: Saylent next to Profound, Peec, Otterly, Scrunch, AthenaHQ, Semrush AI Toolkit, Ahrefs Brand Radar, and HubSpot AEO Grader - facts and sources, no adjectives.
 ---
 
+Looking for how to compare your own brand against a rival inside the app? That
+is a different feature: see [Compare against a
+rival](/docs/tour#compare-rivals). This page is about Saylent next to other
+products.
+
 Saylent is one shape of tool in a category that also has well-funded hosted
 products. This page states what is structurally different, and separately
 what has been reported about those products' pricing, with a source and a
@@ -17,7 +22,7 @@ claim.
 |---|---|---|
 | Open source | Yes - Apache-2.0, this repository | No - proprietary, closed-source products |
 | Runs on your own provider keys | Yes - every dollar goes to OpenAI/Anthropic/Google/Perplexity directly, never through us ([What it costs](/docs/costs)) | No - usage runs on the vendor's own infrastructure and account, priced into their subscription |
-| Self-hostable | Yes - CLI on your machine, or the full app on your own server, Docker, or your own Vercel/Supabase project ([Self-host](/docs/self-host)) | No - hosted SaaS only |
+| Self-hostable | Yes - CLI on your machine, or the full app on your own server, Docker, or your own Vercel/Supabase project ([Deploy the app](/docs/self-host)) | No - hosted SaaS only |
 | Every score has receipts | Yes - every claim traces to the answer that produced it and the citation it names ([How it works](/docs/how-it-works)) | Not published - each vendor's methodology page (linked below) is the source, not independently verified here |
 | Cross-family judge (self-preference control) | Yes when two provider keys are set - one family's answer is judged by the other; the report states `judge_mode` either way ([Methodology](/docs/methodology)) | Not published |
 | Site AI-bot-access probe (`gate-check`) | Yes - checks the three AI-bot classes, JSON-LD, and meta directives, $0, no LLM call ([How it works](/docs/how-it-works)) | Not published |
@@ -35,11 +40,13 @@ This is the honest gap, not a hedge:
 - **Alerts.** Saylent has two *optional*, off-by-default scheduled jobs
   (`FLAG_SCHEDULED_RUNS`: a weekly verify, a monthly audit) on a self-hosted
   deployment - not real-time or threshold-based alerting.
-- **Multi-tenant dashboards.** The self-hosted app is built for one operator
-  running it for their own brand(s), not a shared workspace serving many
-  client accounts from one login.
-- **Team seats and roles.** There is no multi-seat team plan or per-seat
-  role model.
+- **A shared workspace.** One deployment supports as many user accounts as you
+  like, each isolated from the others by row-level security, with one operator
+  who owns the keys and the bill. What it does not have is a workspace those
+  users share: no common brand list, and no switching between client accounts
+  from one login.
+- **Seats, roles and billing.** Everyone who signs up is a user; there is no
+  per-seat role model, no seat billing, and no plan tier.
 - **Vendor support.** A hosted subscription buys a support relationship;
   an open-source project's support is public GitHub issues and (where
   enabled) Discussions.

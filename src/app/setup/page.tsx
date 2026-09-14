@@ -174,7 +174,7 @@ export default async function SetupPage() {
           {operator ? (
             <>
               <Link href="/admin" className="text-wire hover:text-ink">
-                Admin
+                Operator console
               </Link>
               <Link href="/app" className="text-wire hover:text-ink">
                 ← back to app

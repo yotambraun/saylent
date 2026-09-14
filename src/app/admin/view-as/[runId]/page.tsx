@@ -12,7 +12,7 @@ import { fetchDossierViaRpc } from "@/lib/dossier-data";
 import { MODELS } from "@saylent/engine/models";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-export const metadata = { title: "View-as (read-only) · Admin · Saylent" };
+export const metadata = { title: "View-as (read-only) · Operator console · Saylent" };
 
 const MODELS_USED = `${MODELS.chatgptAnswer} · ${MODELS.claudeAnswer} · ${MODELS.geminiAnswer} · ${MODELS.perplexityAnswer}`;
 const ENGINE_MODELS: Record<string, string> = {

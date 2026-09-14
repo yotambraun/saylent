@@ -1,24 +1,21 @@
 ---
-title: Instant check
-description: The free, keyless AI-access check on this site - what it reads, what it cannot know, and the API behind it.
+title: The site check
+description: What AI crawlers can read on your site. Free, no keys.
 ---
 
-Once the check service is deployed and its URL is configured, a box appears on
-the [home page](/): type a domain and you get an answer in a few seconds - which
-AI crawlers your site lets in, and which ones it turns away without telling you.
-Until then the home page prints the equivalent `saylent gate-check` command
-instead.
+```bash
+npx saylent gate-check example.com   # free, no keys, nothing stored
+```
 
-No sign-up, no keys, no LLM calls, nothing stored. It runs the same code as
-`saylent gate-check`, so the verdict you see here is the verdict you get in your
-own terminal.
+That is the site check: which AI crawlers your site lets in, and which ones it
+turns away without telling you. It reads your robots.txt agent by agent,
+fetches a page as each crawler to see what really comes back, and reads the
+JSON-LD and meta directives on the pages it crawled. No sign-up, no keys, no
+LLM calls, nothing stored.
 
-The widget on the home page is a thin client over a separately deployed
-service (`services/instant-check`), pointed at by `NEXT_PUBLIC_INSTANT_CHECK_URL`
-(set after deploying the service - see [Environment
-variables](/docs/self-host/environment)). Unset - a fork, a local `npm run
-site:dev`, or before the service is deployed - the widget degrades to
-printing the `saylent gate-check` command instead of showing a broken input.
+The box on this site's [home page](/) runs the same code, so the verdict you
+see there is the verdict you get in your own terminal. Running it yourself has
+no rate limit, reads more of your site, and sends your domain to nobody.
 
 ## What it checks
 
@@ -55,10 +52,9 @@ This is the honest half, and it is the reason the check is free.
 - **It is a snapshot.** Gates change when your CDN config changes. `saylent
   verify` is how you watch that over time.
 
-Run the whole thing yourself, with no rate limit and more of your site read:
+The audit is the other half, and it needs a key:
 
 ```bash
-npx saylent gate-check example.com   # the same check, $0, no keys
 npx saylent audit example.com        # what the engines actually say (needs one key)
 ```
 
@@ -167,3 +163,14 @@ We log a counter and nothing else.
 
 If you would rather not send us the domain at all, that is exactly what the CLI
 is for: `npx saylent gate-check <domain>` talks only to your own site.
+
+## Running the hosted box yourself
+
+An operator detail, not something a reader of this page needs. The box on the
+home page is a thin client over a separately deployed service
+(`services/instant-check`), pointed at by `NEXT_PUBLIC_INSTANT_CHECK_URL` and
+set after deploying that service (see [Environment
+variables](/docs/self-host/environment)). With the variable unset, on a fork, a
+local `npm run site:dev`, or before the service is deployed, the box degrades
+to printing the `saylent gate-check` command instead of showing an input that
+cannot work.

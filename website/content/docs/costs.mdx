@@ -9,18 +9,25 @@ prints its estimate and asks you to confirm before it sends anything.
 
 ## By profile
 
-| Profile | Questions | What it does | Estimated cost |
+| Profile | Questions | What it does | Cost with four engines |
 |---|---|---|---|
-| `smoke` (default) | 6 | A quick read: is the brand present at all - the two required engines, or all four | **about $0.40 to $1.20 with four engines** |
-| `full` | 23 | The complete question set across up to 4 engines, for a real gate or a client report | **$2.50 to $4.00** |
+| `smoke` (default) | 6 | A quick read: is the brand present at all, on the two required engines or on all four | **about $0.60 to $1.20** |
+| `full` | 23 | The complete question set across up to 4 engines, for a real gate or a client report | **about $3.70 to $5.50** |
+
+Both ranges are computed by the same estimator the app shows before a run, for
+23 questions across four engines: the full profile at two draws per scored
+question plus the adaptive tiebreak, the smoke profile at one. They are rounded
+outward to the nearest $0.10 and widened to cover the runs we actually
+recorded, so no real number falls outside a printed one. Fewer engines cost
+less, and the estimate falls with them before you confirm.
 
 Two real recorded runs: `smoke` audits of a fictional test brand across all
 four engines (cross-family judge, one draw per scored question, since
 `smoke` samples once) cost **$0.93** in 392 seconds and **$1.11** in 232
-seconds - both inside the printed estimate range. That's the honest shape of the number: the CLI's
-estimate is a range because sampling itself is variable, and the run's
-*actual* cost is always what gets recorded and shown to you, never the
-estimate.
+seconds, both inside the printed estimate range. That's the honest shape of
+the number: the estimate is a range because sampling itself is variable, and
+the run's *actual* cost is always what gets recorded and shown to you, never
+the estimate.
 
 ## What drives the cost
 
@@ -48,8 +55,53 @@ A local ledger at `~/.saylent/spend.json` tracks what you've spent today and
 refuses to start a run that would push you over `DAILY_SPEND_CAP_USD`
 (default **$20**) - raise it, lower it, or override a single run with
 `--max-usd <n>`. The self-hosted app has the same idea at the deployment
-level: an operator-set daily cap that pauses every run (not just new ones)
-when crossed.
+level: an operator-set daily cap that trips the kill switch when crossed, so
+every further run is refused until the operator releases it.
+
+## Infrastructure, not just providers
+
+Everything above is provider spend, and for the CLI that is the entire bill:
+it runs on your machine and writes to a folder. The full app adds a database
+and a place to run it, so a total-cost answer has to include both.
+
+**On your laptop or your own server**, there is no third bill. Docker Compose
+brings up Postgres and the job runner next to the app, and what you pay is the
+machine you already have.
+
+**In the cloud**, the two pieces are a Supabase project and a host for the
+Next.js app, usually Vercel. Both have free tiers that a single small team
+fits inside, with two limits worth knowing before you rely on them.
+
+### Supabase
+
+The free plan gives 500 MB of database storage per project, 5 GB of egress,
+and two free projects per organization. Runs are rows, not files, so the
+database grows slowly - the cited pages and answers of an audit are text.
+
+The limit that surprises people is not size. Supabase pauses free projects
+with no activity over a 7-day period. A paused project is restored from the
+dashboard, but a deployment nobody has opened in a week is asleep when you
+come back to it, and anything scheduled against it did not run. If the
+deployment matters, either keep using it or move it off the free plan. Check
+Supabase's current plan page for the numbers that apply when you read this.
+
+### Vercel
+
+The app is a normal Next.js deployment, with one thing to check: the Inngest
+webhook that drives the audit pipeline declares a 300-second maximum duration,
+because a full audit's stages are much longer than a typical web request. A
+plan that caps function duration below that will cut long runs off. Vercel's
+function-duration limits are per plan, so read the current limits page against
+the plan you are on.
+
+You do not need Vercel Cron. Saylent's scheduled runs, the weekly verify and
+the monthly audit, are Inngest functions rather than platform cron jobs. They
+are off until you set `FLAG_SCHEDULED_RUNS=1`, and turning them on means the
+free-tier Inngest account you already need for the pipeline is what schedules
+them. Locally, `npx inngest-cli dev` needs no account and no keys at all.
+
+Neither of these is a Saylent bill. There is no hosted Saylent service to pay
+for.
 
 ## See the cost before you spend anything
 

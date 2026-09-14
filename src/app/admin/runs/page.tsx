@@ -11,7 +11,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { LoadError } from "../load-error";
 import { artifactsLabel, passesRunFilter, runHealthBadge } from "./health-badge";
 
-export const metadata = { title: "Runs · Admin · Saylent" };
+export const metadata = { title: "Runs · Operator console · Saylent" };
 
 const CAP = 100;
 

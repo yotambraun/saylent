@@ -4,11 +4,17 @@
 // Driven against an in-memory double of the service-role client, so no project is
 // touched and no LLM call is possible.
 import { describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
 import {
   assertSeedAllowed,
+  CAPTURED_FIXTURE,
+  loadSeedFixture,
   NO_OPERATOR_ADMIN_MESSAGE,
   operatorAdmins,
+  PUBLIC_SAMPLE_BUNDLE,
+  resolveSeedBundlePath,
   seedDemo,
+  seedFixtureFrom,
   type SeedClient,
 } from "./seed-demo";
 
@@ -35,7 +41,7 @@ function fakeClient() {
 
   function from(table: string) {
     const filters: [string, unknown][] = [];
-    let mode: "select" | "insert" | "update" = "select";
+    let mode: "select" | "insert" | "update" | "delete" = "select";
     let payload: unknown = null;
     const rows = () => (tables[table] ??= []);
     const match = (r: Record<string, unknown>) => filters.every(([c, v]) => r[c] === v);
@@ -56,12 +62,18 @@ function fakeClient() {
         for (const r of hit) Object.assign(r, payload as Record<string, unknown>);
         return { data: hit, error: null };
       }
+      if (mode === "delete") {
+        const hit = t.filter(match);
+        tables[table] = t.filter((r) => !match(r));
+        return { data: hit, error: null };
+      }
       return { data: t.filter(match), error: null };
     };
     const q = {
       select: () => q,
       insert: (r: unknown) => ((mode = "insert"), (payload = r), q),
       update: (p: Record<string, unknown>) => ((mode = "update"), (payload = p), q),
+      delete: () => ((mode = "delete"), q),
       eq: (c: string, v: unknown) => (filters.push([c, v]), q),
       maybeSingle: async () => ({ data: exec().data[0] ?? null, error: null }),
       single: async () => {
@@ -145,6 +157,33 @@ describe("seedDemo", () => {
     expect(f.createUser).toHaveBeenCalledTimes(1);
   });
 
+  it("REPAIRS an existing brand + run in place when the bundle changes (no duplicate, no stale row)", async () => {
+    const f = withOperator(fakeClient());
+    const first = await seedDemo(f.client, FIXTURE, CREDS, () => {});
+
+    // the same demo, re-pointed at a newer run of the same brand
+    const NEXT = {
+      ...FIXTURE,
+      brand: { ...FIXTURE.brand, competitors: ["Upcheck", "Beacon Uptime"] },
+      run: { ...FIXTURE.run, scores: { overall: { answered: 11 } } },
+      answers: [{ qid: "q01", engine: "chatgpt" }, { qid: "q02", engine: "claude" }, { qid: "q03", engine: "gemini" }],
+    };
+    const second = await seedDemo(f.client, NEXT, CREDS, () => {});
+
+    // same ids — DEMO_RUN_ID on the deployment does not go stale
+    expect(second.runId).toBe(first.runId);
+    expect(second.brandId).toBe(first.brandId);
+    expect(second.reused).toEqual({ user: true, brand: true, run: true });
+    // one brand, one run, and the NEW payload on both
+    expect(f.tables.brands).toHaveLength(1);
+    expect(f.tables.brands[0].competitors).toEqual(["Upcheck", "Beacon Uptime"]);
+    expect(f.tables.runs).toHaveLength(1);
+    expect(f.tables.runs[0].scores).toEqual({ overall: { answered: 11 } });
+    // the old children are gone, not merged with the new ones
+    expect(f.tables.answers).toHaveLength(3);
+    expect(f.tables.answers.every((a) => a.run_id === first.runId)).toBe(true);
+  });
+
   it("repairs the password so a rotated DEMO_USER_PASSWORD cannot strand the proxy", async () => {
     const f = withOperator(fakeClient());
     const out = await seedDemo(f.client, FIXTURE, CREDS, () => {});
@@ -223,5 +262,51 @@ describe("seedDemo — never leaves the project without an operator (#2)", () =>
 
     expect(await operatorAdmins(f.client, "demo-1")).toEqual(["operator-1"]);
     expect(await operatorAdmins(f.client, "operator-1")).toEqual(["demo-1"]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Which run the demo shows. The demo used to be pinned to fixtures/run.json
+// while the public sample moved on to examples/kestrel/run.json, so a reader
+// compared a "0 of 9" demo with a "0 of 11" sample of the same brand.
+// ---------------------------------------------------------------------------
+describe("resolveSeedBundlePath", () => {
+  it("prefers the public sample bundle when the repo ships one", () => {
+    expect(resolveSeedBundlePath({}, () => true)).toBe(PUBLIC_SAMPLE_BUNDLE);
+  });
+
+  it("falls back to the captured fixture when there is no sample", () => {
+    expect(resolveSeedBundlePath({}, () => false)).toBe(CAPTURED_FIXTURE);
+  });
+
+  it("DEMO_SEED_BUNDLE wins over both", () => {
+    expect(resolveSeedBundlePath({ DEMO_SEED_BUNDLE: " /tmp/other.json " }, () => true)).toBe(
+      "/tmp/other.json",
+    );
+  });
+});
+
+describe("seedFixtureFrom", () => {
+  it("converts a CLI run bundle to seedable rows", () => {
+    const bundle = JSON.parse(readFileSync(PUBLIC_SAMPLE_BUNDLE, "utf8"));
+    const fixture = seedFixtureFrom(bundle);
+    expect(fixture.brand.name).toBe(bundle.brand_model.brand);
+    expect(fixture.answers).toHaveLength(bundle.answers.length);
+    expect(fixture.fixes).toHaveLength(bundle.fixes.length);
+    // the bundle's real numbers reach the demo unchanged
+    expect((fixture.run.scores as { overall: { answered: number } }).overall.answered).toBe(
+      bundle.scores.overall.answered,
+    );
+  });
+
+  it("passes an already-captured fixture through untouched", () => {
+    const captured = JSON.parse(readFileSync(CAPTURED_FIXTURE, "utf8"));
+    expect(seedFixtureFrom(captured)).toBe(captured);
+  });
+
+  it("loadSeedFixture reads the public sample off disk", () => {
+    const fixture = loadSeedFixture(PUBLIC_SAMPLE_BUNDLE);
+    expect(fixture.brand.domain).toBe("saylent-kestrel.vercel.app");
+    expect(fixture.brand.competitors).not.toContain("the leading alternative");
   });
 });

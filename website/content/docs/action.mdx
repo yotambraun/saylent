@@ -1,0 +1,81 @@
+---
+title: The GitHub Action
+description: Fail a deploy that blocks the AI crawlers - $0, no keys, no LLM call, with a badge committed into your repo.
+---
+
+`yotambraun/saylent@v0` runs the same fast, $0, no-LLM, no-keys check as
+`saylent gate-check` (see the [CLI reference](/docs/cli)) as a CI step: robots.txt
+per bot class (training, search-index, user-fetch), a live per-user-agent probe,
+JSON-LD presence, and meta directives. It writes an "AI access" status badge SVG
+straight into your repo - no hosted badge service, no external request when the
+badge itself is rendered.
+
+```yaml
+name: AI access gate
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 6 * * 1" # weekly
+
+jobs:
+  gate-check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: yotambraun/saylent@v0
+        id: gate
+        with:
+          domain: example.com
+      - uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: update AI-access badge"
+          file_pattern: .github/badges/ai-access.svg
+```
+
+## Inputs
+
+| Input | Default | Description |
+|---|---|---|
+| `domain` | *(required)* | The domain to check (e.g. `example.com`). |
+| `fail_on` | `search,user` | Comma-separated bot classes that fail the job when a bot of that class is **blocked**: `training`, `search`, `user`. A training-bot block (GPTBot, ClaudeBot via robots.txt) is a legitimate choice and is excluded unless you opt it in. |
+| `badge_path` | `.github/badges/ai-access.svg` | Where to write the badge SVG (relative to the repo root). |
+| `write_badge` | `true` | Whether to write the badge SVG file at all. |
+| `site_root` | *(none)* | Path prefix for a site hosted under a subpath (e.g. a GitHub Pages project site: `/docs`). robots.txt is still read from the host root; the crawl and the live probe stay inside the path. |
+
+## Outputs
+
+| Output | Description |
+|---|---|
+| `result` | Overall result: `pass`, `warn`, or `fail` - the worst status across every check (bot classes, JSON-LD, meta). |
+| `summary` | The same markdown table written to the job summary, also available as a step output. |
+
+The job **only** fails (non-zero exit) when a class listed in `fail_on` is actually
+blocked - a `warn` (an unreachable probe, a training-bot robots.txt block) never
+fails the job. `result` and the job summary report every finding regardless, so a
+`warn` is still visible without breaking CI.
+
+## The badge
+
+Commit the SVG `write_badge` produced (the workflow above does this with
+`stefanzweifel/git-auto-commit-action`; a plain `git add && git commit && git push`
+step works just as well) and embed it in your README:
+
+```md
+![AI access](.github/badges/ai-access.svg)
+```
+
+## What the live probe can and cannot know
+
+The live per-user-agent probe is one request, from GitHub's network, at the moment
+the job runs. It catches the case robots.txt alone cannot: a CDN or WAF silently
+403/429-ing a bot that robots.txt claims to allow. It cannot know what happens for
+requests that never reach your server, cannot see rate limits or IP-allowlists that
+treat CI runners differently than the real bot, and cannot prove a bot is unblocked
+in production forever - only that it wasn't blocked in this one request, right now.
+**Your server logs are ground truth.** Treat a `pass` here as "nothing observably
+wrong," not as a guarantee, and re-run the gate on a schedule (as in the example
+above) so a regression is caught within a week instead of found by an AI assistant
+that quietly stopped citing you.

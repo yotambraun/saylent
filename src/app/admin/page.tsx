@@ -15,7 +15,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { KillSwitchPanel, ProvidersCard, SearchableUsers, type UserRow } from "./home-client";
 import { LoadError } from "./load-error";
 
-export const metadata = { title: "Operator · Admin · Saylent" };
+export const metadata = { title: "Operator console · Saylent" };
 
 export default async function AdminHomePage() {
   await requireAdmin();

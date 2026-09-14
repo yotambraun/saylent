@@ -35,8 +35,8 @@ npm run check-env -- --profile app     # what the full app needs
 | `GEMINI_API_KEY` / `PERPLEXITY_API_KEY` | unset | Two more answer engines. Gemini's free tier answers unreliably - turn on billing |
 | `NEXT_PUBLIC_OPERATOR_NAME` | unset | The legal entity or person operating this deployment, printed on `/privacy` and `/terms`. Unset, those two pages refuse to render a policy and say so - they never publish one attributed to nobody |
 | `NEXT_PUBLIC_CONTACT_EMAIL` | `hello@example.com` | Correction/support address on public pages and error pages |
-| `APP_SECRET` | unset | The pgcrypto passphrase that encrypts provider API keys saved from `/admin/providers`, so an operator can change a key or a per-role model with no redeploy. Generate with `openssl rand -hex 32` (min 16 chars). Unset = keys are environment-only and the console says so; models stay editable either way. Never stored in the database - losing or changing it makes every console-saved key unreadable |
-| `RESEND_API_KEY` + `EMAIL_FROM` | unset | Transactional email (welcome, report-ready, movement, verify reminders) - inert without both |
+| `APP_SECRET` | unset | The pgcrypto passphrase that encrypts provider API keys saved from [Providers and models](/docs/self-host/admin#providers-and-models) in the operator console, so an operator can change a key or a per-role model with no redeploy. Generate with `openssl rand -hex 32` (min 16 chars). Unset = keys are environment-only and the console says so; models stay editable either way. Never stored in the database - losing or changing it makes every console-saved key unreadable |
+| `RESEND_API_KEY` + `EMAIL_FROM` | unset | Transactional email - inert without both. Two emails send today: report-ready when an audit finishes, and a day-10 verify reminder (skipped when `FLAG_SCHEDULED_RUNS` is on, or the brand has already been verified) |
 | `INNGEST_DEV` | unset | Forces the Inngest SDK's local-dev mode outside its own auto-detection |
 | `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` | unset | Server and browser error tracking - every Sentry variable is inert until `SENTRY_DSN` is set |
 | `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT` | unset | Source-map upload at build time (read by the Sentry build plugin) |
@@ -46,7 +46,7 @@ npm run check-env -- --profile app     # what the full app needs
 | `RUN_THROTTLE_WINDOW_HOURS` / `RUN_THROTTLE_AUDITS` / `RUN_THROTTLE_VERIFIES` | 24 / 3 / 3 | Rolling-window throttle on manual runs, per brand |
 | `DAILY_SPEND_CAP_USD` | 20 | Global daily provider-spend ceiling - crossing it trips the kill switch |
 | `FLAG_EMAILS` | on | Kill switch for transactional email, independent of whether RESEND_API_KEY is set |
-| `AUDIT_PROFILE` | full | The app runs the full profile (23 questions, about $2.50 to $4.00 per run) and shows the estimate before every run. `smoke` (6 questions) is a development profile and is refused for real users in production |
+| `AUDIT_PROFILE` | full | The app runs the full profile (23 questions, about $3.70 to $5.50 per run with four engines) and shows the estimate before every run. `smoke` (6 questions) is a development profile and is refused for real users in production |
 | `FLAG_SCHEDULED_RUNS` | off | The weekly-verify and monthly-audit schedules. Off by default so nothing spends your keys unattended; set `1` when you want scheduled runs. Once on, a brand is eligible as soon as it has one completed audit. The pre-rename name is still read as an alias for one release (`LEGACY_ENV_ALIASES` in `src/lib/flags.ts`) |
 | `FLAG_CSP_ENFORCE` | on | Enforced Content-Security-Policy vs. Report-Only fallback |
 | `FLAG_COVE_AUDIT` | off | An extra evidence-check pass over each drafted fix (one more model call per artifact when on) |
@@ -74,7 +74,7 @@ does not exist and nothing else changes.
 | `DEMO_USER_EMAIL` / `DEMO_USER_PASSWORD` | unset | The shared demo account the proxy signs visitors in as. Create or repair it with `npx tsx --tsconfig scripts/tsconfig.json scripts/seed-demo.ts`, which also seeds the Kestrel Uptime fixture as its brand and finished run. Server-only; use a throwaway account on a throwaway Supabase project - it is demoted to `role=user` on every seed |
 | `NEXT_PUBLIC_DEMO_DOCS_URL` | the public docs site | Where the demo banner's "Read the docs" link points |
 
-## The docs site's own instant check
+## The docs site's own site check
 
 One more variable, read only by the public docs/marketing site's build
 (`website/`, a separate workspace from the app above), not by the

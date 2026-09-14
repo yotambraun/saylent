@@ -44,3 +44,31 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
+/* ONE design language across the whole site. The landing sets its headings in
+   Fraunces at 400 (`font-display` in app/page.tsx, --font-display in
+   src/tokens.css); Fumadocs ships its own Inter-600 heading scale, so clicking
+   "Docs" used to change the typographic voice completely. Give the docs the
+   same display serif at the same weight: headings and the sidebar wordmark
+   only. Body copy, tables and code stay Inter and IBM Plex Mono. */
+#nd-page h1,
+#nd-page h2,
+#nd-sidebar > div:first-child > div:first-child > a,
+#nd-subnav > a:first-child {
+  font-family: var(--font-display), ui-serif, Georgia, serif;
+  font-weight: 400;
+}
+
+/* The sidebar's scroll viewport fades its last 12px, which sliced the final
+   nav row in half directly above the GitHub/theme bar, a clipping bug and not a
+   scroll affordance. Pad the bottom so items always end on a whole row. */
+#nd-sidebar [data-radix-scroll-area-viewport] {
+  padding-bottom: 1.75rem;
+  mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    white 20px,
+    white calc(100% - 28px),
+    transparent
+  );
+}

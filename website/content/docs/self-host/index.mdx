@@ -1,6 +1,6 @@
 ---
-title: Self-host overview
-description: Deploy the full app - history, verify, multiple users, share links, budget controls.
+title: Deploy the app
+description: The full app on infrastructure you own, start to finish.
 ---
 
 The CLI is one audit, one folder, no login. The full app adds accounts,
@@ -40,6 +40,17 @@ account after that is a normal user; nothing else about their experience
 differs. If you ever need a second admin later, run
 `scripts/grant-admin.ts`.
 
+Everything that account can then do is in
+[The operator console](/docs/self-host/admin).
+
+## Users and access
+
+Anyone who can reach your `/login` page can create an account: there is no
+invite code and no allowlist in the app. [Users and access](/docs/self-host/users)
+is who can sign up, the three ways to limit that, how a teammate joins, what a
+normal user can and cannot do next to an operator, and the per-account brand
+limit.
+
 ## Control the questions and the run in the app
 
 The CLI lets you look at the buyer questions before you pay for them
@@ -49,7 +60,12 @@ gives you the same control, per brand, at
 **/app/brand/&lt;id&gt;/questions** - reachable from the "Questions and run
 options" link on a brand's movement page.
 
-{/* screenshot: /app/brand/<id>/questions - cost panel at the top, controls, question rows */}
+<ThemedImage
+  light="/media/app-questions-light.png"
+  dark="/media/app-questions-dark.png"
+  alt="The questions editor with the cost estimate card pinned above it: $3.73 to $5.50, 23 questions of which 12 count toward the recommended band, and the first five editable question rows with Type and Samples selects"
+  className="rounded-lg border border-line"
+/>
 
 The page shows the exact set the run will freeze, generated from the brand
 model you already have, so opening it costs nothing. From there you can:
@@ -86,13 +102,14 @@ told to do.
 ## Budget controls
 
 The sidebar's "Budget & limits" (operator-only) holds: a daily spend cap in
-USD (default $20, `DAILY_SPEND_CAP_USD`), per-user run throttles (default 3
-audits and 3 verifies per rolling 24-hour window per brand,
-`RUN_THROTTLE_*`), a kill switch that pauses every run instantly, run
-health, the support inbox, takedown requests, and a "Test providers" button
-that checks your configured keys with a free call. There are no prices
-anywhere in a self-hosted deployment - `/app/settings/limits` shows each user
-"your limits, set by your operator."
+USD (default $20, `DAILY_SPEND_CAP_USD`), per-brand run throttles (default 3
+audits and 3 verifies per rolling 24-hour window, `RUN_THROTTLE_*`), a kill
+switch that refuses every new run the moment you press it, run health, the
+support inbox, takedown requests, and a "Test providers" button that checks
+your configured keys with a free call. There are no prices anywhere in a
+self-hosted deployment - `/app/settings/limits` shows each user "your limits,
+set by your operator."
+Page by page: [The operator console](/docs/self-host/admin).
 Full reference: [Configuration](/docs/configuration).
 
 By default, the weekly verify and monthly audit crons are **off** - they

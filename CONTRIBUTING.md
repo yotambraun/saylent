@@ -45,7 +45,7 @@ a quick pass). Neither script calls a real provider.
 
 If you want to exercise a real, paid run end to end, that is your call and
 your API keys, never required for a contribution. `AUDIT_PROFILE=smoke`
-keeps a real run cheap (about $0.40 to $1.20 with four engines; our recorded
+keeps a real run cheap (about $0.60 to $1.20 with four engines; our recorded
 runs cost $0.93 and $1.11); `full` is explicit and costs more.
 
 ## Test rules

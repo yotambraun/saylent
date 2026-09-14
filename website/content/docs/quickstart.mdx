@@ -3,6 +3,11 @@ title: Quickstart
 description: Keys, one command, an open report. Five minutes.
 ---
 
+Five minutes, one command, and you are holding a report you can open, email or
+put in a ticket. No account, no database, no install - the command runs from
+npm and writes three files into a folder you choose. Everything it spends goes
+straight to your own provider account.
+
 ## Get two keys (two minutes)
 
 Saylent runs on your own provider keys. Nothing goes through us.
@@ -173,11 +178,12 @@ Three files in the output directory:
 
 ## What it costs
 
-`smoke` (the default) asks 6 questions across your available engines,
-roughly **$0.40 to $1.20 with four engines** (our recorded runs cost $0.93 and $1.11).
-`--profile full` asks 23 questions across up to 4 engines, roughly
-**$2.50 to $4.00**, and the CLI prints that estimate - and requires you to
-confirm - before it spends a cent.
+`smoke` (the default) asks 6 questions across your available engines: with all
+four, roughly **$0.60 to $1.20**, and our two recorded runs cost $0.93 and
+$1.11. `--profile full` asks 23 questions across up to 4 engines, roughly
+**$3.70 to $5.50** with four. Fewer engines cost less, and the CLI prints the
+estimate for the engines you actually have, then requires you to confirm it,
+before it spends a cent.
 
 A local ledger at `~/.saylent/spend.json` tracks what you've actually spent
 today and refuses to start a run that would push you over
@@ -192,11 +198,21 @@ machine.
 ## Next steps
 
 - **Read the report.** [Reading a report](/docs/reports) walks through every
-  section.
-- **Ship a fix, then check it moved.** `saylent verify ./example.com/2026-09-09/run.json`
-  re-asks the same frozen questions and shows the movement, with an honest
-  band instead of a fake-precise number.
-- **See every run.** `saylent history ./example.com` lists past runs in that
-  folder with their scores and cost.
+  section, in the order the page puts them.
+- **Change what it asks.** [Questions and models](/docs/questions-and-models)
+  is how to add, remove and retag a question, ask it more than once, and
+  choose the model behind each role.
+- **Ship a fix, then check it moved.**
+  [Verify and history](/docs/verify-and-history) re-asks the same frozen
+  questions and shows the movement, with an honest band instead of a
+  fake-precise number.
+- **Keep checking, without babysitting a terminal.**
+  [Check again next month](/docs/scheduled-checks) puts `saylent verify` on a
+  cron entry or a scheduled GitHub Actions job.
 - **Every command and flag:** [the CLI reference](/docs/cli).
-- **Want history, multiple users on one deployment, and scheduled runs?** [Deploy the full app](/docs/self-host).
+- **Being crawled, or crawling someone.** [The Saylent crawler](/docs/crawler)
+  is what the audit reads from a site, how it identifies itself, and how to
+  allow or block it.
+- **Want history, more than one person, and scheduled runs?**
+  [Deploy the app](/docs/self-host), or walk
+  [a read-only copy of it](https://saylent-demo.vercel.app/app) first.

@@ -1,0 +1,74 @@
+---
+title: Use it as a library
+description: runAudit() and the report renderers as plain npm packages - your own persistence, your own presentation.
+---
+
+Two packages, no Next.js, no Supabase, no database: the same pipeline the CLI
+and the app both run, and the same renderers that produce `report.html`.
+
+## `@saylent/engine` - run an audit from your own code
+
+The pure audit pipeline, with zero Next.js, Supabase, Inngest, or React
+imports - the same `runAudit()` the CLI and the self-hosted app both call.
+Supply your own persistence (`MemoryDbWriter` collects every row in memory;
+implement the eight-method `DbWriter` interface for anything else) and your
+provider keys, and get a full `RunResult` back with nothing written to disk:
+
+```ts
+import {
+  runAudit, MemoryDbWriter, ADAPTERS, MODELS,
+  brandModelCall, drafterCall, judgeCall,
+} from "@saylent/engine";
+
+const apiKey = { chatgpt: process.env.OPENAI_API_KEY, claude: process.env.ANTHROPIC_API_KEY };
+
+const result = await runAudit(
+  {
+    runId: crypto.randomUUID(),
+    kind: "audit",
+    profile: "smoke",
+    brand: { name: "Example Co", domain: "example.com", competitors: ["rival.com"] },
+  },
+  {
+    db: new MemoryDbWriter(),
+    ask: (engine, q) => ADAPTERS[engine](q, { model: MODELS[`${engine}Answer`], apiKey: apiKey[engine] }),
+    llm: { brandModel: brandModelCall, drafter: drafterCall, judge: judgeCall },
+  },
+);
+
+console.log(result.scores?.overall); // { answered, recommended, mentioned, rec_rate, mention_rate }
+```
+
+`ADAPTERS[gemini|perplexity]` need their own key the same way; omit an engine
+from your `ask` dispatch and it simply isn't asked.
+
+## `@saylent/report` - render a run without the app
+
+The same composers and React components the app and the CLI's `report.html`
+both use - pure functions over plain row arrays, no model call, no network:
+
+```ts
+import { renderReportHtml } from "@saylent/report/render/html";
+import { renderMarkdown } from "@saylent/report/render/markdown";
+import { reportDataFromBundle } from "@saylent/report/render/from-bundle";
+import { readBundle } from "@saylent/engine/bundle";
+import { readFileSync, writeFileSync } from "node:fs";
+
+const bundle = readBundle(readFileSync("run.json", "utf8"));
+const data = reportDataFromBundle(bundle);
+const html = await renderReportHtml(data, { repoRoot: process.cwd() });
+writeFileSync("report.html", html);
+writeFileSync("report.md", renderMarkdown(data));
+```
+
+The report package's own composer functions (over plain row arrays, no
+model call, no network) produce a typed union of block types - text, a
+stat, a bar chart, a list, a quote, a status line, a page list, a set of
+moves, key-value pairs - that both renderers above consume. Useful if
+you're building your own presentation of the data instead of the shipped
+one.
+
+Both packages are npm workspaces inside this repository
+(`packages/engine`, `packages/report`); import them by subpath
+(`@saylent/engine/judge`, `@saylent/report/ui/badge`) to keep your bundle to
+what you actually use.

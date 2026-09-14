@@ -14,7 +14,7 @@ import { requireAdmin } from "@/lib/admin-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { LoadError } from "../load-error";
 
-export const metadata = { title: "Audit log · Admin · Saylent" };
+export const metadata = { title: "Audit log · Operator console · Saylent" };
 
 export default async function AdminAuditPage() {
   await requireAdmin();

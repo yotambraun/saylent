@@ -55,24 +55,21 @@ same engines, and writes a movement report instead of a fresh one.
 | `--max-usd <n>` | Refuse to run if the estimate exceeds this |
 | `--user-agent`, `--max-pages`, `--allow-private`, `--locale` | Accepted for parity with `audit`, but have no effect here: verify re-asks the same frozen questions and never crawls, fetches your site's corpus, or generates a new question set |
 
-Writes into a sibling dated directory next to the baseline's own output
-directory, so re-verifying never overwrites it. Output: a new `run.json`
-(`kind: "verify"`) and `movement.html`, which shows what changed - presence,
-recommendation, band - since the baseline. If the question templates have
-changed since the baseline was frozen (you edited `saylent.config.*`'s
-`questionTemplates`, or the shipped template library changed), verify
-**refuses to run** rather than silently comparing against a question set the
-current config would no longer generate. To proceed, either re-run `saylent
-audit` to baseline against the current templates, or revert the
-`questionTemplates` change and verify again against the config that produced
-the baseline.
+Writes a new `run.json` (`kind: "verify"`) and `movement.html` into a sibling
+dated directory next to the baseline's own, so re-verifying never overwrites
+what it compares against. Exit codes match `audit`: `0` / `1` / `2`.
 
-Exit codes match `audit`: `0` / `1` / `2`.
+Verify **refuses to run** when the question templates or the resolved sample
+count have changed since the baseline was frozen, rather than silently
+comparing two different question sets.
+[Verify and history](/docs/verify-and-history) is the walkthrough: what it
+reuses, what makes it refuse, what the movement report says, and how to keep
+re-checking on a schedule.
 
 ## `saylent gate-check <domain>` (alias `saylent check`)
 
-No keys, no LLM calls, $0. Crawls a handful of pages and reports what AI bots
-can actually reach:
+The command that runs [the site check](/docs/check). No keys, no LLM calls, $0.
+It crawls a handful of pages and reports what AI bots can actually reach:
 
 ```
 Saylent · gate-check · example.com
@@ -151,132 +148,16 @@ can edit by hand before spending anything on answers.
 Cost: one brand-model call (about $0.02 of your credits, plus a free crawl)
 unless you pass `--no-brand-model`, which is $0 and needs no keys at all.
 
-### The file it writes
-
-`questions.json` is a small, hand-editable envelope plus one row per question:
-
-```json
-{
-  "brand": "Kestrel Uptime",
-  "domain": "saylent-kestrel.vercel.app",
-  "version": 2,
-  "questions": [
-    {
-      "id": "q01",
-      "type": "category",
-      "text": "What is the best uptime monitoring for small SaaS teams?",
-      "source": "template"
-    },
-    {
-      "id": "q02",
-      "type": "comparison",
-      "text": "Kestrel Uptime vs Beacon Uptime - which is better for small SaaS teams?",
-      "source": "template"
-    },
-    {
-      "id": "q03",
-      "type": "problem",
-      "text": "How do I solve: alerts firing at 3am for nothing? Which tools help?",
-      "source": "template",
-      "samples": 3
-    }
-  ]
-}
-```
-
-| Field | Required | What it is |
-|---|---|---|
-| `brand` | written by the command | The brand name the questions were generated for |
-| `domain` | no | The domain they were generated for, for your own reference |
-| `version` | written by the command | The template-set version the file came from (`2`, or `"2+custom"` when a `saylent.config` `questionTemplates` key changed the library) |
-| `questions[].id` | no | `q01`, `q02`, … Any row without one is given the next free id when the file is read |
-| `questions[].type` | no | One of `category`, `comparison`, `problem`, `branded`, `integration`, `migration`, `trust`, `custom`. Missing or unrecognized becomes `custom` |
-| `questions[].text` | **yes** | The question, verbatim. An empty `text` is an error, not a skipped row |
-| `questions[].source` | no | `template` or `user`. Anything you add or edit is recorded as `user`, so the run bundle says whose question it was |
-| `questions[].samples` | no | A whole number 1-5: how many times **this one question** is asked per engine. It beats `--samples`, `AUDIT_SAMPLES` and `saylent.config` `sampling.samples`, for this row only |
+[Questions and models](/docs/questions-and-models) is the walkthrough: the
+shape of the file it writes, how to add, remove and retag a row, what a
+per-row `samples` value does, and the three file shapes `--questions` accepts
+(a previous `run.json`, a `questions.json`, or one question per line in a text
+file).
 
 **Only `category` and `problem` rows are scored** and count toward the
 recommended band. Every other type - `custom` included - is asked, judged and
 reported in full, and deliberately left out of the band, so nothing you add by
 hand can inflate your own score.
-
-### Editing it: add, remove, tag
-
-Start from the generated file, then:
-
-```json
-{
-  "brand": "Kestrel Uptime",
-  "domain": "saylent-kestrel.vercel.app",
-  "version": 2,
-  "questions": [
-    {
-      "id": "q01",
-      "type": "category",
-      "text": "What is the best uptime monitoring for small SaaS teams?",
-      "source": "template"
-    },
-    {
-      "id": "q03",
-      "type": "problem",
-      "text": "How do I solve: alerts firing at 3am for nothing? Which tools help?",
-      "source": "template"
-    },
-    {
-      "type": "category",
-      "text": "Which status-page tool do developer teams actually recommend?",
-      "samples": 3
-    }
-  ]
-}
-```
-
-Three edits are shown there, and they are the whole vocabulary:
-
-- **Added** a row at the end - no `id` needed (it gets the next free one), no
-  `source` needed (a hand-written row is recorded as `user`). It is tagged
-  `category`, so it counts toward the band, and `samples: 3` asks it three
-  times per engine instead of the run default.
-- **Removed** `q02` by deleting its object. Ids do not have to be contiguous;
-  nothing renumbers.
-- **Tagged** by changing a row's `type`. Retagging `custom` → `category` or
-  `problem` pulls that question INTO the score; retagging the other way pushes
-  it out. Nothing else about the row changes.
-
-Then run it:
-
-```bash
-npx saylent audit saylent-kestrel.vercel.app --questions questions.json
-```
-
-Editing questions is the one change that makes a later `saylent verify`
-incomparable with the baseline - verify re-asks the baseline's own frozen set,
-so edit before the audit you want to measure from, not after.
-
-### What `--questions` accepts
-
-The same flag reads three shapes, told apart by their content:
-
-1. **A previous `run.json`** - the frozen set is reused verbatim, along with
-   its question-set version. This is how you re-run last month's audit
-   unchanged.
-2. **A `questions.json`** - the file above, edited or extended. A bare JSON
-   array of the same rows works too.
-3. **A plain text file** - one question per line. A line starting with `#` is a
-   comment, blank lines are skipped, and a line may be tagged by starting it
-   with a type and a colon. Untagged lines are typed `custom`.
-
-```text
-# my-questions.txt - the six I actually care about
-category: What is the best uptime monitoring for small SaaS teams?
-problem: How do I stop 3am alert noise without missing a real outage?
-comparison: Kestrel Uptime vs Beacon Uptime for a five-person team
-Which status page do developers trust most?
-```
-
-That last line has no recognized `type:` prefix, so it is asked and judged as
-`custom` and left out of the band. A prefix that is not one of the eight types
-is not treated as a tag at all - the whole line stays the question text.
 
 ## `saylent models`
 
@@ -287,16 +168,11 @@ var, `saylent.config` `models`, or the shipped default. Also shows which
 model would judge each engine's answers, and warns if a judge would be the
 same model that answered (self-judging, not an independent check).
 
-```bash
-saylent models
-saylent models --judge claude-haiku-4-5 --model drafter=gpt-5-mini
-saylent models --judge my-fine-tune-v3 --judge-family anthropic
-```
-
 The judge is set with `--judge` (plus `--judge-family` when the model name
 does not say which provider it belongs to); `--model <role>=<id>` takes one of
 six roles - `brand`, `drafter`, `chatgpt`, `claude`, `gemini`, `perplexity`.
-There is no `judge` role on `--model`.
+There is no `judge` role on `--model`. What each role does, and the examples:
+[Questions and models](/docs/questions-and-models#which-model-does-which-job).
 
 Precedence: `--judge` / `--model role=id` flag → `MODEL_*` env var →
 `saylent.config` `models` → the shipped registry default.
@@ -333,7 +209,7 @@ Provider keys are read from the environment, a `.env`, or
 `~/.saylent/config.json` exactly as they are for the CLI, and can never be
 passed as tool arguments. Full setup - the client config block for Claude
 Desktop and other MCP clients, and the argument table - is on
-[Integrations](/docs/integrations#mcp-server---saylent-mcp).
+[The MCP server](/docs/mcp).
 
 ## The run bundle (`run.json`)
 

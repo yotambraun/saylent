@@ -3,7 +3,7 @@
 // from options.ts's ONE shared AuditOptions/VerifyOptions zod schema. This
 // file is the guarantee: every field the MCP schema exposes also has a real
 // CLI flag (or is a documented exception — the positional <domain>/
-// <run.json>), every field carries a description, and integrations.mdx's MCP
+// <run.json>), every field carries a description, and mcp.mdx's MCP
 // argument table stays in sync with the same field list.
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -21,7 +21,7 @@ import {
 } from "./options";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const INTEGRATIONS_MDX = path.resolve(here, "../../../website/content/docs/integrations.mdx");
+const MCP_MDX = path.resolve(here, "../../../website/content/docs/mcp.mdx");
 
 type AuditKey = keyof typeof AuditOptionsSchema.shape;
 type VerifyKey = keyof typeof VerifyOptionsSchema.shape;
@@ -105,15 +105,15 @@ describe("CLI/MCP option parity", () => {
     }
   });
 
-  it("integrations.mdx documents every MCP `audit` argument", () => {
-    const mdx = readFileSync(INTEGRATIONS_MDX, "utf8");
+  it("mcp.mdx documents every MCP `audit` argument", () => {
+    const mdx = readFileSync(MCP_MDX, "utf8");
     for (const field of describeOptions()) {
-      expect(mdx, `integrations.mdx's MCP table is missing "${field.key}"`).toContain(`\`${field.key}\``);
+      expect(mdx, `mcp.mdx's MCP table is missing "${field.key}"`).toContain(`\`${field.key}\``);
     }
   });
 
-  it("integrations.mdx documents every MCP `verify`-only argument (bundle_path)", () => {
-    const mdx = readFileSync(INTEGRATIONS_MDX, "utf8");
+  it("mcp.mdx documents every MCP `verify`-only argument (bundle_path)", () => {
+    const mdx = readFileSync(MCP_MDX, "utf8");
     expect(mdx).toContain("`bundle_path`");
   });
 });

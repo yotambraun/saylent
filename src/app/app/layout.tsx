@@ -112,7 +112,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                 // keep the signal tint when active; just add the surface
                 activeClassName="bg-paper"
               >
-                Admin
+                Operator console
               </NavLink>
             )}
           </nav>

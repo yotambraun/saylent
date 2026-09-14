@@ -57,7 +57,7 @@ const SERVICE_URL = process.env.NEXT_PUBLIC_INSTANT_CHECK_URL;
 /** What a keyless, fast, one-site check genuinely cannot tell you.
  *  Stated on the page, every time, next to the verdict — never buried. */
 export const CANNOT_KNOW =
-  "This reads your gates, not your answers. It cannot tell you whether ChatGPT, Claude, Gemini or Perplexity actually recommend you, who they recommend instead, or which sources they cite — that needs the full audit.";
+  "This reads your gates, not your answers. It cannot tell you whether ChatGPT, Claude, Gemini or Perplexity actually recommend you, who they recommend instead, or which sources they cite. That needs the full audit.";
 
 const MARK: Record<Verdict, string> = { pass: "✓", warn: "⚠", fail: "✗" };
 const TONE: Record<Verdict, string> = { pass: "text-success", warn: "text-signal", fail: "text-signal" };
@@ -121,7 +121,7 @@ export function InstantCheckResultView({ result }: { result: InstantCheckResult 
             <BotList title="user" bots={result.robots.user} />
           </>
         ) : (
-          <p>No readable robots.txt — engines assume allow, but you have no control surface.</p>
+          <p>No readable robots.txt: engines assume allow, but you have no control surface.</p>
         )}
         {result.robots.notes.map((note) => (
           <p key={note} className="mt-1 text-xs text-wire">
@@ -158,7 +158,7 @@ export function InstantCheckResultView({ result }: { result: InstantCheckResult 
             ))}
           </p>
         ) : (
-          <p className={TONE.warn}>Not checked (site unreachable) — no page on the site could be read.</p>
+          <p className={TONE.warn}>Not checked (site unreachable): no page on the site could be read.</p>
         )}
       </Row>
 
@@ -171,7 +171,7 @@ export function InstantCheckResultView({ result }: { result: InstantCheckResult 
             <span className="text-wire">{result.meta.nosnippet ? "present" : "absent"}</span>
           </p>
         ) : (
-          <p className={TONE.warn}>Not checked (site unreachable) — no page on the site could be read.</p>
+          <p className={TONE.warn}>Not checked (site unreachable): no page on the site could be read.</p>
         )}
         {result.meta.checked
           ? result.meta.findings.map((f) => (
@@ -193,7 +193,7 @@ export function InstantCheckResultView({ result }: { result: InstantCheckResult 
       ) : null}
 
       <div className="border-t border-line pt-4">
-        <p className="mb-2 text-sm text-ink">Run the full audit — what they actually say about you:</p>
+        <p className="mb-2 text-sm text-ink">Run the full audit, and see what they actually say about you:</p>
         <CopyCommand command={`npx saylent audit ${result.domain}`} />
       </div>
     </div>
@@ -222,9 +222,11 @@ export function InstantCheck({ serviceUrl = SERVICE_URL }: { serviceUrl?: string
   if (!serviceUrl) {
     return (
       <section className="rounded-xl border border-line bg-card p-6">
-        <h2 className="font-display text-xl text-ink">Check your site&apos;s AI gates</h2>
+        <h2 className="font-display text-xl text-ink">
+          Check what AI crawlers can read on your site
+        </h2>
         <p className="mt-2 text-sm text-wire">
-          Run it on your own machine — no keys, no sign-up, nothing sent anywhere but your own site.
+          Run it on your own machine: no keys, no sign-up, nothing sent anywhere but your own site.
         </p>
         <CommandFallback note="Replace acme.com with your domain. The check is free and makes no LLM calls." />
       </section>
@@ -263,9 +265,11 @@ export function InstantCheck({ serviceUrl = SERVICE_URL }: { serviceUrl?: string
 
   return (
     <section className="rounded-xl border border-line bg-card p-6">
-      <h2 className="font-display text-xl text-ink">Check your site&apos;s AI gates</h2>
+      <h2 className="font-display text-xl text-ink">
+          Check what AI crawlers can read on your site
+        </h2>
       <p className="mt-2 text-sm text-wire">
-        Type a domain. In a few seconds you see which AI crawlers your site lets in — robots.txt, a live per-crawler
+        Type a domain. In a few seconds you see which AI crawlers your site lets in: robots.txt, a live per-crawler
         fetch, your schema and your meta directives. No keys, no sign-up, no LLM calls, nothing stored.
       </p>
 

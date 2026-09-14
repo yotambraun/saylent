@@ -10,14 +10,24 @@
 //   NEXT_PUBLIC_DEMO_READONLY=1 npx tsx --tsconfig scripts/tsconfig.json \
 //     --env-file=.env.demo scripts/seed-demo.ts
 //
+// DEMO_SEED_BUNDLE=<path>  which run the demo shows. Accepts EITHER a CLI run
+// bundle (RunBundleV1 — what `saylent audit` writes as run.json) or an already
+// converted DB-row fixture; a bundle is converted in memory by
+// scripts/bundle-to-fixture.ts, so the demo and the public sample are always
+// the same run. Default: examples/kestrel/run.json when it exists (the
+// pseudonymized public sample), else fixtures/run.json.
+//
 // Requires NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY + DEMO_USER_EMAIL +
 // DEMO_USER_PASSWORD — AND a real operator admin that is not the demo account
 // (sign yourself up on the demo deployment first; see NO_OPERATOR_ADMIN_MESSAGE).
 // Idempotent: run it as often as you like — an existing demo
-// user/brand/run is reused and repaired, never duplicated.
-import { readFileSync } from "node:fs";
+// user/brand/run is reused and REPAIRED in place (same ids, so DEMO_RUN_ID on
+// the deployment never goes stale), never duplicated. Repair is what lets the
+// demo be re-pointed at a newer bundle without leaving the old run behind.
+import { existsSync, readFileSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
 import { DEMO_ENV, demoCredentials, isDemoReadOnly } from "@/lib/demo-mode";
+import { bundleToFixture, type CapturedFixture } from "./bundle-to-fixture";
 
 /** The subset of the service-role client this script uses. Declared structurally so
  *  the test can pass a tiny in-memory double instead of a live project. */
@@ -43,6 +53,7 @@ type SeedQuery = PromiseLike<{ data: SeedRow[] | null; error: SeedError }> & {
   select(cols: string): SeedQuery;
   insert(rows: unknown): SeedQuery;
   update(patch: SeedRow): SeedQuery;
+  delete(): SeedQuery;
   eq(col: string, val: unknown): SeedQuery;
   maybeSingle(): Promise<{ data: SeedRow | null; error: SeedError }>;
   single(): Promise<{ data: SeedRow | null; error: SeedError }>;
@@ -52,7 +63,8 @@ export type SeedResult = {
   userId: string;
   brandId: string;
   runId: string;
-  /** What already existed — a second run of the script reports all three as reused. */
+  /** What already existed — a second run of the script reports all three as reused
+   *  (reused means "same row, repaired to match the bundle", never "left stale"). */
   reused: { user: boolean; brand: boolean; run: boolean };
 };
 
@@ -181,7 +193,11 @@ export async function seedDemo(
     throw new Error(NO_OPERATOR_ADMIN_MESSAGE);
   }
 
-  // 2) The brand (fixtures/run.json → Kestrel Uptime). Keyed by owner + domain.
+  // 2) The brand (the seed bundle's brand → Kestrel Uptime). Keyed by owner +
+  //    domain. An existing row is REPAIRED rather than left alone: re-pointing
+  //    the demo at a newer bundle has to change the brand's competitors,
+  //    problems and frozen question set, or the demo shows one run's questions
+  //    beside another run's answers.
   const domain = fixture.brand.domain as string;
   let { data: brand } = await admin
     .from("brands")
@@ -191,6 +207,13 @@ export async function seedDemo(
     .maybeSingle();
   if (brand) {
     reused.brand = true;
+    const { error } = await admin
+      .from("brands")
+      .update({ ...fixture.brand })
+      .eq("id", brand.id as string)
+      .select("id")
+      .maybeSingle();
+    if (error) throw new Error(`brand repair: ${error.message}`);
   } else {
     const { data, error } = await admin
       .from("brands")
@@ -209,18 +232,36 @@ export async function seedDemo(
     .select("id")
     .eq("brand_id", brandId)
     .maybeSingle();
+  let runId: string;
   if (existingRun) {
-    log(`demo run already seeded (${existingRun.id as string}) — leaving it alone`);
-    return { userId, brandId, runId: existingRun.id as string, reused: { ...reused, run: true } };
+    // REPAIR IN PLACE. The run id is published as DEMO_RUN_ID on the
+    // deployment and printed in every README link, so the row is updated and
+    // its children replaced rather than a second run being inserted (which
+    // would duplicate the brand's history) or the stale one being kept (which
+    // is how the demo ended up showing an older run than the public sample).
+    runId = existingRun.id as string;
+    reused.run = true;
+    const { error } = await admin
+      .from("runs")
+      .update({ ...fixture.run, brand_id: brandId, user_id: userId })
+      .eq("id", runId)
+      .select("id")
+      .maybeSingle();
+    if (error) throw new Error(`run repair: ${error.message}`);
+    for (const t of RUN_CHILD_TABLES) {
+      const { error: delErr } = await admin.from(t).delete().eq("run_id", runId).select("id");
+      if (delErr) throw new Error(`${t} clear: ${delErr.message}`);
+    }
+    log(`demo run repaired in place (${runId})`);
+  } else {
+    const { data: run, error: runErr } = await admin
+      .from("runs")
+      .insert({ ...fixture.run, brand_id: brandId, user_id: userId })
+      .select("id")
+      .single();
+    if (runErr || !run) throw new Error(`run insert: ${runErr?.message}`);
+    runId = run.id as string;
   }
-
-  const { data: run, error: runErr } = await admin
-    .from("runs")
-    .insert({ ...fixture.run, brand_id: brandId, user_id: userId })
-    .select("id")
-    .single();
-  if (runErr || !run) throw new Error(`run insert: ${runErr?.message}`);
-  const runId = run.id as string;
 
   for (const t of RUN_CHILD_TABLES) {
     const rows = ((fixture[t] as Record<string, unknown>[]) ?? []).map((r) =>
@@ -233,6 +274,38 @@ export async function seedDemo(
   }
 
   return { userId, brandId, runId, reused };
+}
+
+/** Where the demo's data comes from. `DEMO_SEED_BUNDLE` wins; otherwise the
+ *  pseudonymized public sample (examples/kestrel/run.json) when the repo has
+ *  one, so the demo and the sample a reader downloads are the same run; only
+ *  then the older captured fixture. Pure, so the test can drive it. */
+export function resolveSeedBundlePath(
+  env: Record<string, string | undefined>,
+  exists: (p: string) => boolean = existsSync,
+): string {
+  const named = env.DEMO_SEED_BUNDLE?.trim();
+  if (named) return named;
+  return exists(PUBLIC_SAMPLE_BUNDLE) ? PUBLIC_SAMPLE_BUNDLE : CAPTURED_FIXTURE;
+}
+
+export const PUBLIC_SAMPLE_BUNDLE = "examples/kestrel/run.json";
+export const CAPTURED_FIXTURE = "fixtures/run.json";
+
+/** Accept either form of the file: a CLI run bundle (has `version` +
+ *  `brand_model`) is converted to DB rows here, a captured fixture (has
+ *  `captured_at` + `brand`) is already in that shape. One entry point, so
+ *  nobody has to remember which file is which. */
+export function seedFixtureFrom(raw: unknown): CapturedFixture {
+  const value = raw as Record<string, unknown>;
+  if (value && typeof value === "object" && "brand_model" in value && "version" in value) {
+    return bundleToFixture(value as unknown as Parameters<typeof bundleToFixture>[0]);
+  }
+  return value as unknown as CapturedFixture;
+}
+
+export function loadSeedFixture(path: string): CapturedFixture {
+  return seedFixtureFrom(JSON.parse(readFileSync(path, "utf8")));
 }
 
 async function main() {
@@ -250,14 +323,25 @@ async function main() {
   }
 
   const admin = createClient(url, key, { auth: { persistSession: false } });
-  const fixture = JSON.parse(readFileSync("fixtures/run.json", "utf8"));
-  const out = await seedDemo(admin as unknown as SeedClient, fixture, creds);
+  const bundlePath = resolveSeedBundlePath(process.env);
+  const fixture = loadSeedFixture(bundlePath);
+  console.log(`seeding from ${bundlePath}`);
+  const out = await seedDemo(
+    admin as unknown as SeedClient,
+    fixture as unknown as Parameters<typeof seedDemo>[1],
+    creds,
+  );
 
   console.log("");
   console.log("demo seeded:");
   console.log(`  user   ${out.userId}   ${creds.email}${out.reused.user ? "  (reused)" : ""}`);
   console.log(`  brand  ${out.brandId}   ${fixture.brand.name}${out.reused.brand ? "  (reused)" : ""}`);
-  console.log(`  run    ${out.runId}   /app/run/${out.runId}${out.reused.run ? "  (reused)" : ""}`);
+  console.log(`  run    ${out.runId}   /app/run/${out.runId}${out.reused.run ? "  (repaired)" : ""}`);
+  console.log(
+    `  data   ${fixture.answers.length} answers · ${fixture.corpus_pages.length} pages · ` +
+      `${fixture.domain_checks.length} checks · ${fixture.fixes.length} fixes · ` +
+      `${(fixture.run.scores as { overall?: { answered?: number } } | null)?.overall?.answered ?? "?"} scored`,
+  );
   console.log("");
   console.log(`Set on the demo deployment: ${DEMO_ENV.flag}=1, ${DEMO_ENV.email}, ${DEMO_ENV.password}.`);
   console.log("The operator admin on this project is a real account of yours — never the demo user.");

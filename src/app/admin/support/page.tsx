@@ -9,7 +9,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { LoadError } from "../load-error";
 import { ResolveSupport } from "./support-client";
 
-export const metadata = { title: "Support · Admin · Saylent" };
+export const metadata = { title: "Support · Operator console · Saylent" };
 
 type SupportRow = {
   id: string;

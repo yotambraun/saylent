@@ -8,19 +8,28 @@
 //   npm run media                 everything that can run here
 //   npm run media -- --dry-run    print every plan, touch nothing, exit 0
 //   npm run media -- --only hero  one generator
+import { buildAppRecording } from "./app-recording.mjs";
 import { buildCliRecording } from "./cli-recording.mjs";
 import { buildHero } from "./hero.mjs";
 import { buildOg } from "./og.mjs";
+import { buildPairs } from "./pairs.mjs";
 import { buildScreens } from "./screens.mjs";
 import { buildShareCard } from "./share-card.mjs";
 import { parseFlags } from "./lib.mjs";
 
+// ORDER MATTERS, and it is a dependency chain, not a preference:
+//   screens -> app        the walkthrough GIF is composed from the PNGs screens writes
+//   hero    -> app        the GIF's canvas is sized to match the hero it sits beside
+//   app     -> pairs      pairs pads the stills up to whatever the GIF ended up being
 const GENERATORS = [
   { name: "og", run: buildOg, needsBrowser: false },
   { name: "cli", run: buildCliRecording, needsBrowser: false },
-  { name: "hero", run: buildHero, needsBrowser: true },
   { name: "share-card", run: buildShareCard, needsBrowser: true },
   { name: "screens", run: buildScreens, needsBrowser: true },
+  { name: "hero", run: buildHero, needsBrowser: true },
+  { name: "app", run: buildAppRecording, needsBrowser: false },
+  // last: every two-up pair is padded to one size so the captions line up.
+  { name: "pairs", run: buildPairs, needsBrowser: false },
 ];
 
 const flags = parseFlags();

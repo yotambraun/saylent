@@ -1,0 +1,109 @@
+---
+title: Share, export and track fixes
+description: Publish a read-only link, revoke it, export CSV, JSON or the run bundle, and work the fixes across every run.
+---
+
+Three things the app does with a finished report that a folder on your laptop
+cannot: give a link to someone who has no account, hand the numbers to a
+spreadsheet or a script, and remember which fixes you shipped across runs.
+
+From the CLI, the equivalent of sharing is sending someone the `report.html`
+file, which opens on its own with no server, and the equivalent of exporting
+is `run.json` itself.
+
+## Share a report
+
+On a finished audit, the action row above the report has **Share report**. It
+opens a dialog that states, before anything is published, what the link will
+expose:
+
+- The whole report for that brand becomes readable: every engine answer, every
+  rival named, every citation, every fix.
+- Anyone with the link can read it. There is no sign-in and no password.
+- It is unlisted, not private. The page is marked `noindex` so search engines
+  skip it, but the link works for whoever it reaches.
+- You can revoke it at any time.
+
+Only a finished audit can be shared; a verify run and an unfinished run
+cannot. Confirming mints a random token and gives you the link to copy, at
+`/share/<token>`. The server refuses to publish without that explicit
+confirmation, so no script, stale page or future button can publish a report
+on one click.
+
+### What the reader gets
+
+The share page opens on the summary, with a switch to the full report
+(`?view=full`, so the choice stays in the URL you send). Readers get the
+section index and **Print / save as PDF**; the owner-only controls - the link
+back to the app, the share button itself, and the CSV and JSON exports - are
+not rendered for them. The footer names the deployment's correction address if
+one is configured, and links to the project's issue tracker for bugs in the
+software itself.
+
+### Revoking, and takedown requests
+
+**Revoke** next to the link kills it immediately: the URL stops resolving for
+everyone. Anyone who already saved a copy still has their copy, and revoking
+does nothing to the report itself. Sharing again mints a new token, so the old
+link stays dead.
+
+Every share page footer carries "Is this about your company? Request a
+review", which points at the deployment's own `/takedown` form with the share
+token attached. That request lands in the operator's takedown queue, where
+unpublishing that one share, blocking the brand's domain, or dismissing the
+request are each one audited action. See
+[The operator console](/docs/self-host/admin#support-and-takedowns).
+
+On a read-only demo deployment every write is refused, sharing included.
+
+## Export
+
+The same action row carries **CSV** and **JSON**, next to Share. Both are
+owner-only, need your session, and only work on a finished run.
+
+| Format | URL | What is in it |
+|---|---|---|
+| CSV | `/api/runs/<id>/export?format=csv` | One flat row per answer: `qid`, `question`, `engine`, `mention_type`, `prominence`, `sentiment`, `citation_urls`. The spreadsheet view |
+| JSON | `/api/runs/<id>/export?format=json` | A receipt document (`saylent.run-export/v1`): the run, the brand, the scores, every answer with its verdict, the fixes and the cited-page summary |
+| Run bundle | `/api/runs/<id>/export?format=bundle` | The lossless bundle - the same `run.json` the CLI writes, including the frozen question set, every sampled draw and every citation row |
+
+The run bundle has **no button in the app**. Paste the URL into the address
+bar of a browser where you are signed in and it downloads as
+`<brand>-<date>.run.json`. It is worth the detour, because it is the only
+export the CLI can read back: `saylent verify` and `saylent report` both take
+a bundle, so downloading one lets you keep measuring a brand from the command
+line against a baseline the app produced.
+
+**Print / save as PDF** sits at the end of the same row, and on the report
+itself, for the version you send to someone who wants a document.
+
+## Fix tracker
+
+The report's fix plan is one run. `/app/fixes` is the queue across every run
+and brand you own, deduplicated so the same fix recurring in three audits is
+one row.
+
+Three statuses, and they are a lifecycle rather than three labels:
+
+| Status | What it means |
+|---|---|
+| `open` | Diagnosed, not yet marked as done |
+| `shipped` | You marked it shipped. No verify has looked at it since |
+| `watched` | A verify ran after you shipped it. The verify's finding for that fix is shown on the row, verbatim |
+
+`watched` proves `shipped`, so it sorts as the furthest state reached. The
+queue itself sorts unfinished work first: open, then shipped, then watched,
+and by evidence weight inside each.
+
+Above the table, once anything has been verified, one line states the win
+rate: how many verified fixes actually moved a metric. The percentage only
+appears once at least three fixes have been watched, because two results are
+not a rate.
+
+When a brand has fixes you marked shipped and no verify since, a card offers
+the re-measure right there, naming the baseline it would compare against. That
+is the loop closing: ship, verify, see whether it moved. You can also start
+the same verify from the dashboard.
+
+Chips across the top filter by brand when more than one brand has fixes.
+Brands you deleted, and runs you hid, drop out of the queue.

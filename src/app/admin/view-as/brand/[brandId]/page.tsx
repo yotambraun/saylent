@@ -36,7 +36,7 @@ import {
 import { requireAdmin } from "@/lib/admin-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-export const metadata = { title: "View-as brand (read-only) · Admin · Saylent" };
+export const metadata = { title: "View-as brand (read-only) · Operator console · Saylent" };
 
 const ENGINES = ["chatgpt", "claude", "gemini", "perplexity"] as const;
 

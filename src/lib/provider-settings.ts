@@ -275,9 +275,9 @@ export async function modelChoiceRows(): Promise<ModelChoiceRow[]> {
  * holds — it is applied inside the resolver, per provider — but it is a read, not
  * a write, so a console change takes effect on the very next run.
  *
- * The engine's judgment-layer callers (brandModelCall / drafterCall / judgeCall)
- * still read the environment and therefore still only see ENV keys; that seam is
- * tracked for packages/engine (they need an explicit `keys` argument).
+ * The judgment-layer callers (brand model, drafter, judge) receive the same resolved
+ * keys explicitly through makeLlmCallers (src/inngest/functions.ts), so a key set
+ * only in the console reaches every stage of a run.
  */
 /** True when a provider's usable key exists ONLY in the console — i.e. the
  *  engine's env-reading judgment callers cannot see it. Used to log an honest

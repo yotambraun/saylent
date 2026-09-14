@@ -1,0 +1,249 @@
+---
+title: Questions and models
+description: Change what gets asked, how many times, and which model plays each role - from a file you can edit, a flag, or saylent.config.json.
+---
+
+An audit is a frozen list of buyer questions, asked of the answer engines and
+scored by a judge. Both halves are yours to change: the questions themselves,
+and which model serves each role. This page is how, in the order you usually
+need it. Every flag named here has a full row in
+[the CLI reference](/docs/cli); every config key has one in
+[Configuration](/docs/configuration).
+
+## See the questions before you pay for them
+
+`saylent questions <domain>` prints the set an audit would ask and writes it
+to a file you can edit first.
+
+```bash
+npx saylent questions example.com --no-brand-model --print   # $0, no keys
+npx saylent questions example.com                            # about $0.02, uses the real brand model
+```
+
+`--no-brand-model` generates from the template defaults and the domain name:
+no crawl, no model call, no keys. Without it, one brand-model call reads your
+crawled pages first, so the questions name your real category, customer and
+rivals.
+
+## The file it writes
+
+`questions.json` is a small, hand-editable envelope plus one row per question:
+
+```json
+{
+  "brand": "Kestrel Uptime",
+  "domain": "saylent-kestrel.vercel.app",
+  "version": 2,
+  "questions": [
+    {
+      "id": "q01",
+      "type": "category",
+      "text": "What is the best uptime monitoring for small SaaS teams?",
+      "source": "template"
+    },
+    {
+      "id": "q02",
+      "type": "comparison",
+      "text": "Kestrel Uptime vs Beacon Uptime - which is better for small SaaS teams?",
+      "source": "template"
+    },
+    {
+      "id": "q03",
+      "type": "problem",
+      "text": "How do I solve: alerts firing at 3am for nothing? Which tools help?",
+      "source": "template",
+      "samples": 3
+    }
+  ]
+}
+```
+
+| Field | Required | What it is |
+|---|---|---|
+| `brand` | written by the command | The brand name the questions were generated for |
+| `domain` | no | The domain they were generated for, for your own reference |
+| `version` | written by the command | The template-set version the file came from (`2`, or `"2+custom"` when a `saylent.config` `questionTemplates` key changed the library) |
+| `questions[].id` | no | `q01`, `q02`, … Any row without one is given the next free id when the file is read |
+| `questions[].type` | no | One of `category`, `comparison`, `problem`, `branded`, `integration`, `migration`, `trust`, `custom`. Missing or unrecognized becomes `custom` |
+| `questions[].text` | **yes** | The question, verbatim. An empty `text` is an error, not a skipped row |
+| `questions[].source` | no | `template` or `user`. Anything you add or edit is recorded as `user`, so the run bundle says whose question it was |
+| `questions[].samples` | no | A whole number 1-5: how many times **this one question** is asked per engine. It beats `--samples`, `AUDIT_SAMPLES` and `saylent.config` `sampling.samples`, for this row only |
+
+**Only `category` and `problem` rows are scored** and count toward the
+recommended band. Every other type - `custom` included - is asked, judged and
+reported in full, and deliberately left out of the band, so nothing you add by
+hand can inflate your own score.
+
+## Editing it: add, remove, tag
+
+Start from the generated file, then:
+
+```json
+{
+  "brand": "Kestrel Uptime",
+  "domain": "saylent-kestrel.vercel.app",
+  "version": 2,
+  "questions": [
+    {
+      "id": "q01",
+      "type": "category",
+      "text": "What is the best uptime monitoring for small SaaS teams?",
+      "source": "template"
+    },
+    {
+      "id": "q03",
+      "type": "problem",
+      "text": "How do I solve: alerts firing at 3am for nothing? Which tools help?",
+      "source": "template"
+    },
+    {
+      "type": "category",
+      "text": "Which status-page tool do developer teams actually recommend?",
+      "samples": 3
+    }
+  ]
+}
+```
+
+Three edits are shown there, and they are the whole vocabulary:
+
+- **Added** a row at the end - no `id` needed (it gets the next free one), no
+  `source` needed (a hand-written row is recorded as `user`). It is tagged
+  `category`, so it counts toward the band, and `samples: 3` asks it three
+  times per engine instead of the run default.
+- **Removed** `q02` by deleting its object. Ids do not have to be contiguous;
+  nothing renumbers.
+- **Tagged** by changing a row's `type`. Retagging `custom` → `category` or
+  `problem` pulls that question INTO the score; retagging the other way pushes
+  it out. Nothing else about the row changes.
+
+Then run it:
+
+```bash
+npx saylent audit saylent-kestrel.vercel.app --questions questions.json
+```
+
+Editing questions is the one change that makes a later `saylent verify`
+incomparable with the baseline - verify re-asks the baseline's own frozen set,
+so edit before the audit you want to measure from, not after.
+
+## What `--questions` accepts
+
+The same flag reads three shapes, told apart by their content:
+
+1. **A previous `run.json`** - the frozen set is reused verbatim, along with
+   its question-set version. This is how you re-run last month's audit
+   unchanged.
+2. **A `questions.json`** - the file above, edited or extended. A bare JSON
+   array of the same rows works too.
+3. **A plain text file** - one question per line. A line starting with `#` is a
+   comment, blank lines are skipped, and a line may be tagged by starting it
+   with a type and a colon. Untagged lines are typed `custom`.
+
+```text
+# my-questions.txt - the six I actually care about
+category: What is the best uptime monitoring for small SaaS teams?
+problem: How do I stop 3am alert noise without missing a real outage?
+comparison: Kestrel Uptime vs Beacon Uptime for a five-person team
+Which status page do developers trust most?
+```
+
+That last line has no recognized `type:` prefix, so it is asked and judged as
+`custom` and left out of the band. A prefix that is not one of the eight types
+is not treated as a tag at all - the whole line stays the question text.
+
+## How many times each question is asked
+
+A scored question is asked more than once because one draw is close to a coin
+flip. The count is called samples, it is 1 to 5, and it can be set three ways,
+narrowest first:
+
+| Where | What it sets |
+|---|---|
+| `samples` on one row of `questions.json` | That one question only. Beats everything below |
+| `--samples <n>` (or `AUDIT_SAMPLES`) | Every scored question in this run |
+| `sampling.samples` in `saylent.config.json` | The default when no flag is passed |
+
+Left alone, the profile decides: `full` takes two draws per engine and a third
+only when the first two disagree, `smoke` takes one draw and no tiebreak.
+`sampling.tiebreak: false` turns that third draw off; nothing can force one at
+1 or at 3 to 5 samples.
+
+## Which model does which job
+
+Six roles, each independently overridable. `saylent models` prints what
+resolves on your machine right now and where each choice came from.
+
+| Role | What it does | Flag | Environment variable |
+|---|---|---|---|
+| chatgpt, claude, gemini, perplexity | Answer your buyer questions | `--model chatgpt=<id>` | `MODEL_CHATGPT_ANSWER` and friends |
+| judge | Scores an answer: mention type, prominence, sentiment | `--judge <id>` (+ `--judge-family`) | `MODEL_JUDGE_ANTHROPIC`, `MODEL_JUDGE_OPENAI` |
+| brand | Reads your crawled pages and builds the brand model the questions come from | `--model brand=<id>` | `MODEL_BRAND` |
+| drafter | Writes the copy-ready artifact for each top-ranked fix, and translates a question set when `--locale` is set | `--model drafter=<id>` | `MODEL_DRAFTER` |
+
+There are two judge entries because the judge is deliberately from the *other*
+provider family than the engine that answered - an OpenAI answer is judged by
+an Anthropic model and vice versa. With one key only, every role runs on that
+family and the run is stamped `judge_mode: single-family`.
+
+```bash
+saylent models
+saylent models --judge claude-haiku-4-5 --model drafter=gpt-5-mini
+saylent models --judge my-fine-tune-v3 --judge-family anthropic
+```
+
+`saylent models` also warns when a judge would be the same model that
+answered, because that is self-judging, not an independent check.
+
+## Skip the stages you do not need
+
+`--skip drafts,corpus,gates` drops work from a run:
+
+| Stage | What you give up | What it saves |
+|---|---|---|
+| `drafts` | Fixes are still diagnosed and ranked, each one honestly marked "not drafted" | The drafter calls - the most expensive stage per run |
+| `corpus` | Cited pages are still listed; whether your brand appears on them reads "unverified" | Fetch time, $0 in model spend |
+| `gates` | No site checks at all; they are never reported as a pass | Fetch time, $0 in model spend |
+
+## Put it in a file
+
+Anything above can live in a `saylent.config.json` next to the folder you run
+from, so a team runs the same audit without remembering flags:
+
+```json
+{
+  "questionTemplates": {
+    "category": { "quota": 6 },
+    "trust": { "quota": 0 }
+  },
+  "models": {
+    "judge": { "anthropic": "claude-haiku-4-5", "openai": "gpt-5-mini" },
+    "brand": "claude-haiku-4-5",
+    "drafter": "claude-sonnet-4-6"
+  },
+  "competitors": ["beacon-uptime.example", "Statusly"],
+  "engines": ["chatgpt", "claude", "gemini", "perplexity"],
+  "sampling": { "samples": 2, "tiebreak": true },
+  "skip": { "drafts": false, "corpus": false, "gates": false }
+}
+```
+
+Every field is optional and a missing one means the shipped default. A file
+that fails validation stops the run with the exact field and the exact reason,
+never a silent fallback. **API keys are deliberately not config fields**, so a
+config file is always safe to commit.
+
+Precedence, for every control on this page: **CLI flag → environment variable
+→ `saylent.config.*` → the shipped default**, with a per-question `samples`
+value beating all four for its own row.
+
+[Configuration](/docs/configuration) is the complete file, every field, every
+default, and one table saying where each control lives on the command line, in
+the environment, in the config file, and on the app's own Questions page.
+
+## Doing the same thing in the app
+
+The self-hosted app puts this on one page per brand - the question rows, the
+samples selects, the engine checkboxes, the language field and the stage
+checkboxes, with the cost estimate moving above them as you edit. See
+[the question editor](/docs/tour#edit-the-questions-see-the-price).

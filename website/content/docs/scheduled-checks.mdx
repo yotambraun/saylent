@@ -1,0 +1,90 @@
+---
+title: Check again next month
+description: Put saylent verify on a cron entry or a scheduled GitHub Actions job, keep the movement reports, and know when to deploy the app instead.
+---
+
+You do not need the full app to keep measuring. `saylent verify` is one
+command against one baseline file, so a cron entry or a scheduled GitHub
+Actions job is enough to re-check a brand on a schedule and keep the results.
+
+Two things make it work unattended:
+
+- **`--yes`.** Without a terminal to answer "Run it? [Y/n]", the CLI refuses
+  and prints `Not a terminal. Re-run with --yes.` rather than reading the
+  empty line as a yes and spending money nobody agreed to.
+- **`--max-usd <n>`.** The daily cap is a local ledger at
+  `~/.saylent/spend.json`. A CI runner is a fresh machine every time, so that
+  ledger is always empty there and the daily cap protects nothing. `--max-usd`
+  is the one that travels: the run refuses before it starts if the high
+  estimate is above your number.
+
+## On a machine you keep (cron)
+
+Run `saylent keys` once as the user the job runs as. Keys land in
+`~/.saylent/config.json`, `chmod 600`, and every later run reads them from
+there, so no secret goes on the crontab line:
+
+```bash
+# 09:00 UTC on the 1st of each month
+0 9 1 * * cd /home/me/saylent && npx saylent verify ./example.com/2026-09-14/run.json --yes --max-usd 2 >> verify.log 2>&1
+```
+
+## On a schedule you do not host (GitHub Actions)
+
+Commit the baseline `run.json` to the repository, put the two keys in the
+repository's secrets, and let the runner do the rest:
+
+```yaml
+name: Monthly AI visibility check
+on:
+  schedule:
+    - cron: "0 9 1 * *" # 09:00 UTC on the 1st
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npx saylent verify ./example.com/2026-09-14/run.json --yes --max-usd 2
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: movement
+          path: example.com/*/movement.html
+```
+
+Environment variables are the first place `saylent` looks for keys, ahead of a
+`.env` file and ahead of `~/.saylent/config.json`, so secrets passed in `env:`
+are enough. This is a different job from the
+[GitHub Action](/docs/action): that one is the $0, no-keys
+`gate-check`, and it belongs on every push. This one spends real credits, so
+put it on a schedule you chose.
+
+## What to expect from a scheduled job
+
+Each run writes its own dated folder beside the baseline's, and
+`saylent history` lists them in order - see
+[Verify and history](/docs/verify-and-history#where-the-movement-report-lands).
+Two things differ once nobody is watching:
+
+- **Exit code `2` means an engine failed**, not that the run failed. The
+  movement report is still written. In CI that fails the step, so decide
+  deliberately whether you want that.
+- **Upgrading the CLI can make verify refuse to run**, on purpose, if the
+  shipped question templates changed since your baseline was frozen. Pin the
+  version in the job (`npx saylent@0.1.1`), or re-baseline with a fresh
+  `saylent audit` when you upgrade.
+
+## When to move to the app instead
+
+A folder of run bundles is real history, and for one brand checked on a
+schedule it is enough. [Deploy the app](/docs/self-host) when you want
+several brands and several people on one deployment, a fix tracker that spans
+runs instead of one report at a time, share links for a client, a spend cap
+that holds across everyone, or scheduled runs with nowhere to keep a runner.

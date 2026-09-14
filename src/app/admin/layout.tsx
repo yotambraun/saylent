@@ -4,7 +4,7 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/admin-auth";
 
-export const metadata = { title: "Saylent · Admin" };
+export const metadata = { title: "Saylent · Operator console" };
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const admin = await requireAdmin();
@@ -14,7 +14,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <header className="flex h-14 items-center justify-between border-b border-line bg-card px-4 lg:px-8">
         <div className="flex items-center gap-6">
           <Link href="/admin" className="font-display text-lg font-semibold">
-            Saylent <span className="text-wire">· Admin</span>
+            Saylent <span className="text-wire">· Operator console</span>
           </Link>
           <nav className="flex items-center gap-4 text-sm">
             <Link href="/admin" className="text-wire hover:text-ink">

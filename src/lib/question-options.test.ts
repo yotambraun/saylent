@@ -5,6 +5,8 @@
 //   2. the two constants this module mirrors rather than imports (the scored
 //      types and the non-answer role rates) can never drift from the engine;
 //   3. the estimate moves for the reasons a user is told it moves.
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 // A TEST-ONLY relative import. The app never depends on @saylent/cli (it has to
 // build without the CLI installed), but the two files must agree, so the suite
@@ -13,10 +15,28 @@ import {
   QUESTION_TYPES as CLI_QUESTION_TYPES,
   SCORED_TYPES as CLI_SCORED_TYPES,
 } from "../../packages/cli/src/questions-file";
+import {
+  FULL_COST_SENTENCE as CLI_FULL_COST_SENTENCE,
+  SMOKE_COST_SENTENCE as CLI_SMOKE_COST_SENTENCE,
+} from "../../packages/cli/src/preflight";
 import { ALL_ENGINES } from "@saylent/engine/engines";
 import { MAX_SAMPLES, PROFILES } from "@saylent/engine/profiles";
+import { generateQuestions } from "@saylent/engine/questions";
 import { ROLE_COST_CENTS } from "@saylent/engine/run-audit";
 import { isScored } from "@saylent/engine/score";
+import type { BrandModel } from "@saylent/engine/types";
+import {
+  FULL_COMPUTED_USD,
+  FULL_COST_SENTENCE,
+  FULL_RANGE_TEXT,
+  FULL_RANGE_USD,
+  publishedRange,
+  RECORDED_SMOKE_RUNS_USD,
+  SMOKE_COMPUTED_USD,
+  SMOKE_COST_SENTENCE,
+  SMOKE_RANGE_TEXT,
+  SMOKE_RANGE_USD,
+} from "./cost-copy";
 import {
   type DraftQuestion,
   estimateRunCost,
@@ -410,5 +430,83 @@ describe("question ids are bounded (#16)", () => {
     ]);
     expect(result.ok).toBe(true);
     if (result.ok) expect(result.value.map((q) => q.id)).toEqual(["q01", "q02"]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// ONE cost truth (src/lib/cost-copy.ts)
+// ---------------------------------------------------------------------------
+// Every price printed in prose — both READMEs, the docs, .env.example, the
+// landing page and the CLI preflight — comes from cost-copy.ts, and cost-copy.ts
+// claims to be what THIS estimator produces for the shipped template set. That
+// claim is checked here: a provider rate change, a profile change or a template
+// change moves the computed range, and this suite fails until the published
+// copy is re-derived. The CLI carries its own copy of the two sentences
+// (packages/cli/src/preflight.ts — the published CLI cannot import from src/),
+// so both are pinned against the same numbers.
+describe("the published cost ranges", () => {
+  // The shipped 23-question set, generated exactly as a real run generates it:
+  // a brand with two competitors, so every comparison template resolves.
+  const brand: BrandModel = {
+    brand: "Kestrel Uptime",
+    domain: "kestreluptime.com",
+    aliases: ["Kestrel Uptime", "kestrel"],
+    category: "uptime monitoring",
+    icp: "small SaaS teams",
+    products: [],
+    value_props: [],
+    problems: ["missed outages", "noisy alerts"],
+    competitors: ["Upcheck", "Beacon Uptime"],
+    language: "en",
+  };
+  const shipped = toDraftQuestions(generateQuestions(brand, 2026));
+  const four = [...ALL_ENGINES];
+
+  it("generates the 23-question set the copy is priced from", () => {
+    expect(shipped).toHaveLength(PROFILES.full.questions);
+  });
+
+  it("cost-copy's computed figures are what the estimator returns", () => {
+    const full = estimateRunCost({ questions: shipped, engines: four, samples: 2, profile: "full" });
+    const smoke = estimateRunCost({ questions: shipped, engines: four, samples: 1, profile: "smoke" });
+    expect({ lowUsd: full.lowUsd, highUsd: full.highUsd }).toEqual(FULL_COMPUTED_USD);
+    expect({ lowUsd: smoke.lowUsd, highUsd: smoke.highUsd }).toEqual(SMOKE_COMPUTED_USD);
+  });
+
+  it("the published ranges are those figures, rounded outward and widened to the recorded runs", () => {
+    const full = estimateRunCost({ questions: shipped, engines: four, samples: 2, profile: "full" });
+    const smoke = estimateRunCost({ questions: shipped, engines: four, samples: 1, profile: "smoke" });
+    expect(publishedRange(full)).toEqual(FULL_RANGE_USD);
+    expect(publishedRange(smoke, RECORDED_SMOKE_RUNS_USD)).toEqual(SMOKE_RANGE_USD);
+    for (const recorded of RECORDED_SMOKE_RUNS_USD) {
+      expect(recorded).toBeGreaterThanOrEqual(SMOKE_RANGE_USD.lowUsd);
+      expect(recorded).toBeLessThanOrEqual(SMOKE_RANGE_USD.highUsd);
+    }
+  });
+
+  it("the CLI's own copy of the two sentences says the same numbers", () => {
+    expect(CLI_SMOKE_COST_SENTENCE).toBe(SMOKE_COST_SENTENCE);
+    expect(CLI_FULL_COST_SENTENCE).toBe(FULL_COST_SENTENCE);
+    expect(CLI_SMOKE_COST_SENTENCE).toContain(SMOKE_RANGE_TEXT);
+    expect(CLI_FULL_COST_SENTENCE).toContain(FULL_RANGE_TEXT);
+  });
+
+  // The point of one source of truth is that the SURFACES quote it. These are
+  // the files a stranger reads a price from; each must carry the current range.
+  it("every surface that prints a price quotes the current ranges", () => {
+    const surfaces: [file: string, ranges: string[]][] = [
+      ["README.public.md", [SMOKE_RANGE_TEXT, FULL_RANGE_TEXT]],
+      ["packages/cli/README.md", [SMOKE_RANGE_TEXT, FULL_RANGE_TEXT]],
+      ["website/content/docs/costs.mdx", [SMOKE_RANGE_TEXT, FULL_RANGE_TEXT]],
+      ["website/content/docs/quickstart.mdx", [SMOKE_RANGE_TEXT, FULL_RANGE_TEXT]],
+      ["website/content/docs/mcp.mdx", [SMOKE_RANGE_TEXT, FULL_RANGE_TEXT]],
+      ["website/content/docs/self-host/environment.mdx", [FULL_RANGE_TEXT]],
+      ["website/app/page.tsx", [SMOKE_RANGE_TEXT]],
+      [".env.example", [SMOKE_RANGE_TEXT, FULL_RANGE_TEXT]],
+    ];
+    for (const [file, ranges] of surfaces) {
+      const text = readFileSync(path.join(process.cwd(), file), "utf8");
+      for (const range of ranges) expect(text, `${file} must quote ${range}`).toContain(range);
+    }
   });
 });

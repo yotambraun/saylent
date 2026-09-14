@@ -39,7 +39,7 @@ const serverSchema = z.object({
   SENTRY_ORG: opt, // Sentry org slug (source-map upload)
   SENTRY_PROJECT: opt, // Sentry project slug (source-map upload)
   DEMO_RUN_ID: opt, // /demo renders a "demo not configured" note if unset
-  // The app runs the FULL profile by default (23 questions, about $2.50 to $4.00 per run) and
+  // The app runs the FULL profile by default (23 questions, about $3.70 to $5.50 per run) and
   // refuses the 6-question smoke profile for real users in production; the estimate is shown
   // before every run. resolveRunProfile() in src/lib/runs.ts enforces this from process.env.
   AUDIT_PROFILE: z.preprocess(nonEmpty, z.enum(["full", "smoke"]).default("full")),

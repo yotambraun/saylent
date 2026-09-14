@@ -41,8 +41,10 @@ jobs:
 
 ## More
 
-[Integrations](https://yotambraun.github.io/saylent/docs/integrations) has the
-badge-commit recipe and the MCP server.
+[The GitHub Action](https://yotambraun.github.io/saylent/docs/action) has the
+badge-commit recipe and what the live probe can and cannot know;
+[Run it automatically](https://yotambraun.github.io/saylent/docs/integrations)
+is this Action next to the MCP server and the library.
 [The crawler](https://yotambraun.github.io/saylent/docs/crawler) documents the
 user-agent this Action sends and how to allow or block it.
 

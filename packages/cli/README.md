@@ -1,4 +1,4 @@
-# saylent
+# Saylent
 
 The open-source audit of what AI assistants say about your brand, with the
 receipts. One command asks ChatGPT, Claude, Gemini and Perplexity your buyers'
@@ -16,13 +16,17 @@ read your site, and writes `run.json`, `report.html` and `report.md`.
 npx saylent audit example.com
 ```
 
-Bring your own `OPENAI_API_KEY` and `ANTHROPIC_API_KEY`. One is enough; two let
-a model from the other provider family judge. Export them, put them in a `.env`
-in the folder you run from, or run `saylent keys set openai`. A smoke run costs
-about $0.40 to $1.20 with four engines of your own provider credits, a full run
-$2.50 to $4.00; the preflight prints the estimate and asks before spending
-anything. Nothing is sent through us, and there is no telemetry. Node 20 or
-newer, on macOS, Linux or Windows.
+Bring your own keys. One `OPENAI_API_KEY` or one `ANTHROPIC_API_KEY` runs the
+audit with that engine; two keys turn on the cross-family judge, where one
+provider family judges the other's answers. A `GEMINI_API_KEY` and a
+`PERPLEXITY_API_KEY` add those two engines. Export them, put them in a `.env`
+in the folder you run from, or run `saylent keys set openai`.
+
+With all four engines, a smoke run costs about $0.60 to $1.20 of your own
+provider credits and a full run about $3.70 to $5.50; our two recorded smoke
+runs, both on four engines, cost $0.93 and $1.11. The preflight prints the
+estimate and asks before spending anything. Nothing is sent through us, and
+there is no telemetry. Node 20 or newer, on macOS, Linux or Windows.
 
 ## Common flags
 
@@ -39,20 +43,33 @@ newer, on macOS, Linux or Windows.
 | `--model <role>=<id>` | Override one role's model. Roles: `brand`, `drafter`, `chatgpt`, `claude`, `gemini`, `perplexity`. |
 | `--format <a,b>` | Which files to write: `md`, `html`, `json`. Default: all three. |
 
-Every other flag, and the `verify`, `history`, `report`, `keys`, `models`,
-`questions` and `gate-check` commands, are in the
+`saylent gate-check example.com` runs the site check on its own: robots.txt per
+AI bot, a live fetch as each bot, your JSON-LD and your meta directives, for $0
+and no key at all. Every other flag, and the `verify`, `history`, `report`,
+`keys`, `models` and `questions` commands, are in the
 [CLI reference](https://yotambraun.github.io/saylent/docs/cli).
 
-## Four ways in
+## The rest of it
 
-- **This command.** No install, no account, no database.
-  [Quickstart](https://yotambraun.github.io/saylent/docs/quickstart)
-- **The app, on your own infrastructure.** History across runs, scheduled verifies, a fixes tracker, rival comparison and an operator console with spend caps. [Self-host](https://yotambraun.github.io/saylent/docs/self-host)
-- **The GitHub Action.** `yotambraun/saylent@v0` runs the AI-access checks on every push. No LLM calls, no API keys, $0. [Integrations](https://yotambraun.github.io/saylent/docs/integrations)
-- **The docs.** Methodology, costs, what is sent where, and how to extend it. [Docs](https://yotambraun.github.io/saylent/docs)
+The docs are one story in six parts, in this order:
 
-`import { runAudit } from "@saylent/engine"` and `saylent mcp` expose the same
-pipeline to your own code and to an MCP client.
+- **[Run it once](https://yotambraun.github.io/saylent/docs/quickstart)**: this
+  command. Keys, the run, the report, and how to re-ask the same questions next
+  month with no database.
+- **[Keep score as a team](https://yotambraun.github.io/saylent/docs/tour)**: the
+  app on your own infrastructure, with history, a fix tracker, rival comparison,
+  share links, and as many user accounts as you like on one deployment. Walk a
+  [read-only copy](https://saylent-demo.vercel.app/app) first.
+- **[Operate it for others](https://yotambraun.github.io/saylent/docs/self-host/admin)**: the
+  operator console, with a spend cap, a kill switch, a model per role, users,
+  runs, takedowns and an audit log.
+- **[Automate](https://yotambraun.github.io/saylent/docs/integrations)**: the
+  $0 GitHub Action, the MCP server (`saylent mcp`), and `runAudit()` from
+  `@saylent/engine` in your own code.
+- **[Understand](https://yotambraun.github.io/saylent/docs/how-it-works)**: the
+  nine stages, the methodology, what it costs, and what leaves your machine.
+- **[Project](https://yotambraun.github.io/saylent/docs/contributing)**: the $0
+  dev setup, the extension points, and how to report a security issue.
 
 Source, issues and the sample report:
 [github.com/yotambraun/saylent](https://github.com/yotambraun/saylent).

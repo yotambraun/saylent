@@ -15,7 +15,7 @@ import { requireAdmin } from "@/lib/admin-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { LoadError } from "../load-error";
 
-export const metadata = { title: "Analytics · Admin · Saylent" };
+export const metadata = { title: "Analytics · Operator console · Saylent" };
 
 const WINDOW_DAYS = 14;
 

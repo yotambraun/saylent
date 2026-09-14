@@ -1,6 +1,6 @@
 ---
 title: Docs
-description: What Saylent is, and the three ways in - run the CLI, deploy the app, or read a report.
+description: What Saylent is, what one run gives you, and the six sections these docs are organized into.
 ---
 
 Saylent asks real buyer questions to real AI assistants - ChatGPT, Claude,
@@ -10,27 +10,24 @@ absent, which rival was named instead, which pages the assistants cited, and
 what to fix. It runs on your own provider keys, on your own machine or your
 own infrastructure. Nothing is sent through us and nothing is stored by us.
 
-## Start here
+These docs are one story in six parts, in the order people actually need them.
 
 <Cards>
-  <Card title="Run the CLI" href="/docs/quickstart" description="One command, five minutes: two keys, npx saylent audit, an open report. About $0.40 to $1.20 of your own credits." />
-  <Card title="Deploy the app" href="/docs/self-host" description="History, scheduled verifies, share links and multiple users - on infrastructure you own. Local, your own server, or a managed platform." />
-  <Card title="Walk the live demo" href="https://saylent-demo.vercel.app/app" description="A read-only copy of the app on the Kestrel Uptime sample: every screen, nothing saves, no account." />
-  <Card title="Understand a report" href="/docs/reports" description="Every section of report.html, in order: the verdict, the answers, the source map, the site gates and the fix plan." />
+  <Card title="Run it once" href="/docs/quickstart" description="One command, your own keys, a report you can open in five minutes. No account, no database." />
+  <Card title="Keep score as a team" href="/docs/tour" description="The same engine with a memory: brands, history, a fix tracker, share links, and as many user accounts as you like on one deployment you own." />
+  <Card title="Operate it for others" href="/docs/self-host/admin" description="The console for whoever owns the keys and the bill: spend cap, kill switch, models per role, users, runs, takedowns." />
+  <Card title="Automate" href="/docs/integrations" description="A $0 CI gate on every push, an MCP server so an agent can run it, and the pipeline as a library in your own code." />
+  <Card title="Understand" href="/docs/how-it-works" description="What a run does at each of its nine stages, what it costs, what leaves your machine, and what it refuses to claim." />
+  <Card title="Project" href="/docs/contributing" description="The $0 dev setup, the extension points, the changelog, and where to report a security issue." />
 </Cards>
 
-If you would rather see the machinery before you run it,
-[How it works](/docs/how-it-works) walks through all nine stages of one audit -
-what each one prints, and where you can change it.
-
-## Change what it asks and which models judge
-
-The questions, the sample count, the answer engines, the judge and drafter
-models, and which stages run at all are every one of them yours to set - from
-a flag, an environment variable, a `saylent.config.json`, or the app's own
-Questions page. [Configuration reference](/docs/configuration) has the
-complete config file, the default for every field, and one table saying where
-each control lives on each surface.
+| What you need | Where it lives | What it costs |
+|---|---|---|
+| One report on one domain, today | [The CLI](/docs/quickstart): `npx saylent audit example.com` | about $0.60 to $1.20 with four engines |
+| To know which AI crawlers your site lets in | [The site check](/docs/check): `npx saylent gate-check example.com` | $0, no keys |
+| History, a fix tracker and more than one account | [Deploy the app](/docs/self-host) | the same per run, on your own keys |
+| A gate that fails a push when a bot is blocked | [The GitHub Action](/docs/action) | $0, no keys |
+| Your agent or your own program to run it | [The MCP server](/docs/mcp) or [the library](/docs/library) | the same per run, on your own keys |
 
 ## Before you spend anything
 
@@ -43,3 +40,6 @@ each control lives on each surface.
   loud.
 - [Compared with hosted tools](/docs/compare) - sourced prices, dated, and the
   five things the hosted tools still do that Saylent does not.
+- [Walk the live demo](https://saylent-demo.vercel.app/app) - a read-only copy
+  of the app on the Kestrel Uptime sample: every screen, nothing saves, no
+  account, $0.

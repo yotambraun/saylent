@@ -35,7 +35,7 @@ import {
   RunRowControls,
 } from "./detail-client";
 
-export const metadata = { title: "User · Admin · Saylent" };
+export const metadata = { title: "User · Operator console · Saylent" };
 
 export default async function AdminUserDetailPage({
   params,
