@@ -1,10 +1,30 @@
 {
-  "checked_at": null,
-  "cli_version": "0.1.0",
+  "checked_at": "2026-09-14T07:16:43.789Z",
   "providers": {
-    "openai": { "model": "gpt-5.4", "ok": false, "latency_ms": null, "error": "not_checked_yet" },
-    "anthropic": { "model": "claude-sonnet-4-6", "ok": false, "latency_ms": null, "error": "not_checked_yet" },
-    "gemini": { "model": "gemini-3.6-flash", "ok": false, "latency_ms": null, "error": "not_checked_yet" },
-    "perplexity": { "model": "sonar", "ok": false, "latency_ms": null, "error": "not_checked_yet" }
-  }
+    "openai": {
+      "model": "gpt-5.4",
+      "ok": false,
+      "latency_ms": null,
+      "error": "not_configured"
+    },
+    "anthropic": {
+      "model": "claude-sonnet-4-6",
+      "ok": false,
+      "latency_ms": null,
+      "error": "not_configured"
+    },
+    "gemini": {
+      "model": "gemini-3.6-flash",
+      "ok": false,
+      "latency_ms": null,
+      "error": "not_configured"
+    },
+    "perplexity": {
+      "model": "sonar",
+      "ok": false,
+      "latency_ms": null,
+      "error": "not_configured"
+    }
+  },
+  "cli_version": "0.1.2"
 }
