@@ -233,6 +233,10 @@ function storyboard(lines) {
   // not an empty terminal; the stages then arrive one by one.
   const runIt = lines.findIndex((l) => /Run it\?/.test(l.text));
   const start = runIt >= 0 ? runIt + 1 : 1;
+  // The loop opens on the finished run for a beat, so a paused or still frame
+  // (a README thumbnail, a landing screenshot) is the full terminal, never a
+  // half-empty one; then it replays from the plan.
+  frames.push({ lines, delay: 1600, caret: false });
   frames.push({ lines: lines.slice(0, start), delay: 1400, caret: false });
   for (let i = start + 1; i <= lines.length; i += 1) {
     const last = lines[i - 1];
