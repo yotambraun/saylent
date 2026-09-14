@@ -5,7 +5,7 @@
 //   2. the two constants this module mirrors rather than imports (the scored
 //      types and the non-answer role rates) can never drift from the engine;
 //   3. the estimate moves for the reasons a user is told it moves.
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 // A TEST-ONLY relative import. The app never depends on @saylent/cli (it has to
@@ -444,6 +444,13 @@ describe("question ids are bounded (#16)", () => {
 // copy is re-derived. The CLI carries its own copy of the two sentences
 // (packages/cli/src/preflight.ts — the published CLI cannot import from src/),
 // so both are pinned against the same numbers.
+// In this repo the public README/CHANGELOG are authored as *.public.md and renamed
+// by the snapshot; in the published repo only the renamed file exists. Accept either.
+function publicFile(name: string): string {
+  const pub = name.replace(/\.md$/, ".public.md");
+  return existsSync(pub) ? pub : name;
+}
+
 describe("the published cost ranges", () => {
   // The shipped 23-question set, generated exactly as a real run generates it:
   // a brand with two competitors, so every comparison template resolves.
@@ -495,7 +502,7 @@ describe("the published cost ranges", () => {
   // the files a stranger reads a price from; each must carry the current range.
   it("every surface that prints a price quotes the current ranges", () => {
     const surfaces: [file: string, ranges: string[]][] = [
-      ["README.public.md", [SMOKE_RANGE_TEXT, FULL_RANGE_TEXT]],
+      [publicFile("README.md"), [SMOKE_RANGE_TEXT, FULL_RANGE_TEXT]],
       ["packages/cli/README.md", [SMOKE_RANGE_TEXT, FULL_RANGE_TEXT]],
       ["website/content/docs/costs.mdx", [SMOKE_RANGE_TEXT, FULL_RANGE_TEXT]],
       ["website/content/docs/quickstart.mdx", [SMOKE_RANGE_TEXT, FULL_RANGE_TEXT]],
