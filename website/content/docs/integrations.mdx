@@ -1,15 +1,17 @@
 ---
 title: Run it automatically
-description: The three places Saylent runs without you typing the command - a CI step, an agent, and your own code.
+description: The places Saylent runs without you typing the command - a CI step, an agent, and your own code.
 ---
 
-The command is one person at one terminal. These three are the same engine
-with nobody watching: a check on every push, a tool an agent can call, and the
-pipeline imported straight into your own program.
+The command is one person at one terminal. These are the same engine with
+nobody watching: a check on every push, tools an agent can call (directly, or
+through the Claude Code plugin), and the pipeline imported straight into your
+own program.
 
 <Cards className="grid-cols-1">
   <Card title="The GitHub Action" href="/docs/action" description="Fail a deploy that blocks the AI crawlers. $0, no keys, no LLM call, and a badge committed into your repo." />
   <Card title="The MCP server" href="/docs/mcp" description="Four tools on stdio, so Claude Code, Claude Desktop or Cursor can audit, verify, gate-check and read a report itself." />
+  <Card title="The Claude Code plugin" href="/docs/claude-code" description="Two commands to install: the MCP server plus four skills that check crawler access for free and show an audit's price before it spends." />
   <Card title="Use it as a library" href="/docs/library" description="runAudit() from @saylent/engine and the renderers from @saylent/report - your own persistence, your own presentation." />
 </Cards>
 
@@ -18,6 +20,7 @@ pipeline imported straight into your own program.
 | You want | Use | What it costs |
 |---|---|---|
 | CI to fail when a search or user-fetch bot gets blocked | [the Action](/docs/action) | **$0** - it has no keys and calls no model |
+| Claude Code to run the checks for you, with a price shown before any spend | [the Claude Code plugin](/docs/claude-code) | **$0** for the crawler check and reading reports; your own credits for an audit, after you agree to the estimate |
 | An agent to run the audit and read the result back | [the MCP server](/docs/mcp) | Your own credits: about $0.60 to $1.20 for a smoke run with four engines, $3.70 to $5.50 for a full one, checked against `max_usd` before anything is sent |
 | The pipeline inside your own program, with your own database | [`@saylent/engine`](/docs/library) | Your own credits, at the same per-run cost |
 | Your own presentation of a run you already have | [`@saylent/report`](/docs/library#saylentreport---render-a-run-without-the-app) | **$0** - pure functions, no network |

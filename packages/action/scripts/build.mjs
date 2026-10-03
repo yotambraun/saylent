@@ -23,12 +23,31 @@
 // for a fixed input set; nothing below injects a timestamp, a build id, or an
 // absolute path (minify strips the per-module path banners).
 import { build } from "esbuild";
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const actionDir = path.resolve(here, "..");
+const engineManifestPath = path.resolve(actionDir, "../engine/package.json");
+
+// @saylent/engine's util.ts imports its own package.json for one field: the
+// version in the crawler's User-Agent. Bundled as-is, the WHOLE manifest
+// (dependency ranges included) lands in dist/index.js, so every dependency
+// bump in packages/engine/package.json changed the committed bundle and failed
+// the "bundle is current" CI check, even when no bundled code moved. This
+// plugin hands esbuild just { version } for that one file, so the bundle now
+// changes only when code it really contains changes, or on a version bump.
+const engineManifestVersionOnly = {
+  name: "engine-manifest-version-only",
+  setup(b) {
+    b.onLoad({ filter: /[\\/]engine[\\/]package\.json$/ }, (args) => {
+      if (path.resolve(args.path) !== engineManifestPath) return undefined;
+      const { version } = JSON.parse(readFileSync(args.path, "utf8"));
+      return { contents: JSON.stringify({ version }), loader: "json" };
+    });
+  },
+};
 
 await build({
   entryPoints: [path.join(actionDir, "src/entry.ts")],
@@ -48,6 +67,7 @@ await build({
   // Strips esbuild's per-module debug banners (each bundled source file otherwise
   // leaves its own repo path as a comment) — dist/index.js must not carry raw paths.
   minify: true,
+  plugins: [engineManifestVersionOnly],
   logLevel: "info",
 });
 

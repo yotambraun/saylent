@@ -21,7 +21,7 @@ const DOCS_URL = "https://yotambraun.github.io/saylent/";
 
 /** Every command name, in the order --help lists them. Also the vocabulary the
  *  "did you mean" suggestion is measured against. */
-const COMMANDS = [
+export const COMMANDS = [
   "audit",
   "verify",
   "gate-check",

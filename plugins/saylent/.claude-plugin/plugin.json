@@ -1,0 +1,14 @@
+{
+  "name": "saylent",
+  "displayName": "Saylent",
+  "version": "0.1.3",
+  "description": "Check whether AI crawlers can read a site (free), audit what ChatGPT, Claude, Gemini and Perplexity say about a brand with a cost preview before any spend, verify fixes against the same frozen questions, and summarize existing reports.",
+  "author": {
+    "name": "Saylent",
+    "url": "https://github.com/yotambraun/saylent"
+  },
+  "homepage": "https://yotambraun.github.io/saylent/docs/claude-code",
+  "repository": "https://github.com/yotambraun/saylent",
+  "license": "Apache-2.0",
+  "keywords": ["ai-search", "ai-visibility", "generative-engine-optimization", "seo", "audit", "robots-txt", "mcp"]
+}

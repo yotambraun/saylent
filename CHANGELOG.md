@@ -4,6 +4,22 @@ All notable changes to Saylent are documented in this file. The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this
 project uses [Semantic Versioning](https://semver.org/).
 
+## [0.1.3] - 2026-10-04
+
+### Added
+
+- **Claude Code plugin.** `/plugin marketplace add yotambraun/saylent`, then `/plugin install saylent@saylent`, adds the MCP server and four skills: `gate-check` (free crawler-access check), `audit` (shows the keys it found and the estimated cost, and asks before spending), `verify` (re-asks the frozen questions after your fixes) and `read-report` (summarizes an existing run). See [the Claude Code plugin](https://yotambraun.github.io/saylent/docs/claude-code).
+- **The MCP `audit` dry run says what a real run would do.** It now reports which providers have a key (never the key itself), the engines that would be asked, the judge mode and whether the run would start, and prices only the engines that have a key, the same way `saylent audit --dry-run` does.
+
+### Changed
+
+- **Dependencies refreshed** within their existing major versions, including the Anthropic and Google provider SDKs, the MCP SDK (1.31), Next.js 16.3.7, React 19.3 and zod 4.6. Every test, the type check, the lint, the app build and the CLI dry run pass on the new set.
+
+### Fixed
+
+- **The GitHub Action resolves again.** `uses: yotambraun/saylent@v0` failed in every workflow because the repository was published without the Action's `action.yml`. It now ships with the built entry point it runs, and a test fails the release if either is ever missing again.
+- **The site's changelog page lists every release.** It skipped any release heading that carried a date, so it showed no entries.
+
 ## [0.1.2] - 2026-09-14
 
 ### Changed
@@ -92,6 +108,7 @@ and a fix.
   methodology behind what is measured, sampled, and diagnosed, and what is
   explicitly not claimed.
 
+[0.1.3]: https://github.com/yotambraun/saylent/releases/tag/v0.1.3
 [0.1.2]: https://github.com/yotambraun/saylent/releases/tag/v0.1.2
 [0.1.1]: https://github.com/yotambraun/saylent/releases/tag/v0.1.1
 [0.1.0]: https://github.com/yotambraun/saylent/releases/tag/v0.1.0

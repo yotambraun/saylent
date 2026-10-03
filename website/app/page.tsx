@@ -108,9 +108,9 @@ const SECTIONS: {
   },
   {
     title: "Automate",
-    body: "The same checks on every push, inside your agent, or inside your own program. The CI gate costs $0 and needs no keys; the MCP server and the library spend only your own credits, under the same ceiling the command respects.",
+    body: "The same checks on every push, inside your agent, or inside your own program. The CI gate costs $0 and needs no keys; the Claude Code plugin, the MCP server and the library spend only your own credits, under the same ceiling the command respects.",
     href: "/docs/integrations",
-    cta: "The Action, the MCP server, the library",
+    cta: "The Action, the Claude Code plugin, the MCP server, the library",
     snippet: {
       file: ".github/workflows/ai-access.yml",
       code: `on: [push]

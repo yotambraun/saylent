@@ -30,7 +30,11 @@ same message the CLI prints.
 reference](/docs/cli)'s `--flag` column) - the two surfaces can never accept a different
 argument set. Only `domain` is required; everything else is optional. Pass
 `dry_run: true` on `audit` for a **$0**, no-keys, no-network preflight: the
-question set it would ask and the cost estimate, nothing sent to any provider.
+question set it would ask, which providers have a key (`keys_configured`,
+presence only, never a value), the engines a real run would ask
+(`engines_with_keys`), the judge mode, whether the run would start
+(`ready_to_run`) and the cost estimate for those engines. Nothing is sent to
+any provider.
 
 | Argument | Tool(s) | CLI flag | Description |
 |---|---|---|---|
@@ -72,6 +76,10 @@ the server definition's `env` block, or run `saylent keys` once and leave the
 definition clean.
 
 ## Claude Code
+
+The quickest route is [the Claude Code plugin](/docs/claude-code): two
+commands install this server plus skills that check crawler access for free
+and preview an audit's cost before spending. To add only the server:
 
 ```bash
 claude mcp add saylent -- npx saylent mcp

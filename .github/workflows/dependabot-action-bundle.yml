@@ -1,0 +1,62 @@
+# Keeps Dependabot's dependency PRs mergeable without a manual step. The
+# GitHub Action's bundle (packages/action/dist/index.js) is committed and CI
+# fails when it is stale, so an update to a package the bundle inlines
+# (cheerio, undici, @actions/core) would otherwise wait for someone to run
+# `npm run build:action` on the branch. This job does that, and only that.
+#
+# Safety:
+# - Runs only for pull requests opened by Dependabot from this repository's own
+#   branches, and only when Dependabot itself triggered the run.
+# - `npm ci --ignore-scripts`: no install script of any dependency runs while
+#   this job holds a write token. The build is esbuild over the sources.
+# - Commits nothing but packages/action/dist, and only when it changed.
+# - A push made with GITHUB_TOKEN does not start other workflows, so the job
+#   starts CI on the new commit itself (workflow_dispatch is the one event that
+#   token may trigger); its checks attach to the PR's new head commit.
+name: Dependabot Action bundle
+on:
+  pull_request:
+    paths:
+      - package.json
+      - package-lock.json
+      - "packages/*/package.json"
+permissions:
+  contents: read
+concurrency:
+  group: dependabot-action-bundle-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  rebuild:
+    if: >-
+      github.actor == 'dependabot[bot]' &&
+      github.event.pull_request.user.login == 'dependabot[bot]' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # push the rebuilt bundle to the Dependabot branch
+      actions: write # start CI on that new commit
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run build:action
+      - name: Commit the bundle if it changed, then start CI on it
+        env:
+          BRANCH: ${{ github.event.pull_request.head.ref }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if git diff --quiet -- packages/action/dist; then
+            echo "The Action bundle is already current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add packages/action/dist
+          git commit -m "Rebuild the GitHub Action bundle for this dependency update"
+          git push origin "HEAD:${BRANCH}"
+          gh workflow run ci.yml --ref "${BRANCH}"

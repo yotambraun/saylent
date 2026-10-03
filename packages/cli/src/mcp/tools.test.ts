@@ -303,6 +303,30 @@ describe("audit tool", () => {
     expect(result.estimate_usd.high).toBeGreaterThan(0);
   });
 
+  it("dry_run with no key says so, and prices every requested engine", async () => {
+    const result = (await auditTool(deps({ cwd }), { domain: "acme.example", dry_run: true })) as DryRunResult;
+    expect(result.keys_configured).toEqual({ openai: false, anthropic: false, gemini: false, perplexity: false });
+    expect(result.engines_with_keys).toEqual([]);
+    expect(result.ready_to_run).toBe(false);
+    expect(result.judge).toMatch(/^none/);
+    expect(result.estimate_basis).toBe("all requested engines (no usable key found)");
+  });
+
+  it("dry_run reports key presence (never a value) and prices only the engines with a key, like the CLI preflight", async () => {
+    const noKeys = (await auditTool(deps({ cwd }), { domain: "acme.example", dry_run: true })) as DryRunResult;
+    const value = "sk-" + "test-openai-dry-run-presence-only";
+    process.env.OPENAI_API_KEY = value;
+    process.env.ANTHROPIC_API_KEY = ""; // an empty mapping from the client counts as unset
+    const result = (await auditTool(deps({ cwd }), { domain: "acme.example", dry_run: true })) as DryRunResult;
+    expect(result.keys_configured).toEqual({ openai: true, anthropic: false, gemini: false, perplexity: false });
+    expect(result.engines_with_keys).toEqual(["chatgpt"]);
+    expect(result.ready_to_run).toBe(true);
+    expect(result.judge).toMatch(/^single-family \(OpenAI only/);
+    expect(result.estimate_basis).toBe("engines with a key");
+    expect(result.estimate_usd.high).toBeLessThan(noKeys.estimate_usd.high);
+    expect(JSON.stringify(result)).not.toContain(value);
+  });
+
   it("dry_run reuses inline `questions` instead of template defaults", async () => {
     const result = (await auditTool(deps({ cwd }), {
       domain: "acme.example",

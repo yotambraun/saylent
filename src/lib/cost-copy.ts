@@ -1,6 +1,7 @@
 // ONE cost truth. Every surface that prints a price in prose — README.public.md,
-// packages/cli/README.md, the docs (costs, quickstart, mcp, environment, index,
-// integrations), .env.example, the landing page and the CLI preflight — quotes
+// packages/cli/README.md, the docs (costs, quickstart, mcp, claude-code,
+// environment, index, integrations), the Claude Code plugin's audit skill,
+// .env.example, the landing page and the CLI preflight — quotes
 // the two ranges below and nothing else.
 //
 // WHERE THE NUMBERS COME FROM: estimateRunCost() in question-options.ts, the

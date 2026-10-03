@@ -1,0 +1,23 @@
+{
+  "name": "saylent",
+  "description": "Saylent for Claude Code: check whether AI crawlers can read a site, audit what ChatGPT, Claude, Gemini and Perplexity say about a brand, and verify fixes.",
+  "owner": {
+    "name": "Saylent",
+    "url": "https://github.com/yotambraun/saylent"
+  },
+  "plugins": [
+    {
+      "name": "saylent",
+      "source": "./plugins/saylent",
+      "description": "Free AI-crawler access check, a cost-previewed AI answer audit for any brand, fix verification and report summaries, through the saylent MCP server.",
+      "category": "marketing",
+      "tags": [
+        "ai-search",
+        "ai-visibility",
+        "seo",
+        "audit",
+        "mcp"
+      ]
+    }
+  ]
+}

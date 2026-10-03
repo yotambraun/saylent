@@ -85,8 +85,14 @@ the PR and the live pass if you have keys.
 
 - [ ] `npm run typecheck && npm run lint && npm test && npm run build` all
       clean
+- [ ] `npm run site:build` succeeds if you touched `website/` or the docs
 - [ ] New behavior has a test; a bug fix has a test that fails without the
       fix
+- [ ] A change to `packages/action/**`, the engine code it runs, or a
+      dependency it bundles (`cheerio`, `undici`, `@actions/core`) commits the
+      rebuilt `packages/action/dist` from `npm run build:action`
+- [ ] A changed MCP tool or CLI command is still described correctly by the
+      Claude Code plugin's skills in `plugins/saylent/skills/`
 - [ ] `packages/engine/**` and `packages/report/**` changes don't add a
       forbidden import (lint catches this, but check the diff)
 - [ ] Docs updated in the same PR if you changed a command, a flag, an env

@@ -38,6 +38,7 @@ import {
   PROVIDER_TO_ENGINE,
   PROVIDERS,
   resolveKeys,
+  type Provider,
 } from "../keys";
 import {
   type AuditOptions as SharedAuditOptions,
@@ -45,7 +46,7 @@ import {
   normalizeSkip,
   resolveModelSelection,
 } from "../options";
-import { checkSpendCap, estimateCostRange, recordSpend } from "../preflight";
+import { checkSpendCap, estimateCostRange, formatJudgeMode, recordSpend } from "../preflight";
 import { previewQuestions } from "../question-preview";
 import { loadQuestionSetFile, SCORED_TYPES, type QuestionSetFile } from "../questions-file";
 import {
@@ -279,6 +280,19 @@ export interface DryRunResult {
     count: number;
     questions: { qid: string; qtype: string; text: string; scored: boolean }[];
   };
+  /** Which providers have a key where the server looks (environment, .env,
+   *  ~/.saylent/config.json). Presence only: a key value is never returned. */
+  keys_configured: Record<Provider, boolean>;
+  /** The requested engines a real run would actually ask (those with a key). */
+  engines_with_keys: Engine[];
+  /** The judge mode a real run would use, as the CLI preflight prints it. */
+  judge: string;
+  /** Whether a real audit would start: at least one judgment key (OpenAI or
+   *  Anthropic) and at least one requested engine with a key. */
+  ready_to_run: boolean;
+  /** What estimate_usd prices: the engines with a key, the same basis as the
+   *  CLI preflight, or every requested engine while no key is found yet. */
+  estimate_basis: "engines with a key" | "all requested engines (no usable key found)";
   estimate_usd: { low: number; high: number };
   cost_usd: 0;
 }
@@ -364,18 +378,37 @@ export async function auditTool(deps: McpToolDeps, args: AuditToolArgs): Promise
           useBrandModel: false,
           questionTemplates: config.questionTemplates,
         });
-    const estimate = estimateCostRange(
-      engineMod,
-      profile,
-      requestedEngines.length > 0 ? requestedEngines : (["chatgpt", "claude"] as Engine[]),
-      { sampling: resolvedSampling, questions: loadedQuestionFile?.questions, skip: resolvedSkip },
-    );
+    // Key PRESENCE only (never a value), so an agent can say which providers
+    // are set up and price the run the way the CLI preflight does: over the
+    // engines that have a key. With no usable key yet it prices every
+    // requested engine, so the user still sees what a set-up run would cost.
+    const { keys: dryKeys } = resolveKeys(cwd);
+    const enginesWithKeys = requestedEngines.filter((e) => {
+      const provider = PROVIDERS.find((p) => PROVIDER_TO_ENGINE[p.id] === e);
+      return provider ? Boolean(dryKeys[provider.id]) : false;
+    });
+    const pricedEngines =
+      enginesWithKeys.length > 0
+        ? enginesWithKeys
+        : requestedEngines.length > 0
+          ? requestedEngines
+          : (["chatgpt", "claude"] as Engine[]);
+    const estimate = estimateCostRange(engineMod, profile, pricedEngines, {
+      sampling: resolvedSampling,
+      questions: loadedQuestionFile?.questions,
+      skip: resolvedSkip,
+    });
     return {
       dry_run: true,
       domain: args.domain,
       brand: brandName,
       profile,
       engines: requestedEngines,
+      keys_configured: Object.fromEntries(PROVIDERS.map((p) => [p.id, Boolean(dryKeys[p.id])])) as Record<Provider, boolean>,
+      engines_with_keys: enginesWithKeys,
+      judge: formatJudgeMode(dryKeys),
+      ready_to_run: hasMinimumKeys(dryKeys) && enginesWithKeys.length > 0,
+      estimate_basis: enginesWithKeys.length > 0 ? "engines with a key" : "all requested engines (no usable key found)",
       question_set: {
         version: preview.version,
         source: loadedQuestionFile ? "questions_file/questions" : "template defaults",

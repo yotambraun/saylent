@@ -507,6 +507,8 @@ describe("the published cost ranges", () => {
       ["website/content/docs/costs.mdx", [SMOKE_RANGE_TEXT, FULL_RANGE_TEXT]],
       ["website/content/docs/quickstart.mdx", [SMOKE_RANGE_TEXT, FULL_RANGE_TEXT]],
       ["website/content/docs/mcp.mdx", [SMOKE_RANGE_TEXT, FULL_RANGE_TEXT]],
+      ["website/content/docs/claude-code.mdx", [SMOKE_RANGE_TEXT, FULL_RANGE_TEXT]],
+      ["plugins/saylent/skills/audit/SKILL.md", [SMOKE_RANGE_TEXT, FULL_RANGE_TEXT]],
       ["website/content/docs/self-host/environment.mdx", [FULL_RANGE_TEXT]],
       ["website/app/page.tsx", [SMOKE_RANGE_TEXT]],
       [".env.example", [SMOKE_RANGE_TEXT, FULL_RANGE_TEXT]],
