@@ -249,6 +249,8 @@ present and where it came from.
 
 ## Automate
 
+### The GitHub Action
+
 One step on every push runs the same site check as the Gate receipt above:
 robots.txt per bot, a live fetch as each crawler, JSON-LD and meta directives.
 No LLM calls, no API keys, $0. It commits its status badge into your repo and
@@ -266,6 +268,28 @@ jobs:
           domain: example.com
 ```
 
+### Use Saylent from Claude Code
+
+```text
+/plugin marketplace add yotambraun/saylent
+/plugin install saylent@saylent
+```
+
+Then ask in plain words, or call a skill by name:
+
+| Skill | What it does | Cost |
+|---|---|---|
+| `/saylent:gate-check example.com` | Which AI crawlers the site lets in, and the fix for each block | $0, no keys |
+| `/saylent:audit example.com` | What the four assistants tell buyers, who wins instead, and a fix plan | Your own credits; a free dry run shows the keys found and the price, and it asks before spending |
+| `/saylent:verify <run.json>` | Re-asks the same frozen questions after your fixes and shows what moved | Your own credits, about the same as the audit |
+| `/saylent:read-report <folder>` | Summarizes a run you already have | $0, offline |
+
+Start with `gate-check`: it is free and explains most poor results. Keys are
+never pasted into the chat; run `npx saylent keys set openai` in your own
+terminal once and the plugin finds it.
+
+### The MCP server and the library
+
 `saylent mcp` serves the same pipeline over the Model Context Protocol, so
 Claude Code, Claude Desktop or Cursor can audit a brand, verify a fix,
 gate-check a site and read a report itself, under the same cost ceiling the
@@ -275,6 +299,7 @@ pipeline and the same renderer from your own code, with your own persistence.
 
 **Start here: [Run it automatically](https://yotambraun.github.io/saylent/docs/integrations)** ·
 [the GitHub Action](https://yotambraun.github.io/saylent/docs/action) ([inputs and outputs](packages/action/)) ·
+[the Claude Code plugin](https://yotambraun.github.io/saylent/docs/claude-code) ·
 [the MCP server](https://yotambraun.github.io/saylent/docs/mcp) ·
 [as a library](https://yotambraun.github.io/saylent/docs/library)
 

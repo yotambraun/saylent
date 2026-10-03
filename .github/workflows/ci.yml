@@ -4,6 +4,10 @@ on:
   pull_request:
   push:
     branches: [main]
+  # Started by dependabot-action-bundle.yml after it pushes a rebuilt Action
+  # bundle to a Dependabot branch: a push made with GITHUB_TOKEN starts no
+  # pull_request run, so the new head commit would otherwise have no checks.
+  workflow_dispatch:
 # Least-privilege token: CI only reads the repo (typecheck/lint/test/build).
 permissions:
   contents: read
@@ -17,8 +21,8 @@ jobs:
       NEXT_PUBLIC_SUPABASE_URL: https://dummy.supabase.co
       NEXT_PUBLIC_SUPABASE_ANON_KEY: dummy
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
           cache: npm
@@ -41,14 +45,25 @@ jobs:
       # keys needed (SKIP_ENV_VALIDATION=1 above covers any env-touching import).
       - run: npm run test
       - run: npm run build
+      # The docs site deploys only from main (pages.yml), so without this a
+      # pull request that breaks it, such as a dependency bump that leaves two
+      # copies of fumadocs-core in the lockfile, merges green and fails the
+      # deploy afterwards.
+      - name: Docs site builds
+        run: npm run site:build
       # The GitHub Action's bundle is committed (a JavaScript action gets no
       # `npm install`), so it can silently go stale. Rebuild it and fail if the
       # result differs from what is in git — which also proves the build stays
-      # deterministic.
+      # deterministic. The bundle carries only the engine's version from its
+      # package.json, so a dependency bump fails this step only when code that
+      # is really bundled (cheerio, undici, @actions/core) changes.
       - name: Action bundle is current and the build is deterministic
         run: |
           npm run build:action
-          git diff --exit-code -- packages/action/dist
+          if ! git diff --exit-code -- packages/action/dist; then
+            echo "::error file=packages/action/dist/index.js::The committed Action bundle is out of date. Run 'npm ci && npm run build:action' on this branch and commit packages/action/dist."
+            exit 1
+          fi
 
   # The CLI must work unmodified on all three OSes a self-hoster or an
   # `npx saylent` user actually runs, on every Node version the README promises.
@@ -74,8 +89,8 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: ${{ matrix.node }}
           cache: npm

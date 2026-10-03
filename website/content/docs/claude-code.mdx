@@ -1,0 +1,96 @@
+---
+title: The Claude Code plugin
+description: Two commands install Saylent in Claude Code - a free crawler check, an audit that shows its price before it spends, fix verification and report summaries.
+---
+
+The plugin puts Saylent inside [Claude Code](https://code.claude.com/docs/en/plugins)
+as four skills and the [MCP server](/docs/mcp). Ask in plain words ("can AI
+crawlers read example.com?", "what do the assistants say about us?") or call a
+skill by name. It is the same pipeline as the CLI: your own keys, the same
+cost estimate before a run, the same reports on disk.
+
+## Install
+
+In a Claude Code session:
+
+```text
+/plugin marketplace add yotambraun/saylent
+/plugin install saylent@saylent
+```
+
+Claude Code loads the plugin in your next session, or right away after
+`/reload-plugins`. The plugin starts the server with `npx -y saylent@0 mcp`,
+so it needs Node 20 or newer and nothing else installed. Fixes released on the
+0.x line reach you without reinstalling.
+
+## The four skills
+
+| Skill | What it does | Cost |
+|---|---|---|
+| `/saylent:gate-check` | Which AI crawlers the site lets in: robots.txt per bot class, a live request as each AI user agent, JSON-LD and meta directives, with the fix for each problem | **$0**, no keys |
+| `/saylent:audit` | What ChatGPT, Claude, Gemini and Perplexity tell buyers: recommended or not, who is named instead, which pages are cited, and a fix plan. Writes `run.json`, `report.html` and `report.md` | Your own credits, shown before you agree |
+| `/saylent:verify` | Re-asks the same frozen questions after you ship fixes and shows what moved, in `movement.html` | Your own credits, about the same as the audit |
+| `/saylent:read-report` | Summarizes a run you already have, or answers a question about one section | **$0**, offline |
+
+Each skill takes its input after the name, for example
+`/saylent:gate-check example.com` or
+`/saylent:verify ./example.com/2026-10-01/run.json`.
+
+Start with `gate-check`. A blocked crawler explains most poor results, and it
+costs nothing to find out.
+
+## Spending is always your call
+
+`audit` never spends first. It runs a free dry run, then tells you which
+provider keys it found, which engines it will ask, which model judges the
+answers, and the estimated cost, and asks before it runs. The run it starts
+carries a `max_usd` ceiling: if the estimate is higher, or the run would take
+today's spend past the daily cap ($20 by default, set with
+`DAILY_SPEND_CAP_USD`), the server refuses before anything reaches a provider. `verify` states the cost of the original run and asks the same way.
+
+As a guide, with four engines a smoke audit (6 questions) costs about
+**$0.60 to $1.20** and a full audit (23 questions) about **$3.70 to $5.50**.
+Fewer engines cost less. See [What it costs](/docs/costs).
+
+## Keys
+
+`gate-check` and `read-report` need no keys. `audit` and `verify` need one of
+OpenAI or Anthropic (both give cross-family judging); Gemini and Perplexity add
+two more engines. Set them up once, in any of these ways:
+
+- **Recommended:** run `npx saylent keys set openai` (or `anthropic`, `gemini`,
+  `perplexity`) in your own terminal. The key is typed into a masked prompt
+  and saved to `~/.saylent/config.json` with owner-only permissions, and the
+  plugin finds it however Claude Code was started. `npx saylent keys test`
+  checks each key with a free call.
+- Export `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY` or
+  `PERPLEXITY_API_KEY` in the shell you start Claude Code from. The plugin
+  passes exactly these four to the server.
+- A `.env` file in the project folder, kept out of git.
+
+Never paste a key into the chat. Keys are never tool arguments, and the skills
+report only which providers have a key, never a value.
+
+## Where the files go
+
+Reports are written to `./<domain>/<YYYY-MM-DD>/` under the folder Claude Code
+runs in, so `read-report` and `verify` find them later. The server refuses an
+output folder outside that working directory, and the [other MCP
+safeguards](/docs/cli#saylent-mcp) apply unchanged.
+
+## Updating and removing
+
+Run `/plugin` and open the **Installed** tab to update or uninstall, or run
+`claude plugin update saylent@saylent` in your shell.
+
+## Without the plugin
+
+The plugin is a convenience over the MCP server. To add only the server, with
+no skills:
+
+```bash
+claude mcp add saylent -- npx saylent mcp
+```
+
+[The MCP server](/docs/mcp) page has the tool reference and the Claude Desktop
+and Cursor setup.

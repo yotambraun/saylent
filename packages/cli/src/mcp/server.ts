@@ -57,7 +57,7 @@ const AUDIT_DESCRIPTION = [
   "Run a full AI-answer audit of a brand's domain: crawl the site, model the brand, freeze buyer questions, ask each answer engine, judge the answers cross-family, fetch the cited pages, check the AI bot gates, and draft fixes. Writes run.json, report.html and report.md, and returns the verdict, the recommended band, the summary blocks as JSON, the written file paths and the real cost.",
   TOOL_COSTS.audit,
   "Provider keys are read from the environment, a .env file, or ~/.saylent/config.json; they can never be passed as arguments. The estimate is checked against max_usd (and the daily spend cap) BEFORE anything is sent to a provider, and refuses with the same message the CLI prints.",
-  "Pass dry_run: true for a $0, no-keys, no-network preflight instead: the question set (template defaults, or questions_file/questions when given) and the cost estimate, nothing sent to any provider.",
+  "Pass dry_run: true for a $0, no-keys, no-network preflight instead: the question set (template defaults, or questions_file/questions when given), which providers have a key (presence only, never a value), whether a real run would start, and the cost estimate for the engines that would run, nothing sent to any provider. Call it before every audit.",
   MCP_SAFETY,
 ].join(" ");
 

@@ -21,6 +21,8 @@ interface ReleaseGroup {
 
 interface ReleaseSection {
   version: string;
+  /** the release date after the heading's dash, when there is one */
+  date?: string;
   intro: string[];
   groups: ReleaseGroup[];
 }
@@ -63,9 +65,12 @@ function parseChangelog(md: string): ReleaseSection[] {
 
   for (const raw of lines) {
     const line = raw.trim();
-    const h2 = /^##\s+\[(.+?)\]\s*$/.exec(line);
+    // `## [0.1.2] - 2026-09-14`, Keep a Changelog's own heading shape, or a
+    // bare `## [Unreleased]`. Requiring the bracket to end the line skipped
+    // every dated release, and the page rendered no entries at all.
+    const h2 = /^##\s+\[(.+?)\](?:\s+[-\u2013\u2014]\s+(.+?))?\s*$/.exec(line);
     if (h2) {
-      current = { version: h2[1], intro: [], groups: [] };
+      current = { version: h2[1], date: h2[2], intro: [], groups: [] };
       sections.push(current);
       group = null;
       openItem = false;
@@ -176,7 +181,10 @@ export default function ChangelogPage() {
 
         {sections.map((s) => (
           <section key={s.version} className="mt-10">
-            <h2 className="font-display text-xl text-ink">[{s.version}]</h2>
+            <h2 className="font-display text-xl text-ink">
+              [{s.version}]
+              {s.date && <span className="ml-2 font-mono text-sm text-wire">{s.date}</span>}
+            </h2>
             {s.intro.map((p, i) => (
               <p key={i} className="mt-2 text-sm text-wire">
                 {renderInline(p)}

@@ -111,7 +111,15 @@ Before you open a PR:
 - [ ] `npm run typecheck` is clean
 - [ ] `npm run lint` is clean (this includes the purity rule above)
 - [ ] `npm run test` is green
-- [ ] `npm run build` succeeds
+- [ ] `npm run build` succeeds, and `npm run site:build` too if you touched
+      `website/` or the docs
+- [ ] If you changed `packages/action/**`, the engine code it runs, or a
+      dependency it bundles (`cheerio`, `undici`, `@actions/core`): run
+      `npm run build:action` and commit `packages/action/dist` (CI fails on a
+      stale bundle)
+- [ ] If you changed an MCP tool or a CLI command, the Claude Code plugin's
+      skills in `plugins/saylent/skills/` still describe it (a test checks
+      tool and command names)
 - [ ] Docs updated if the change touches a documented command, flag,
       extension point, or environment variable (`ARCHITECTURE.md`,
       `METHODOLOGY.md`, or the relevant `website/content/docs/*` page)

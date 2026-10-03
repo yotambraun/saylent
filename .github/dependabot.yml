@@ -16,6 +16,20 @@ updates:
     schedule:
       interval: weekly
     groups:
+      # Packages inlined into the committed GitHub Action bundle
+      # (packages/action/dist/index.js). A bump here changes the bundle, so it
+      # arrives as its own small PR, which dependabot-action-bundle.yml rebuilds
+      # and commits, and never holds up the larger group below. Dependabot puts
+      # each update in the first group that matches it.
+      action-bundle:
+        patterns:
+          - "@actions/*"
+          - "cheerio"
+          - "undici"
+          - "esbuild"
+        update-types:
+          - minor
+          - patch
       minor-and-patch:
         update-types:
           - minor
@@ -30,4 +44,19 @@ updates:
       - dependency-name: "react"
         update-types: ["version-update:semver-major"]
       - dependency-name: "react-dom"
+        update-types: ["version-update:semver-major"]
+      # Toolchain majors are adopted deliberately, in one reviewed change:
+      # - @types/node tracks the oldest Node the published packages support
+      #   (engines ">=20" in packages/cli, engine and report). Newer typings
+      #   would let code use APIs that do not exist on that floor.
+      # - typescript, vitest and eslint majors change type checking, the test
+      #   runner and the lint rules for the whole monorepo at once, and
+      #   eslint-config-next has to support the new eslint first.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "vitest"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "eslint"
         update-types: ["version-update:semver-major"]

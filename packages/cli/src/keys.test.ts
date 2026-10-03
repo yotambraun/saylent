@@ -100,6 +100,30 @@ describe("resolveKeys precedence: env -> .env -> ~/.saylent/config.json", () => 
     expect(sources.perplexity).toBeUndefined();
   });
 
+  // An MCP client may hand the server every provider variable, set to "" when
+  // the user has no value for it (a plugin's `${VAR:-}` mapping does exactly
+  // that). An empty or blank value must count as unset: it must not block the
+  // .env or ~/.saylent/config.json fallback, and must not count as a key.
+  it("treats an empty or blank env var as unset and falls through to the next source", () => {
+    process.env.OPENAI_API_KEY = "";
+    process.env.ANTHROPIC_API_KEY = "   ";
+    process.env.GEMINI_API_KEY = "";
+    process.env.PERPLEXITY_API_KEY = "";
+    writeFileSync(path.join(cwd, ".env"), "ANTHROPIC_API_KEY=" + "dotenv-anthropic\n");
+    writeConfigFile({ keys: { openai: "config-openai" } });
+    const { keys, sources } = resolveKeys(cwd);
+    expect(keys).toEqual({ openai: "config-openai", anthropic: "dotenv-anthropic" });
+    expect(sources).toEqual({ openai: "~/.saylent/config.json", anthropic: ".env" });
+    expect(hasMinimumKeys(keys)).toBe(true);
+  });
+
+  it("never counts an all-empty environment as having keys", () => {
+    for (const p of PROVIDERS) process.env[p.envVar] = "";
+    const { keys } = resolveKeys(cwd);
+    expect(keys).toEqual({});
+    expect(hasMinimumKeys(keys)).toBe(false);
+  });
+
   it("resolves each provider independently", () => {
     process.env.OPENAI_API_KEY = "env-openai";
     writeFileSync(path.join(cwd, ".env"), "ANTHROPIC_API_KEY=" + "dotenv-anthropic\n");

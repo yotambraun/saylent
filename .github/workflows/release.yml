@@ -37,8 +37,8 @@ jobs:
       NEXT_PUBLIC_SUPABASE_URL: https://dummy.supabase.co
       NEXT_PUBLIC_SUPABASE_ANON_KEY: dummy
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
           cache: npm
@@ -113,12 +113,12 @@ jobs:
             --title "$TAG" \
             --notes-file release-notes.md
 
-      # `uses: yotambraun/saylent@v1` is how everyone consumes the GitHub Action,
-      # and GitHub resolves that literally: without a `v1` tag the action simply
+      # `uses: yotambraun/saylent@v0` is how everyone consumes the GitHub Action,
+      # and GitHub resolves that literally: without a `v0` tag the action simply
       # does not exist. So every release re-points the floating major tag at the
       # commit just released. Force-moving a tag is the documented convention for
       # actions (actions/checkout@v4 works exactly this way); the immutable
-      # `v1.2.3` tag stays available for anyone who wants to pin exactly.
+      # `v0.1.2` tag stays available for anyone who wants to pin exactly.
       - name: Move the floating major tag
         run: |
           major="v${VERSION%%.*}"

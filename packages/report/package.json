@@ -1,6 +1,6 @@
 {
   "name": "@saylent/report",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "private": false,
   "description": "Render a Saylent audit report - HTML or Markdown - from a run bundle, with no app and no model calls.",
   "license": "Apache-2.0",
@@ -88,10 +88,10 @@
     "@saylent/engine": "^0.1.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "lucide-react": "^1.23.0",
-    "radix-ui": "^1.6.1",
-    "tailwind-merge": "^3.6.0",
-    "zod": "^4.4.3"
+    "lucide-react": "^1.48.0",
+    "radix-ui": "^1.6.7",
+    "tailwind-merge": "^3.7.0",
+    "zod": "^4.6.5"
   },
   "peerDependencies": {
     "react": "^19",

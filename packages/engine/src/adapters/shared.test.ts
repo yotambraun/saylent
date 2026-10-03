@@ -109,7 +109,10 @@ describe("withRetry", () => {
 // step state. A key must not survive it.
 // ---------------------------------------------------------------------------
 describe("failed() redacts secrets", () => {
-  const GEMINI_KEY = "AIzaSyD-fake-key-for-tests-0123456789ab";
+  // Assembled from two pieces so no complete key-shaped literal sits in source
+  // (secret scanners flag one even when it is fake); the runtime value is the
+  // full Google API key shape, which the first test below pins.
+  const GEMINI_KEY = "AIza" + "SyD-fake-key-for-tests-0123456789ab";
   const OPENAI_KEY = "sk-" + "proj-fake0123456789abcdefghijklmnop";
   const prev: Record<string, string | undefined> = {};
 
@@ -123,6 +126,10 @@ describe("failed() redacts secrets", () => {
       if (v === undefined) delete process.env[k];
       else process.env[k] = v;
     }
+  });
+
+  it("tests against a value with the full Google API key shape", () => {
+    expect(GEMINI_KEY).toMatch(/^AIza[0-9A-Za-z_-]{35,}$/);
   });
 
   it("strips the key out of the Gemini URL a transport error echoes back", () => {

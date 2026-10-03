@@ -16,7 +16,7 @@ These docs are one story in six parts, in the order people actually need them.
   <Card title="Run it once" href="/docs/quickstart" description="One command, your own keys, a report you can open in five minutes. No account, no database." />
   <Card title="Keep score as a team" href="/docs/tour" description="The same engine with a memory: brands, history, a fix tracker, share links, and as many user accounts as you like on one deployment you own." />
   <Card title="Operate it for others" href="/docs/self-host/admin" description="The console for whoever owns the keys and the bill: spend cap, kill switch, models per role, users, runs, takedowns." />
-  <Card title="Automate" href="/docs/integrations" description="A $0 CI gate on every push, an MCP server so an agent can run it, and the pipeline as a library in your own code." />
+  <Card title="Automate" href="/docs/integrations" description="A $0 CI gate on every push, a Claude Code plugin and an MCP server so an agent can run it, and the pipeline as a library in your own code." />
   <Card title="Understand" href="/docs/how-it-works" description="What a run does at each of its nine stages, what it costs, what leaves your machine, and what it refuses to claim." />
   <Card title="Project" href="/docs/contributing" description="The $0 dev setup, the extension points, the changelog, and where to report a security issue." />
 </Cards>
@@ -27,6 +27,7 @@ These docs are one story in six parts, in the order people actually need them.
 | To know which AI crawlers your site lets in | [The site check](/docs/check): `npx saylent gate-check example.com` | $0, no keys |
 | History, a fix tracker and more than one account | [Deploy the app](/docs/self-host) | the same per run, on your own keys |
 | A gate that fails a push when a bot is blocked | [The GitHub Action](/docs/action) | $0, no keys |
+| Claude Code to do it for you | [The Claude Code plugin](/docs/claude-code) | $0 for the site check; the same per run for an audit, after you agree to the estimate |
 | Your agent or your own program to run it | [The MCP server](/docs/mcp) or [the library](/docs/library) | the same per run, on your own keys |
 
 ## Before you spend anything

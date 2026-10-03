@@ -1,0 +1,51 @@
+name: "Saylent AI Access Gate"
+description: >-
+  A $0 check of whether AI search and browsing bots can read your site -
+  robots.txt per bot class, a live per-user-agent probe, JSON-LD presence, and meta
+  directives. No LLM calls, no API keys. Writes an "AI access" status badge into your
+  repo and fails the job only when a search-index or user-fetch bot is blocked.
+author: "Saylent"
+branding:
+  icon: "shield"
+  color: "green"
+
+inputs:
+  domain:
+    description: "The domain to check (e.g. example.com)."
+    required: true
+  fail_on:
+    description: >-
+      Comma-separated bot classes that fail the job when BLOCKED: training, search,
+      user. A blocked training bot (GPTBot, ClaudeBot via robots.txt) is always a
+      legitimate choice and is excluded unless you opt it in.
+    required: false
+    default: "search,user"
+  badge_path:
+    description: "Path (relative to the repo root) to write the AI-access badge SVG."
+    required: false
+    default: ".github/badges/ai-access.svg"
+  write_badge:
+    description: "Whether to write the badge SVG file."
+    required: false
+    default: "true"
+  site_root:
+    description: >-
+      Optional path prefix for a site hosted under a subpath (e.g. a GitHub Pages
+      project site at example.github.io/docs -> site_root: /docs). robots.txt is still
+      read from the host root; the crawl and the live probe stay inside the path.
+    required: false
+    default: ""
+
+outputs:
+  result:
+    description: "Overall result: pass, warn, or fail."
+  summary:
+    description: "The markdown summary (also written to the job summary)."
+
+runs:
+  # node24 is the JavaScript-action runtime GitHub is moving everything to:
+  # node20 stops being installed on the runners in September 2026, and an action
+  # that still declares it stops working outright. dist/index.js is built for a
+  # Node 20 baseline, which runs unchanged on 24.
+  using: "node24"
+  main: "packages/action/dist/index.js"
