@@ -42,9 +42,9 @@
     "access": "public"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.129.0",
+    "@anthropic-ai/sdk": "^0.131.0",
     "@modelcontextprotocol/sdk": "^1.31.0",
-    "@google/genai": "^2.24.0",
+    "@google/genai": "^2.25.0",
     "cheerio": "^1.2.0",
     "openai": "^6.45.0",
     "react": "^19.3.0",
