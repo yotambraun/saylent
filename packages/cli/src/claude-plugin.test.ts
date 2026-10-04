@@ -29,7 +29,8 @@ const skillsDir = path.join(repoRoot, pluginDir, "skills");
 const skills = readdirSync(skillsDir, { withFileTypes: true })
   .filter((d) => d.isDirectory())
   .map((d) => {
-    const text = readFileSync(path.join(skillsDir, d.name, "SKILL.md"), "utf8");
+    // Normalize line endings: Git on Windows checks files out with CRLF.
+    const text = readFileSync(path.join(skillsDir, d.name, "SKILL.md"), "utf8").replace(/\r\n/g, "\n");
     const fm = /^---\n([\s\S]*?)\n---\n([\s\S]*)$/.exec(text);
     const field = (name: string) => (fm ? new RegExp(`^${name}:\\s*(.+)$`, "m").exec(fm[1])?.[1].trim() : undefined);
     return { dir: d.name, text, body: fm?.[2] ?? "", name: field("name"), description: field("description"), allowedTools: field("allowed-tools") };
