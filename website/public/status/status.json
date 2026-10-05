@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-09-28T07:25:12.210Z",
+  "checked_at": "2026-10-05T07:28:28.294Z",
   "providers": {
     "openai": {
       "model": "gpt-5.4",
@@ -26,5 +26,5 @@
       "error": "not_configured"
     }
   },
-  "cli_version": "0.1.2"
+  "cli_version": "0.1.3"
 }
