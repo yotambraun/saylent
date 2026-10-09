@@ -61,8 +61,8 @@
     "build": "tsup && node ../../scripts/fix-esm-extensions.mjs dist"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.129.0",
-    "@google/genai": "^2.24.0",
+    "@anthropic-ai/sdk": "^0.131.0",
+    "@google/genai": "^2.27.0",
     "cheerio": "^1.2.0",
     "openai": "^6.45.0",
     "undici": "^7.29.1",
