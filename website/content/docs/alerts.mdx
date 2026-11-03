@@ -1,0 +1,158 @@
+---
+title: Alerts
+description: Get told when the answers move. After a verify or a scheduled run, saylent sends what changed against the baseline to Slack, a signed webhook or email, with a receipt for every line.
+---
+
+An alert lists what changed between a run and its baseline, and nothing else:
+
+| Event | When |
+|---|---|
+| `recommendation_gained` / `recommendation_lost` | The same question, asked of the same engine in both runs, moved into or out of "recommended". Only when both runs asked the same frozen questions; otherwise the alert says they were not compared. |
+| `rival_new` | A brand the answers name now that no baseline answer named. |
+| `opportunity_new` | A domain that joined the [off-site opportunities](/docs/sources): cited in answers that name a rival and not you. |
+| `crawler_errors_spike` | Only with [crawler data](/docs/crawlers) on both sides: AI-crawler errors and blocks reach 5 or more, and their share of AI-crawler requests at least doubles. |
+
+Nothing changed, nothing sent (unless you ask for a heartbeat). Every event
+carries its receipt: the question and engine, with a link to that answer in
+the report when the report has an address.
+
+## From the CLI
+
+```bash
+export SAYLENT_SLACK_WEBHOOK_URL=https://hooks.slack.com/services/...
+npx saylent verify ./acme.com/2026-10-01/run.json --yes --notify slack
+```
+
+| Variable | For |
+|---|---|
+| `SAYLENT_SLACK_WEBHOOK_URL` | Slack ([incoming webhook](https://docs.slack.dev/messaging/sending-messages-using-incoming-webhooks)) |
+| `SAYLENT_WEBHOOK_URL` | your own endpoint |
+| `SAYLENT_WEBHOOK_SECRET` | optional: signs each webhook request |
+| `SAYLENT_SMTP_URL` | email: `smtps://user:pass@host:465`, or `smtp://user:pass@host:587` with STARTTLS |
+| `SAYLENT_ALERT_EMAIL_FROM`, `SAYLENT_ALERT_EMAIL_TO` | sender, and recipients separated by commas |
+
+They are read from the environment or a `.env` in the current folder, never
+from `saylent.config`: a webhook URL is a credential. `--notify` takes
+`slack`, `webhook` and `email`, comma-separated; the preflight names any
+variable a channel still needs, before anything is spent. `--notify-always`
+sends even when nothing changed. `--notify-allow-loopback` lets the webhook
+or Slack URL point at your own machine, for testing a local receiver (see
+[where alerts can be sent](#where-alerts-can-be-sent)).
+
+**Weekly digest.** `saylent history <dir> --digest` compares the newest run
+in a brand's folder with the newest one at least seven days older (`--days`
+to change it), prints it, sends it with `--notify`, or prints the payload with
+`--json`. It reads saved runs only, so it costs nothing. Schedule it next to
+your verify ([scheduled checks](/docs/scheduled-checks)).
+
+Sent alerts are remembered in `~/.saylent/alerts-sent.json` (the dedupe key,
+channel, brand and time, nothing else), so re-running the same command never
+sends the same alert twice. At most six alerts per channel per brand per hour.
+
+## In the app
+
+On a brand's page, **Alerts** sets when (after every finished run of that
+brand, and/or a weekly digest on Mondays at 09:30 UTC) and where (email to you
+through the deployment's own email setup, a Slack webhook, a signed webhook).
+**Send a test** checks the settings, and the page lists recent deliveries,
+failures included. Webhook URLs and the secret are stored encrypted with
+`APP_SECRET` and are never shown again or sent to the browser; without
+`APP_SECRET` only email alerts can be saved. Saving a URL resolves its host
+once and refuses one that does not resolve or that resolves to a private
+address. Needs migration
+`0047_brand_alerts.sql`. Crawler-error alerts use the two newest uploaded logs,
+and only when the newest arrived after the baseline run.
+
+## The payload
+
+Every channel carries the same versioned JSON (`schema: "saylent.alert/v1"`);
+the webhook receives it as the request body:
+
+```json
+{
+  "schema": "saylent.alert/v1",
+  "id": "al_3f9c0a1b7d2e4c55",
+  "type": "run.changed",
+  "sent_at": "2026-11-02T09:01:00.000Z",
+  "brand": { "name": "Acme", "domain": "acme.example" },
+  "run": { "id": "…", "finished_at": "2026-11-02T09:00:00Z", "kind": "verify" },
+  "baseline": { "id": "…", "finished_at": "2026-10-01T09:00:00Z" },
+  "comparable": true,
+  "summary": { "recommendation_gained": 1, "recommendation_lost": 0, "rival_new": 1, "opportunity_new": 0, "crawler_errors_spike": 0 },
+  "events": [
+    {
+      "type": "recommendation_gained",
+      "text": "ChatGPT now recommends Acme for \"best uptime tool\" (was absent).",
+      "qid": "q01", "question": "best uptime tool", "engine": "chatgpt", "engine_label": "ChatGPT",
+      "before": "absent", "after": "recommended",
+      "receipt": { "kind": "answer", "qid": "q01", "engine": "chatgpt", "url": "https://saylent.example/app/run/…?view=full#q-q01" }
+    }
+  ],
+  "more_events": 0,
+  "links": { "report": "…", "movement": "…", "baseline": "…" }
+}
+```
+
+- `type` is `run.changed` or `digest.weekly`. `id` is stable for the same
+  brand, run and events: use it to dedupe on your side too.
+- At most 25 events per payload; the rest are counted in `more_events`.
+- The body is built from these fields only. No key, no config and no
+  environment value can ride along.
+- Additions keep `v1`; a change to an existing field becomes `v2`.
+
+Headers: `X-Saylent-Event` (the type), `X-Saylent-Delivery` (the id),
+`X-Saylent-Schema`, and with a secret, `X-Saylent-Signature`.
+
+## Verifying a signature
+
+`X-Saylent-Signature: t=<unix seconds>,v1=<hex>`, where `v1` is
+HMAC-SHA256 of `"<t>.<raw body>"` with your secret. Recompute it, compare in
+constant time, and reject old timestamps:
+
+```js
+import { createHmac, timingSafeEqual } from "node:crypto";
+
+function verify(rawBody, header, secret, toleranceSec = 300) {
+  const m = /^t=(\d+),v1=([0-9a-f]{64})$/.exec(header ?? "");
+  if (!m || Math.abs(Date.now() / 1000 - Number(m[1])) > toleranceSec) return false;
+  const want = createHmac("sha256", secret).update(`${m[1]}.${rawBody}`).digest();
+  return timingSafeEqual(want, Buffer.from(m[2], "hex"));
+}
+```
+
+## Where alerts can be sent
+
+A webhook or Slack URL is typed in by a person, and the server that sends to
+it is inside a network. So that a URL cannot turn alerts into a way to reach
+that network (cloud metadata, a database admin page, anything listening on
+the server itself), the same rules apply in the CLI and the app, on every
+send and, in the app, already when a URL is saved:
+
+- https only, to a public host. A URL whose host is a private, loopback,
+  link-local or reserved address is refused, in any spelling: `10.0.0.5`,
+  `169.254.169.254`, `[fd00::1]`, `[::ffff:10.0.0.5]`, and decimal, octal or
+  hex forms such as `2130706433` or `0xa9fea9fe`.
+- A hostname is resolved before each send, and refused if any address it
+  resolves to is private. The connection is then pinned to the addresses
+  that were checked, so a DNS answer that changes in between does not reach
+  an internal address.
+- Redirects are not followed. A `3xx` answer is a failed delivery whose
+  error says so; point the setting at the final URL.
+- In the app, a Slack URL must start with `https://hooks.slack.com/`.
+
+**Testing against a local receiver.** Loopback (`localhost`, `127.0.0.0/8`,
+`::1`, with plain http allowed) is refused by default. Turn it on
+explicitly: `--notify-allow-loopback` on `saylent verify` or
+`saylent history --digest`, or `SAYLENT_ALERTS_ALLOW_LOOPBACK=1` for the app
+([environment](/docs/self-host/environment)). It opens loopback only; other
+private addresses stay refused. Leave it off on any deployment other people
+sign in to: with it on, every user can make the server send requests to
+services listening on the server itself.
+
+## Delivery rules
+
+- One retry on 429 or 5xx, honoring `Retry-After` up to 5 seconds. Slack
+  allows about one message per second per webhook.
+- A failed delivery is reported (the CLI prints it, the app lists it) and
+  never fails the run or changes an exit code.
+- Error messages never contain a URL or a password.

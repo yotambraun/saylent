@@ -4,15 +4,16 @@ description: Real numbers, by profile and engine count, before you run anything.
 ---
 
 Saylent runs on your own provider keys - every dollar goes to OpenAI,
-Anthropic, Google, or Perplexity directly, never through us. The CLI always
+Anthropic, Google, or Perplexity directly (and SerpApi, if you add the answer
+surfaces), never through us. The CLI always
 prints its estimate and asks you to confirm before it sends anything.
 
 ## By profile
 
 | Profile | Questions | What it does | Cost with four engines |
 |---|---|---|---|
-| `smoke` (default) | 6 | A quick read: is the brand present at all, on the two required engines or on all four | **about $0.60 to $1.20** |
-| `full` | 23 | The complete question set across up to 4 engines, for a real gate or a client report | **about $3.70 to $5.50** |
+| `smoke` (default) | 6 | A quick read: is the brand present at all, on the two required engines or on all four | **about $0.80 to $1.20** |
+| `full` | 23 | The complete question set across up to 4 engines, for a real gate or a client report | **about $5.10 to $7.10** |
 
 Both ranges are computed by the same estimator the app shows before a run, for
 23 questions across four engines: the full profile at two draws per scored
@@ -48,6 +49,18 @@ the estimate.
   call each.
 - **The brand model.** One call, roughly $0.02, built once per audit (or
   reused verbatim on a `verify`).
+
+## Answer surfaces
+
+The ranges above are the four model engines. The
+[answer surfaces](/docs/surfaces) (Google AI Overviews, Google AI Mode,
+Microsoft Copilot) are opt-in and billed by your own SerpApi plan, per
+search. Saylent prices a search at 2.5 cents, SerpApi's Starter rate and the
+highest per-search price of any paid plan ([serpapi.com/pricing](https://serpapi.com/pricing),
+checked 2026-11-02). An AI Overviews answer can take two searches, and the
+estimate counts two; AI Mode and Copilot take one. Each surface answer also
+gets one judge call, billed like any other. The preflight and `--dry-run`
+include the surfaces in the estimate before you confirm.
 
 ## The daily cap
 

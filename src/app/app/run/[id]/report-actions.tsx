@@ -20,6 +20,7 @@
 // says plainly what becomes public, and only the second click mints the token.
 // The API refuses an un-confirmed enable as well, so the guarantee is not the
 // button's alone (src/app/api/runs/[id]/share/route.ts).
+import { ExportMenu, MENU_TABLES } from "@/components/export-menu";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@saylent/report/ui/button";
 import { PendingLink } from "@/components/pending-link";
@@ -213,6 +214,10 @@ function ShareControl({
   );
 }
 
+// A run in the app has no crawler log of its own (uploads belong to the brand),
+// so its menu leaves the two log tables out; the brand's Export history carries them.
+const RUN_TABLES = MENU_TABLES.filter((t) => t !== "crawlers" && t !== "ai_referrals");
+
 export function ReportActionRow({
   runId,
   brandName,
@@ -231,18 +236,7 @@ export function ReportActionRow({
       </PendingLink>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 sm:ml-auto">
         <ShareControl runId={runId} brandName={brandName} initialToken={shareToken} />
-        <a
-          href={`/api/runs/${runId}/export?format=csv`}
-          className="font-mono text-xs text-wire underline hover:text-ink"
-        >
-          CSV
-        </a>
-        <a
-          href={`/api/runs/${runId}/export?format=json`}
-          className="font-mono text-xs text-wire underline hover:text-ink"
-        >
-          JSON
-        </a>
+        <ExportMenu base={`/api/v1/runs/${runId}`} bundle tables={RUN_TABLES} />
         <button
           type="button"
           onClick={() => window.print()}

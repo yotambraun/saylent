@@ -20,7 +20,7 @@
 // no postcss/@tailwindcss/postcss/esbuild installed. Inside a checkout with no
 // dist/assets, the renderer still compiles both on the fly (dev convenience).
 import { build } from "esbuild";
-import { chmod, readdir, rm } from "node:fs/promises";
+import { chmod, copyFile, mkdir, readdir, rm } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -110,7 +110,7 @@ await build({
   bundle: true,
   platform: "node",
   format: "esm",
-  target: "node20",
+  target: "node22",
   external: EXTERNAL,
   banner: { js: BANNER },
   // Also strips esbuild's per-module debug banners/labels (each bundled
@@ -127,5 +127,11 @@ try {
   // best effort (e.g. no-op on some filesystems) — the `node dist/saylent.js`
   // invocation the done-check uses does not need the executable bit.
 }
+
+// The sample run `saylent demo` renders offline ships inside the package, next
+// to the report assets (repo-root.ts findSampleBundle looks for it there).
+const sampleSrc = path.resolve(cliDir, "../../examples/kestrel/run.json");
+await mkdir(path.join(distDir, "assets"), { recursive: true });
+await copyFile(sampleSrc, path.join(distDir, "assets", "kestrel-run.json"));
 
 console.log(`built ${path.relative(process.cwd(), out)}`);

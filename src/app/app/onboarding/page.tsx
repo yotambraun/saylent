@@ -4,6 +4,7 @@
 // throttle, the operator's spend cap) its reason is rendered verbatim.
 import Link from "next/link";
 import { track } from "@/lib/analytics";
+import { serpKeyAvailable } from "@/lib/provider-settings";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@saylent/report/ui/card";
 import { OnboardingForm } from "./onboarding-form";
@@ -36,6 +37,8 @@ export default async function OnboardingPage() {
   }
 
   const showOperatorCard = shouldShowOperatorCard({ role: profile?.role, brandCount });
+  // Presence only: whether the answer surfaces can be offered. Never the key.
+  const serpAvailable = await serpKeyAvailable();
 
   return (
     <main className="flex flex-col items-center gap-4 py-12">
@@ -55,7 +58,7 @@ export default async function OnboardingPage() {
         </Card>
       )}
       {/* Every user picks their own answer engines — there are no plan tiers. */}
-      <OnboardingForm canPickEngines />
+      <OnboardingForm canPickEngines serpAvailable={serpAvailable} />
     </main>
   );
 }

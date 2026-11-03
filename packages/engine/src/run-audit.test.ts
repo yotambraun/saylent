@@ -113,6 +113,7 @@ function makeAsk(): AskLog {
         { url: "https://acme.example/pricing", title: "Acme Cloud pricing" },
       ],
       usage: { input_tokens: 1000, output_tokens: 200, searches: 1 },
+      search_queries: [`${engine} search ${draw}`],
     };
   };
   return { ask, calls };
@@ -160,6 +161,15 @@ const INPUT = {
 };
 
 describe("runAudit", () => {
+  it("keeps each draw's search queries on its sample and the representative's on the answer", async () => {
+    const { db, deps } = makeDeps();
+    await runAudit(INPUT, deps);
+    expect(db.answers.length).toBeGreaterThan(0);
+    for (const a of db.answers) expect(a.search_queries).toEqual([`${a.engine} search 0`]);
+    expect(db.answer_samples.length).toBeGreaterThan(0);
+    for (const x of db.answer_samples) expect(x.search_queries).toEqual([`${x.engine} search ${x.sample_idx}`]);
+  });
+
   it("runs the whole pipeline on fakes: stages in order, a row in every table", async () => {
     const stages: RunStage[] = [];
     const { db, deps } = makeDeps({ onStage: (s) => stages.push(s) });

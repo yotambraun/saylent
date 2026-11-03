@@ -11,12 +11,19 @@
 // for two. Every other flag on `audit` already refuses a bad value with a
 // sentence; these two now do too, from ONE place so the flag, the env var and
 // the config file all say the same thing.
-import type { Engine } from "@saylent/engine";
+import type { Engine, SurfaceId } from "@saylent/engine";
+import { SURFACE_IDS } from "@saylent/engine/surfaces";
 import { PROVIDERS, PROVIDER_TO_ENGINE } from "./keys";
 
-/** The four answer engines, derived from the provider registry so the two
+/** The four model-API engines, derived from the provider registry so the two
  *  vocabularies can never drift (`keys set openai` -> the `chatgpt` engine). */
-export const ENGINE_NAMES: readonly Engine[] = PROVIDERS.map((p) => PROVIDER_TO_ENGINE[p.id]);
+export const MODEL_ENGINE_NAMES: readonly Engine[] = PROVIDERS.map((p) => PROVIDER_TO_ENGINE[p.id]);
+
+/** The answer surfaces (opt-in, need a SerpApi key), from the engine registry. */
+export const SURFACE_NAMES: readonly SurfaceId[] = SURFACE_IDS;
+
+/** Every name `--engines` accepts: the four model engines, then the surfaces. */
+export const ENGINE_NAMES: readonly Engine[] = [...MODEL_ENGINE_NAMES, ...SURFACE_NAMES];
 
 /** The provider-side word for an engine, when the two differ. A user who just
  *  ran `saylent keys set anthropic` will type `--engines anthropic`; that must
@@ -26,6 +33,22 @@ const PROVIDER_WORD_TO_ENGINE: Record<string, Engine> = {
   anthropic: "claude",
   google: "gemini",
   "google-gemini": "gemini",
+};
+
+/** Common spellings of a surface, corrected by name (never silently mapped). */
+const SURFACE_ALIASES: Record<string, SurfaceId> = {
+  aio: "google_ai_overview",
+  "ai-overview": "google_ai_overview",
+  "ai-overviews": "google_ai_overview",
+  google_ai_overviews: "google_ai_overview",
+  "google-ai-overview": "google_ai_overview",
+  "google-ai-overviews": "google_ai_overview",
+  "ai-mode": "google_ai_mode",
+  ai_mode: "google_ai_mode",
+  "google-ai-mode": "google_ai_mode",
+  bing: "copilot",
+  bing_copilot: "copilot",
+  "microsoft-copilot": "copilot",
 };
 
 /** Where a value came from, spelled the way the user would recognise it.
@@ -96,6 +119,19 @@ export function parseEngineList(
       if (!out.includes(lower as Engine)) out.push(lower as Engine);
       continue;
     }
+    const surface = SURFACE_ALIASES[lower];
+    if (surface) {
+      throw new Error(
+        `${cite(source, ENGINE_FLAG_NAMES, printable)}: "${name}" is spelled "${surface}". ` +
+          `Valid engines: ${validEngineList()}.`,
+      );
+    }
+    if (lower === "serpapi") {
+      throw new Error(
+        `${cite(source, ENGINE_FLAG_NAMES, printable)}: "serpapi" is the key provider; the surfaces it reads are ` +
+          `${SURFACE_NAMES.join(", ")}.`,
+      );
+    }
     const engine = PROVIDER_WORD_TO_ENGINE[lower];
     if (engine) {
       throw new Error(
@@ -107,6 +143,37 @@ export function parseEngineList(
       `${cite(source, ENGINE_FLAG_NAMES, printable)}: unknown engine "${name}". ` +
         `Valid engines: ${validEngineList()}.`,
     );
+  }
+  return out;
+}
+
+/**
+ * Validate `--surfaces` (or saylent.config/MCP `surfaces`): answer surfaces
+ * only. The list is ADDED to the engine set, so `--surfaces google_ai_overview`
+ * asks the four model engines plus Google AI Overviews.
+ */
+export function parseSurfaceList(raw: string | string[] | undefined): SurfaceId[] | undefined {
+  if (raw === undefined) return undefined;
+  const names = (Array.isArray(raw) ? raw : raw.split(","))
+    .map((e) => String(e).trim())
+    .filter((e) => e !== "");
+  const printable = Array.isArray(raw) ? names.join(",") : raw.trim();
+  const valid = SURFACE_NAMES.join(", ");
+  if (names.length === 0) throw new Error(`--surfaces ${printable}: expected a comma-separated list of ${valid}.`);
+  const out: SurfaceId[] = [];
+  for (const name of names) {
+    const lower = name.toLowerCase();
+    const id = (SURFACE_NAMES as readonly string[]).includes(lower) ? (lower as SurfaceId) : undefined;
+    if (!id && SURFACE_ALIASES[lower]) {
+      throw new Error(`--surfaces ${printable}: "${name}" is spelled "${SURFACE_ALIASES[lower]}". Valid surfaces: ${valid}.`);
+    }
+    if (!id) {
+      const hint = (MODEL_ENGINE_NAMES as readonly string[]).includes(lower)
+        ? ` "${name}" is a model engine; pass it to --engines.`
+        : "";
+      throw new Error(`--surfaces ${printable}: unknown surface "${name}".${hint} Valid surfaces: ${valid}.`);
+    }
+    if (!out.includes(id)) out.push(id);
   }
   return out;
 }

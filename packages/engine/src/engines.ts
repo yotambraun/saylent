@@ -3,19 +3,29 @@
 // Inngest pipeline, and vitest all share ONE source of truth for the rules.
 //
 // RULES (methodology-sensitive):
-//  * Only the four ANSWER engines are selectable. The judge/brand/drafter models
-//    are never touched by any of this.
-//  * Default is ALL FOUR ("we ask all four"). NULL / empty resolve to four.
+//  * Only ANSWER sources are selectable: the four model APIs plus the answer
+//    SURFACES (surfaces.ts: Google AI Overviews, Google AI Mode, Microsoft
+//    Copilot, read through a BYO SERP-data provider). The judge/brand/drafter
+//    models are never touched by any of this.
+//  * Default is ALL FOUR model APIs ("we ask all four"). NULL / empty resolve to
+//    four. Surfaces are opt-in: they need a second, paid key, so they are never
+//    asked unless selected.
 //  * Any user may narrow the set, floored at ENGINE_FLOOR so the cross-family verdict
 //    stays meaningful (one engine is not an audit).
 //  * The set is FROZEN like the question set: the run honors the engines frozen in the
 //    question_set envelope, and changing the selection re-baselines (see functions.ts +
 //    settings/actions.ts). This module only computes the effective list — the freeze +
 //    re-baseline live at the call sites.
+import { ENGINE_IDS } from "./surfaces";
 import type { Engine } from "./types";
 
-/** Canonical answer-engine order (mirrors adapters/index.ts ENGINES + the Engine union). */
+/** The DEFAULT answer-engine set, canonical order: the four model APIs (mirrors
+ *  adapters/index.ts ENGINES). A null/empty selection resolves to this. */
 export const ALL_ENGINES: readonly Engine[] = ["chatgpt", "claude", "gemini", "perplexity"];
+
+/** Everything a selection may contain, canonical order: the four model APIs,
+ *  then the answer surfaces (surfaces.ts ENGINE_IDS). */
+export const SELECTABLE_ENGINES: readonly Engine[] = ENGINE_IDS;
 
 /** Minimum engines a narrowed selection may keep. Two keeps at least a cross-family
  *  read alive (judge pairs: chatgpt+gemini→anthropic, claude+perplexity→openai); one
@@ -28,7 +38,7 @@ export const ENGINE_FLOOR = 2;
  *  resolver. */
 export function resolveEngines(stored: readonly string[] | null | undefined): Engine[] {
   if (!stored || stored.length === 0) return [...ALL_ENGINES];
-  const valid = ALL_ENGINES.filter((e) => stored.includes(e));
+  const valid = SELECTABLE_ENGINES.filter((e) => stored.includes(e));
   return valid.length >= ENGINE_FLOOR ? valid : [...ALL_ENGINES];
 }
 
@@ -55,7 +65,7 @@ export function normalizeSelection(
   selection: readonly string[] | null | undefined,
 ): SelectionResult {
   if (!selection || selection.length === 0) return { ok: true, store: null };
-  const valid = ALL_ENGINES.filter((e) => selection.includes(e));
+  const valid = SELECTABLE_ENGINES.filter((e) => selection.includes(e));
   if (valid.length === 0) return { ok: true, store: null };
   if (valid.length < ENGINE_FLOOR) {
     return {
@@ -63,7 +73,10 @@ export function normalizeSelection(
       error: `Choose at least ${ENGINE_FLOOR} engines — a single engine can't cross-check the verdict.`,
     };
   }
-  if (valid.length === ALL_ENGINES.length) return { ok: true, store: null }; // all four = default
+  // exactly the four model APIs = the default (a surface on top is a real choice)
+  if (valid.length === ALL_ENGINES.length && ALL_ENGINES.every((e) => valid.includes(e))) {
+    return { ok: true, store: null };
+  }
   return { ok: true, store: valid };
 }
 

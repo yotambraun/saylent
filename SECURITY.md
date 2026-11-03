@@ -43,6 +43,15 @@ In scope:
   Supabase migrations under `supabase/migrations`).
 - The audit engine's crawler and its handling of untrusted site content
   (`packages/engine`, including `domainChecks.ts` and the corpus builder).
+- Alert delivery (`packages/report/src/alerts-deliver.ts`), which sends to
+  webhook and Slack URLs that users type in.
+
+Every outbound request to an address that came from outside (a crawled
+link, a cited page, an alert URL) goes through the guard in
+`packages/engine/src/util.ts`: `safeFetch` for reads, `safePost` for alert
+delivery. It refuses private, loopback, link-local, reserved and encoded-IP
+hosts, resolves each hostname and refuses a private answer, and pins the
+connection to the checked address. `safePost` never follows a redirect.
 
 Examples of what belongs here: request forgery or injection through crawled
 page content, authentication or row-level-security bypass in the self-hosted

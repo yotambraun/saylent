@@ -11,6 +11,10 @@
 export interface TotalsAnswer {
   ok?: boolean;
   qtype?: string;
+  /** "no_answer: ..." marks an answer SURFACE that showed no answer for the
+   *  question (Google shows AI Overviews for some queries only): counted as
+   *  "not shown", never as an engine failure and never as an absence. */
+  error?: string | null;
 }
 
 export interface RunTotals {
@@ -20,6 +24,8 @@ export interface RunTotals {
   answered: number;
   /** calls that returned nothing (engine error, refusal, empty body) */
   failed: number;
+  /** surface calls where the surface showed no answer (not failures) */
+  notShown?: number;
   /** answers that enter the headline denominator (what-to-buy + problem) */
   scored: number;
 }
@@ -31,11 +37,14 @@ export interface RunTotals {
 export function runTotals(answers: TotalsAnswer[], scoredAnswered?: number | null): RunTotals {
   const asked = answers.length;
   const answered = answers.filter((a) => a.ok !== false).length;
+  const notShown = answers.filter(
+    (a) => a.ok === false && typeof a.error === "string" && a.error.startsWith("no_answer:"),
+  ).length;
   const scored =
     typeof scoredAnswered === "number" && Number.isFinite(scoredAnswered)
       ? scoredAnswered
       : answers.filter((a) => a.ok !== false && SCORED_QTYPES.has(a.qtype ?? "")).length;
-  return { asked, answered, failed: asked - answered, scored };
+  return { asked, answered, failed: asked - answered - notShown, ...(notShown > 0 ? { notShown } : {}), scored };
 }
 
 /** The scorer scores category + problem questions only (see brief.ts's ONE
@@ -46,6 +55,7 @@ const SCORED_QTYPES = new Set(["category", "problem"]);
  *  drops out when nothing failed, because a zero there is noise, not news. */
 export function totalsLine(t: RunTotals): string {
   const parts = [`${t.asked} asked`, `${t.answered} answered`];
+  if ((t.notShown ?? 0) > 0) parts.push(`${t.notShown} not shown`);
   if (t.failed > 0) parts.push(`${t.failed} engine failure${t.failed === 1 ? "" : "s"}`);
   parts.push(`${t.scored} scored`);
   return parts.join(" · ");
@@ -54,6 +64,15 @@ export function totalsLine(t: RunTotals): string {
 /** The one sentence that says out loud what the failures were. Null when every
  *  call came back, so a clean run never carries an apology. */
 export function failuresLine(t: RunTotals): string | null {
-  if (t.failed <= 0) return null;
-  return `${t.failed} of the ${t.asked} calls returned no answer (an engine error or an empty response), so they are counted nowhere below.`;
+  const notShown = t.notShown ?? 0;
+  const shown =
+    notShown > 0
+      ? `${notShown} of the ${t.asked} calls went to an answer surface that showed no AI answer for that question (Google shows AI Overviews for some queries only). That is recorded as not shown, never as an absence, and counted nowhere below.`
+      : null;
+  const failed =
+    t.failed > 0
+      ? `${t.failed} of the ${t.asked} calls returned no answer (an engine error or an empty response), so they are counted nowhere below.`
+      : null;
+  if (!shown && !failed) return null;
+  return [failed, shown].filter(Boolean).join(" ");
 }

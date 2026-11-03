@@ -76,7 +76,7 @@ const SECTIONS: {
 }[] = [
   {
     title: "Run it once",
-    body: "One command, your own keys, and a report you can open from disk, email, or drop in a ticket. It prints what it is about to spend before it spends anything, and a dry run costs $0.",
+    body: "One command, your own keys, and a report you can open from disk, email, or drop in a ticket. It prints what it is about to spend before it spends anything, and a dry run costs $0. Ask ChatGPT, Claude, Gemini and Perplexity, add Google AI Overviews, AI Mode and Copilot with your own SerpApi key, import the questions your buyers really search, and point it at your server logs to see which AI crawlers actually read which pages and how many visitors the assistants sent.",
     href: "/docs/quickstart",
     cta: "Keys, the command, the report",
     image: {
@@ -86,7 +86,7 @@ const SECTIONS: {
   },
   {
     title: "Keep score as a team",
-    body: "Two people, five brands and a year of runs do not fit in a folder. Deploy the same engine with a memory: history, a fix tracker that knows what you shipped, scheduled verifies and share links. One deployment, as many user accounts as you like, each isolated from the others, on infrastructure you own.",
+    body: "Two people, five brands and a year of runs do not fit in a folder. Deploy the same engine with a memory: history, a fix tracker that knows what you shipped, scheduled verifies, share links, and alerts to Slack, email or a signed webhook when an answer changes. One deployment, as many user accounts as you like, each isolated from the others, on infrastructure you own.",
     href: "/docs/tour",
     cta: "Every screen of the app",
     image: {
@@ -108,7 +108,7 @@ const SECTIONS: {
   },
   {
     title: "Automate",
-    body: "The same checks on every push, inside your agent, or inside your own program. The CI gate costs $0 and needs no keys; the Claude Code plugin, the MCP server and the library spend only your own credits, under the same ceiling the command respects.",
+    body: "The same checks on every push, inside your agent, or inside your own program. The CI gate costs $0 and needs no keys; the Claude Code plugin, the MCP server and the library spend only your own credits, under the same ceiling the command respects. Every table exports as CSV or JSON, and the app has a read-only API with personal tokens.",
     href: "/docs/integrations",
     cta: "The Action, the Claude Code plugin, the MCP server, the library",
     snippet: {
@@ -125,7 +125,7 @@ jobs:
   },
   {
     title: "Understand",
-    body: "Nine stages, each one narrating itself and each one saying where you can change it. Presence is a deterministic alias match, everything else is judged by a model from the other provider family, and the report states a band instead of a number the draws cannot support.",
+    body: "Nine stages, each one narrating itself and each one saying where you can change it. Presence is a deterministic alias match, everything else is judged by a model from the other provider family, and the report states a band instead of a number the draws cannot support. Each answer keeps the web searches the engine ran before writing it, where the engine reports them. Every cited page is counted, so the report shows which sites shape the answers and which ones name your rivals and not you: the off-site moves with the most receipts behind them.",
     href: "/docs/how-it-works",
     cta: "How it works, stage by stage",
     image: {
@@ -210,13 +210,20 @@ export default function Home() {
               Run it on your own domain, with your own keys.
             </p>
             <div className="mx-auto w-full max-w-xl text-left">
-              <CopyCommand command="npx saylent audit example.com" />
+              <CopyCommand command="npx saylent demo" />
               <p className="mt-2 text-center text-xs text-wire">
-                One OpenAI or Anthropic key runs the audit with that engine. Two keys turn on the
-                cross-family judge; Gemini and Perplexity keys add those engines.
+                Renders a full sample report on your machine first: no key, no network, $0.
+              </p>
+              <div className="mt-4">
+                <CopyCommand command="npx saylent audit your-domain.com --dry-run" />
+              </div>
+              <p className="mt-2 text-center text-xs text-wire">
+                Then price a real audit before anything is sent. One OpenAI or Anthropic key runs
+                it with that engine. Two keys turn on the cross-family judge; Gemini and Perplexity
+                keys add those engines.
               </p>
               <p className="mt-1 text-center text-xs text-wire">
-                All four: about $0.60 to $1.20 a run, of your own credits. Our two recorded runs
+                All four: about $0.80 to $1.20 a run, of your own credits. Our two recorded runs
                 cost $0.93 and $1.11.
               </p>
             </div>
@@ -263,6 +270,19 @@ export default function Home() {
           <div className="mx-auto w-full max-w-xl text-left">
             <InstantCheck />
           </div>
+
+          <aside className="mx-auto w-full max-w-2xl rounded-lg border border-line bg-card p-5 text-left text-sm text-wire">
+            <p className="font-display text-base text-ink">Which tool?</p>
+            <p className="mt-2">
+              <a href="https://github.com/yotambraun/promptbeacon" className="text-signal underline">
+                promptbeacon
+              </a>{" "}
+              is for developers and open-source maintainers: does AI recommend your library or dev
+              product — a number in CI and a README badge. Saylent is for brand and website teams:
+              an audit of what AI assistants say about your site, with the answers and cited pages
+              as receipts, plus fixes for your site.
+            </p>
+          </aside>
         </section>
 
         {/* The six sections, same names and same order as the docs sidebar. The
@@ -351,7 +371,7 @@ export default function Home() {
         <section className="flex flex-col items-center gap-4 border-t border-line pt-10 text-center">
           <h2 className="font-display text-2xl text-ink">Run it on your own domain</h2>
           <div className="w-full max-w-xl text-left">
-            <CopyCommand command="npx saylent audit example.com" />
+            <CopyCommand command="npx saylent audit your-domain.com --dry-run" />
           </div>
           <p className="text-sm text-wire">
             <a href={DEMO_URL} className="text-signal underline">

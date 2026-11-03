@@ -7,7 +7,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { COMMANDS } from "./index";
-import { PROVIDERS } from "./keys";
+import { ALL_KEY_PROVIDERS } from "./keys";
 import { TOOL_COSTS } from "./mcp/server";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
@@ -52,14 +52,15 @@ describe("Claude Code plugin", () => {
     expect(spec).toBe(`saylent@${cliVersion.split(".")[0]}`);
   });
 
-  it("passes every provider key the CLI reads, empty when unset, and nothing else", () => {
+  it("passes every provider key the CLI reads, the SerpApi key included, empty when unset, and nothing else", () => {
     const env = mcp.mcpServers.saylent.env ?? {};
-    const expected = Object.fromEntries(PROVIDERS.map((p) => [p.envVar, `\${${p.envVar}:-}`]));
+    const expected = Object.fromEntries(ALL_KEY_PROVIDERS.map((p) => [p.envVar, `\${${p.envVar}:-}`]));
+    expect(Object.keys(expected)).toContain("SERPAPI_API_KEY");
     expect(env).toEqual(expected);
   });
 
-  it("ships the four skills, each with a matching name, a description and a short body", () => {
-    expect(skills.map((s) => s.dir).sort()).toEqual(["audit", "gate-check", "read-report", "verify"]);
+  it("ships the six skills, each with a matching name, a description and a short body", () => {
+    expect(skills.map((s) => s.dir).sort()).toEqual(["ai-visibility-audit", "audit", "crawlers", "gate-check", "read-report", "verify"]);
     for (const s of skills) {
       expect(s.name, s.dir).toBe(s.dir);
       expect(s.description?.length ?? 0, s.dir).toBeGreaterThan(80);
@@ -84,7 +85,7 @@ describe("Claude Code plugin", () => {
 
   it("pre-approves only the free, read-only tools", () => {
     const approved = skills.flatMap((s) => (s.allowedTools ?? "").split(/[\s,]+/).filter(Boolean));
-    for (const t of approved) expect(t).toMatch(/__(gate_check|read_report)$/);
+    for (const t of approved) expect(t).toMatch(/__(gate_check|read_report|sources|fixes|history)$/);
   });
 
   it("uses only real CLI commands in its shell fallbacks, on the same major line", () => {

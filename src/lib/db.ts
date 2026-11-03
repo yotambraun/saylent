@@ -73,6 +73,33 @@ export function runFailedNotice(runId: string, brand?: string): NotifyNotice {
   };
 }
 
+/** Migration 0049 adds `search_queries` to answers and answer_samples. A
+ *  deployment that has not applied it yet rejects the column (PostgREST
+ *  PGRST204, or Postgres 42703). */
+export function isMissingSearchQueriesColumn(error: { code?: string; message: string } | null): boolean {
+  return !!error && (error.code === "PGRST204" || error.code === "42703") && error.message.includes("search_queries");
+}
+
+/** Insert rows that carry `search_queries`; when the column does not exist
+ *  yet, insert them again without it, so a run never fails on a migration
+ *  the operator has not applied (the queries are then not kept, which is what
+ *  NULL means). Any other error is returned as-is. */
+async function insertKeepingQueries(
+  admin: SupabaseClient,
+  table: "answers" | "answer_samples",
+  rows: Record<string, unknown>[],
+): Promise<{ message: string } | null> {
+  const { error } = await admin.from(table).insert(rows);
+  if (!isMissingSearchQueriesColumn(error)) return error;
+  const without = rows.map((r) => {
+    const rest = { ...r };
+    delete rest.search_queries;
+    return rest;
+  });
+  const { error: retry } = await admin.from(table).insert(without);
+  return retry;
+}
+
 export function createDbWriter(admin: SupabaseClient, userId: string): DbWriter {
   const throwIf = (error: { message: string } | null, op: string) => {
     if (error) throw new Error(`${op}: ${error.message}`);
@@ -89,7 +116,7 @@ export function createDbWriter(admin: SupabaseClient, userId: string): DbWriter 
       throwIf(error, "setStage");
     },
     async saveAnswer(row) {
-      const { error } = await admin.from("answers").insert({
+      const error = await insertKeepingQueries(admin, "answers", [{
         run_id: row.runId,
         user_id: userId,
         qid: row.qid,
@@ -105,7 +132,9 @@ export function createDbWriter(admin: SupabaseClient, userId: string): DbWriter 
         verdict: row.verdict ?? null,
         error: row.error ?? null,
         usage: row.usage ?? null,
-      });
+        // migration 0049; null = this engine does not report its searches
+        search_queries: row.search_queries ?? null,
+      }]);
       throwIf(error, "saveAnswer");
     },
     async saveVerdict(runId, qid, engine, verdict) {
@@ -423,6 +452,8 @@ export interface AnswerSampleInsert {
   citations: unknown;
   verdict?: unknown;
   usage?: unknown;
+  /** migration 0049: this draw's web searches; null = not reported */
+  search_queries?: string[] | null;
 }
 
 /** Insert the per-sample evidence draws for a run (0033). THROWS on error like
@@ -434,7 +465,9 @@ export async function saveAnswerSamples(
   rows: AnswerSampleInsert[],
 ): Promise<void> {
   if (rows.length === 0) return;
-  const { error } = await admin.from("answer_samples").insert(
+  const error = await insertKeepingQueries(
+    admin,
+    "answer_samples",
     rows.map((r) => ({
       run_id: r.runId,
       user_id: userId,
@@ -445,6 +478,7 @@ export async function saveAnswerSamples(
       citations: r.citations ?? [],
       verdict: r.verdict ?? null,
       usage: r.usage ?? null,
+      search_queries: r.search_queries ?? null,
     })),
   );
   if (error) throw new Error(`saveAnswerSamples: ${error.message}`);

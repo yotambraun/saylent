@@ -49,6 +49,13 @@ For a full summary, keep it short and in this order:
 
 For a question about one part, read just that section and answer it directly.
 
+For where the answers come from (the domains they cite, who they name, and the
+off-site pages where rivals are cited and the brand is not), call the
+`sources` tool of the saylent MCP server with `{ "bundle_path": "<path>" }`,
+adding `"view": "opportunities"` for the full ranked list. It is free and
+offline too. Quote each opportunity's `why` line and its receipts as given.
+Without the MCP tool, run `npx -y saylent@0 sources <run.json>`.
+
 Rules:
 
 - Quote numbers as the report states them ("0 of 11"), never as invented

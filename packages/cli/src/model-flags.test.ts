@@ -12,17 +12,17 @@ describe("parseModelFlags", () => {
   });
 
   it("--judge <model> infers the family from the model name", () => {
-    expect(parseModelFlags({ judge: "claude-haiku-4-5" }, familyOfModel)).toEqual({
-      judge: { anthropic: "claude-haiku-4-5" },
+    expect(parseModelFlags({ judge: "claude-haiku-5-5" }, familyOfModel)).toEqual({
+      judge: { anthropic: "claude-haiku-5-5" },
     });
-    expect(parseModelFlags({ judge: "gpt-5.4" }, familyOfModel)).toEqual({
-      judge: { openai: "gpt-5.4" },
+    expect(parseModelFlags({ judge: "gpt-6.1-sol" }, familyOfModel)).toEqual({
+      judge: { openai: "gpt-6.1-sol" },
     });
   });
 
   it("--judge-family overrides the inferred family", () => {
-    expect(parseModelFlags({ judge: "gpt-5.4", "judge-family": "anthropic" }, familyOfModel)).toEqual({
-      judge: { anthropic: "gpt-5.4" },
+    expect(parseModelFlags({ judge: "gpt-6.1-sol", "judge-family": "anthropic" }, familyOfModel)).toEqual({
+      judge: { anthropic: "gpt-6.1-sol" },
     });
   });
 
@@ -33,7 +33,7 @@ describe("parseModelFlags", () => {
   });
 
   it("an invalid --judge-family value throws", () => {
-    expect(() => parseModelFlags({ judge: "gpt-5.4", "judge-family": "bogus" }, familyOfModel)).toThrow(
+    expect(() => parseModelFlags({ judge: "gpt-6.1-sol", "judge-family": "bogus" }, familyOfModel)).toThrow(
       /expected "anthropic" or "openai"/,
     );
   });
@@ -46,14 +46,14 @@ describe("parseModelFlags", () => {
 
   it("--model brand=<id> / drafter=<id> set the role directly", () => {
     expect(
-      parseModelFlags({ model: ["brand=claude-haiku-4-5", "drafter=claude-sonnet-4-6"] }, familyOfModel),
-    ).toEqual({ brand: "claude-haiku-4-5", drafter: "claude-sonnet-4-6" });
+      parseModelFlags({ model: ["brand=claude-haiku-5-5", "drafter=claude-sonnet-5-5"] }, familyOfModel),
+    ).toEqual({ brand: "claude-haiku-5-5", drafter: "claude-sonnet-5-5" });
   });
 
   it("--model chatgpt=<id> etc. set the engines sub-object, repeatable", () => {
     expect(
-      parseModelFlags({ model: ["chatgpt=gpt-5.4-mini", "claude=claude-opus-4"] }, familyOfModel),
-    ).toEqual({ engines: { chatgpt: "gpt-5.4-mini", claude: "claude-opus-4" } });
+      parseModelFlags({ model: ["chatgpt=gpt-6.1-sol-mini", "claude=claude-opus-4"] }, familyOfModel),
+    ).toEqual({ engines: { chatgpt: "gpt-6.1-sol-mini", claude: "claude-opus-4" } });
   });
 
   it("--model with an unknown role throws, naming the valid roles", () => {
@@ -73,11 +73,11 @@ describe("parseModelFlags", () => {
   it("combines --judge and multiple --model flags into one selection", () => {
     expect(
       parseModelFlags(
-        { judge: "claude-haiku-4-5", model: ["brand=claude-opus-4", "gemini=gemini-3.6-flash"] },
+        { judge: "claude-haiku-5-5", model: ["brand=claude-opus-4", "gemini=gemini-3.6-flash"] },
         familyOfModel,
       ),
     ).toEqual({
-      judge: { anthropic: "claude-haiku-4-5" },
+      judge: { anthropic: "claude-haiku-5-5" },
       brand: "claude-opus-4",
       engines: { gemini: "gemini-3.6-flash" },
     });

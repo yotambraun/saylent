@@ -33,6 +33,7 @@ import { useReportHost } from "../host";
 import { AnswerDrawer, PageDrawer, type AnswerRow, type CorpusRow } from "./drawers";
 import type { RunRow } from "./run-view";
 import { formatDayUtc } from "../utils";
+import type { SourceOverrides } from "@saylent/engine/sources";
 
 /* ---------- SSR-safe desktop breakpoint (lg = 1024px) ----------
    Mirrors reveal/tour-kit's useReducedMotion: server snapshot is false (mobile
@@ -70,6 +71,7 @@ export function Brief({
   engineModels,
   judgeMode,
   previous = null,
+  sourceOverrides = null,
 }: {
   run: RunRow;
   brand: { name: string; domain: string; aliases: string[]; competitors: string[] };
@@ -89,6 +91,9 @@ export function Brief({
    *  in upstream. Shape is the composer's BriefPrevious (recommended count + date);
    *  the run page constructs it when wiring the pass-through. */
   previous?: BriefPrevious | null;
+  /** the owner's domain-type corrections (Sources & opportunities), so the
+   *  summary's opportunities card matches the full report */
+  sourceOverrides?: SourceOverrides | null;
 }) {
   // Everything app-shaped comes from the report host: `Link` is the app's
   // PendingLink (client transition + pending spinner) and a plain <a> in a
@@ -130,8 +135,10 @@ export function Brief({
         // Previous-audit summary the composer folds into the progress story
         // (BriefInput.previous).
         previous,
+        sourceOverrides,
       }),
     [
+      sourceOverrides,
       brand,
       run.scores,
       run.kind,

@@ -2,8 +2,9 @@
 // mode (THE DOSSIER — section order is law). RLS-scoped reads.
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
-import { fetchDossierViaRpc } from "@/lib/dossier-data";
+import { fetchDossierViaRpc, fetchSourceOverrides } from "@/lib/dossier-data";
 import { MODELS } from "@saylent/engine/models";
+import { SURFACE_IDS, surfaceSourceId } from "@saylent/engine/surfaces";
 import type { TheaterQuestion } from "@saylent/report/theater";
 import { createClient } from "@/lib/supabase/server";
 import { PendingLink } from "@/components/pending-link";
@@ -43,6 +44,8 @@ const ENGINE_MODELS: Record<string, string> = {
   claude: MODELS.claudeAnswer,
   gemini: MODELS.geminiAnswer,
   perplexity: MODELS.perplexityAnswer,
+  // answer surfaces carry a provenance id, not a model ("serpapi:google_ai_mode")
+  ...Object.fromEntries(SURFACE_IDS.map((s) => [s, surfaceSourceId(s)])),
 };
 
 export default async function RunPage({
@@ -111,6 +114,10 @@ export default async function RunPage({
   const viewParam = Array.isArray(sp.view) ? sp.view[0] : sp.view;
   const showFull = viewParam === "full";
 
+  // the owner's "Source types" corrections, for Sources & opportunities (the
+  // full view) and the summary's opportunities card
+  const sourceOverrides = await fetchSourceOverrides(supabase, (run as { brand_id?: string }).brand_id);
+
   const brandProps = {
     name: brand?.name ?? "",
     domain: brand?.domain ?? "",
@@ -177,6 +184,7 @@ export default async function RunPage({
             engineModels={ENGINE_MODELS}
             previous={previous}
             shareToken={run.share_token ?? null}
+            sourceOverrides={sourceOverrides}
           />
         ) : (
           <Brief
@@ -187,6 +195,7 @@ export default async function RunPage({
             checks={d.checks as never}
             fixes={d.fixes as never}
             engineModels={ENGINE_MODELS}
+            sourceOverrides={sourceOverrides}
             previous={
               d.previous
                 ? {

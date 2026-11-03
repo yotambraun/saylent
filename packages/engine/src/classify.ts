@@ -1,6 +1,6 @@
 // The spec (see METHODOLOGY.md) — corpus classification: host lists first, then
 // brand_owned, then title/url patterns, else "other". Pure + unit-tested.
-const REVIEW_HOSTS = [
+export const REVIEW_HOSTS: readonly string[] = [
   "g2.com",
   "capterra.com",
   "trustpilot.com",
@@ -10,7 +10,7 @@ const REVIEW_HOSTS = [
   "clutch.co",
   "sourceforge.net",
 ];
-const FORUM_HOSTS = [
+export const FORUM_HOSTS: readonly string[] = [
   "reddit.com",
   "news.ycombinator.com",
   "quora.com",
@@ -18,8 +18,8 @@ const FORUM_HOSTS = [
   "stackexchange.com", // any *.stackexchange.com
   "indiehackers.com",
 ];
-const WIKI_HOSTS = ["wikipedia.org", "wikidata.org"];
-const VIDEO_HOSTS = ["youtube.com", "youtu.be", "vimeo.com"];
+export const WIKI_HOSTS: readonly string[] = ["wikipedia.org", "wikidata.org"];
+export const VIDEO_HOSTS: readonly string[] = ["youtube.com", "youtu.be", "vimeo.com"];
 
 const LISTICLE = /\b(best|top\s*\d+|\d+\s+best)\b/i;
 const COMPARISON = /\b(vs\.?|versus|compared?|alternatives?)\b/i;
@@ -28,7 +28,7 @@ const NEWS = /\b(news|announc|launch|raises|funding)\b/i;
 
 // Exact-or-subdomain only — a substring fallback let "youtu.be" match unrelated
 // hosts like "youtu.beauty". Every list entry now carries its full domain.
-const hostMatches = (host: string, needle: string) =>
+export const hostMatches = (host: string, needle: string): boolean =>
   host === needle || host.endsWith(`.${needle}`);
 
 export function classifyPage(args: {

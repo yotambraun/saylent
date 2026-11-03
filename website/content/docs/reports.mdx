@@ -45,6 +45,21 @@ versa, a deliberate control against a model preferring its own output - see
 case-insensitive alias match after the judge returns; the judge cannot
 override "absent" into "present."
 
+**The searches it ran.** Before answering, an engine with web search writes
+its own search queries, and those decide which pages it reads. Opening an
+answer shows them, verbatim and in order, under **Searches it ran**, and
+`report.md` lists them under each question. ChatGPT, Claude and Gemini report
+their queries in the API response, so they cost nothing extra to keep.
+Perplexity's API and the answer surfaces do not report theirs, and the
+drawer says so instead of leaving the list empty. Runs recorded before 0.2.0
+did not keep them. They are also in the export, as the
+[`search_queries`](/docs/export#search_queries) table.
+
+An [answer surface](/docs/surfaces) (Google AI Overviews, Google AI Mode,
+Microsoft Copilot) appears here like any engine, under its own name. When a
+surface showed no AI answer for a question, the cell reads **not shown**: a
+coverage gap that is counted nowhere, never an absence.
+
 ## Cited pages
 
 The battlefield table: every page an engine's answer pointed to, aggregated
@@ -55,6 +70,17 @@ fetch fails, or a page is a video shell with no readable text,
 This is word presence, not entailment: a page can name your brand and still
 disagree with what the engine said, so the report says "present on the cited
 page," never "supports the claim."
+
+## Sources & opportunities
+
+Section 04 of `report.html`, and `## Sources & opportunities` in `report.md`:
+which domains the answers cite and how often, per engine and surface; how many
+answers name you and each rival; and the off-site opportunities, domains that
+are neither yours nor a rival's, cited in answers that name a rival and not
+you. Every domain shows its type and the rule that set it, and every count
+opens the answers behind it. The definitions, the type rules and how to
+correct a type are on [Sources & opportunities](/docs/sources). The site
+checks, fixes and method that follow are sections 05, 06 and 07.
 
 ## Site checks
 

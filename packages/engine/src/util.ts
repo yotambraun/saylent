@@ -213,9 +213,23 @@ function isEncodedIpv4(host: string): boolean {
  *  reject the same set. This is the LITERAL check; safeFetch additionally
  *  DNS-resolves and re-checks each hop's address (a hostname resolving into a
  *  private range — DNS rebinding — is caught there, not here). */
+/** A hostname as the checks compare it: trimmed, unbracketed, lower case,
+ *  without the one trailing dot a fully qualified name may carry
+ *  ("localhost." and "10.0.0.5." name the same hosts as without it). */
+function normHost(hostname: string): string {
+  return hostname.trim().replace(/^\[|\]$/g, "").toLowerCase().replace(/\.$/, "");
+}
+
+/** "localhost" and every name under it: RFC 6761 section 6.3 reserves them
+ *  for loopback, and resolvers answer them with a loopback address. */
+function isLocalhostName(host: string): boolean {
+  return host === "localhost" || host.endsWith(".localhost");
+}
+
 export function isBlockedHost(hostname: string): boolean {
-  const host = hostname.trim().replace(/^\[|\]$/g, "").toLowerCase();
+  const host = normHost(hostname);
   if (!host) return true;
+  if (isLocalhostName(host)) return true;
   // a full dotted-quad literal is judged by isPrivateIp (which knows
   // the CGNAT/multicast/reserved ranges); everything else keeps the original
   // loose prefix + encoded-form checks byte for byte.
@@ -223,6 +237,24 @@ export function isBlockedHost(hostname: string): boolean {
   if (PRIVATE_IP.test(host)) return true;
   if (host.includes(":")) return isPrivateIp(host); // IPv6 literal: block only private/reserved
   return isEncodedIpv4(host);
+}
+
+/** A loopback host: `localhost` or any `*.localhost` name, a dotted-quad 127.0.0.0/8 literal,
+ *  `::1`, or an IPv4-mapped `::ffff:127.x.y.z` (either spelling). Brackets
+ *  are allowed. Used only to scope an explicit loopback opt-in (local alert
+ *  webhooks); it never widens anything else, so an encoded form such as
+ *  `2130706433` is not loopback here (a WHATWG URL parser has already turned
+ *  that into `127.0.0.1` before a hostname reaches this check). */
+export function isLoopbackHost(hostname: string): boolean {
+  const host = normHost(hostname);
+  if (isLocalhostName(host)) return true;
+  if (IPV4_SHAPE.test(host)) return host.startsWith("127.") && host.split(".").every((o) => Number(o) <= 255);
+  if (!host.includes(":")) return false;
+  const h = parseIpv6(host);
+  if (!h) return false;
+  const topZero = h[0] === 0 && h[1] === 0 && h[2] === 0 && h[3] === 0 && h[4] === 0;
+  if (topZero && h[5] === 0 && h[6] === 0 && h[7] === 1) return true;
+  return topZero && h[5] === 0xffff && h[6] >> 8 === 127;
 }
 
 export interface SafeFetchResult {
@@ -267,6 +299,8 @@ const defaultLookup: HostLookup = async (hostname) => {
 interface VettedEntry {
   addresses: string[];
   allowPrivate: boolean;
+  /** safePost's loopback opt-in: loopback addresses pass, nothing else private */
+  allowLoopback?: boolean;
   lookup: HostLookup;
 }
 
@@ -320,7 +354,7 @@ export function makePinnedLookup(registry: Map<string, VettedEntry> = vettedHost
         const pinned = new Set(entry.addresses);
         const ok = fresh
           .map((r) => r.address)
-          .filter((a) => pinned.has(a) && (entry.allowPrivate || !isPrivateIp(a)));
+          .filter((a) => pinned.has(a) && (entry.allowPrivate || !isPrivateIp(a) || (!!entry.allowLoopback && isLoopbackHost(a))));
         if (ok.length === 0) {
           callback(new Error(`saylent: DNS answer for ${hostname} changed after validation`), "");
           return;
@@ -388,6 +422,65 @@ async function readCappedText(res: Response, maxBytes: number): Promise<string> 
   return new TextDecoder("utf-8", { fatal: false }).decode(out);
 }
 
+// ---------------------------------------------------------------------------
+// The per-hop guard shared by safeFetch (GET, the crawler) and safePost (one
+// POST, alert delivery), so both refuse exactly the same hosts. For safeFetch
+// (allowLoopback false) it runs the same checks in the same order as before
+// it was factored out.
+// ---------------------------------------------------------------------------
+
+type HopRefusal = "scheme" | "blocked_host" | "unresolved" | "private_address";
+
+interface HopPolicy {
+  lookup: HostLookup;
+  allowPrivate: boolean;
+  allowLoopback: boolean;
+}
+
+const REFUSAL_TEXT: Record<HopRefusal, string> = {
+  scheme: "only http and https URLs are allowed",
+  blocked_host: "the host is a private, loopback or link-local address",
+  unresolved: "the host did not resolve",
+  private_address: "the host resolves to a private, loopback or link-local address",
+};
+
+const refusedAddress = (address: string, p: HopPolicy): boolean =>
+  !p.allowPrivate && isPrivateIp(address) && !(p.allowLoopback && isLoopbackHost(address));
+
+/** Resolve a host and judge every address it answers with. Fails closed: a
+ *  host we cannot positively resolve is refused. */
+async function resolveAndJudge(
+  hostname: string,
+  p: HopPolicy,
+): Promise<{ refusal: HopRefusal } | { addresses: string[] }> {
+  const resolved = await p.lookup(hostname).catch(() => null);
+  if (!resolved || resolved.length === 0) return { refusal: "unresolved" };
+  if (resolved.some((r) => refusedAddress(r.address, p))) return { refusal: "private_address" };
+  return { addresses: resolved.map((r) => r.address) };
+}
+
+async function vetHop(parsed: URL, p: HopPolicy): Promise<HopRefusal | null> {
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return "scheme";
+  if (!p.allowPrivate && isBlockedHost(parsed.hostname) && !(p.allowLoopback && isLoopbackHost(parsed.hostname))) {
+    return "blocked_host";
+  }
+  // DNS-rebind defense: resolve and reject if ANY address is private. Fail
+  // closed — a host we cannot positively resolve to a public IP is not
+  // fetched. allowPrivate still requires a resolvable address; it only
+  // lifts the "must be public" requirement on that address.
+  const judged = await resolveAndJudge(parsed.hostname, p);
+  if ("refusal" in judged) return judged.refusal;
+  // pin exactly these addresses for the socket this hop opens, so
+  // the connection cannot land on an address the checks above never saw.
+  rememberVetted(parsed.hostname, {
+    addresses: judged.addresses,
+    allowPrivate: p.allowPrivate,
+    ...(p.allowLoopback ? { allowLoopback: true } : {}),
+    lookup: p.lookup,
+  });
+  return null;
+}
+
 /** Safe outbound fetch — never throws; rejects non-http(s), private/
  *  encoded-IP literal hosts, AND hostnames that DNS-resolve into a private range
  *  (rebind defense); caps the body at ~2MB; 20s timeout; ≤3 redirects, each hop
@@ -428,30 +521,9 @@ export async function safeFetch(
   try {
     for (let hop = 0; hop <= maxRedirects; hop++) {
       const parsed = new URL(current);
-      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      if (await vetHop(parsed, { lookup, allowPrivate, allowLoopback: false })) {
         return { status: 0, finalUrl: current, text: "" };
       }
-      if (!allowPrivate && isBlockedHost(parsed.hostname)) {
-        return { status: 0, finalUrl: current, text: "" };
-      }
-      // DNS-rebind defense: resolve and reject if ANY address is private. Fail
-      // closed — a host we cannot positively resolve to a public IP is not
-      // fetched. allowPrivate still requires a resolvable address; it only
-      // lifts the "must be public" requirement on that address.
-      const resolved = await lookup(parsed.hostname).catch(() => null);
-      if (!resolved || resolved.length === 0) {
-        return { status: 0, finalUrl: current, text: "" };
-      }
-      if (!allowPrivate && resolved.some((r) => isPrivateIp(r.address))) {
-        return { status: 0, finalUrl: current, text: "" };
-      }
-      // pin exactly these addresses for the socket this hop opens, so
-      // the connection cannot land on an address the checks above never saw.
-      rememberVetted(parsed.hostname, {
-        addresses: resolved.map((r) => r.address),
-        allowPrivate,
-        lookup,
-      });
       const dispatcher = await getPinnedDispatcher();
       const res = await fetch(current, {
         headers: { "user-agent": ua },
@@ -474,6 +546,102 @@ export async function safeFetch(
   } catch {
     return { status: 0, finalUrl: current, text: "" };
   }
+}
+
+export interface SafePostResult {
+  /** the HTTP status; 0 when nothing was sent or the transport failed */
+  status: number;
+  /** the response body, capped at `maxResponseBytes`; empty for a 3xx */
+  text: string;
+  headers: { get(name: string): string | null } | null;
+  /** why nothing was sent, or the transport error; never contains the URL */
+  error?: string;
+}
+
+/** A transport error as one short line, with any URL stripped (a webhook URL
+ *  is a credential) and the system error code kept when there is one. */
+function describeTransportError(e: unknown, timeoutMs: number): string {
+  if (e instanceof Error && e.name === "TimeoutError") return `timed out after ${timeoutMs / 1000}s`;
+  const message = e instanceof Error ? e.message : String(e);
+  const cause = e instanceof Error ? (e as { cause?: { code?: unknown } }).cause : undefined;
+  const code = typeof cause?.code === "string" ? ` (${cause.code})` : "";
+  return `${message}${code}`.replace(/[a-z][a-z0-9+.-]*:\/\/\S+/gi, "<url>").slice(0, 200);
+}
+
+/** One guarded POST — the same host guard as safeFetch, for sending to a
+ *  URL someone else typed in (alert webhooks, Slack). Never throws.
+ *
+ *  - http(s) only; private, loopback, link-local, reserved and encoded-IPv4
+ *    literal hosts are refused, and so is a hostname whose DNS answer holds
+ *    any such address. The socket is pinned to the vetted addresses, as in
+ *    safeFetch.
+ *  - Redirects are NEVER followed: a 3xx comes back as the result, so a
+ *    receiver cannot bounce the request onto an internal address.
+ *  - `allowLoopback` (default false) lets loopback through (127.0.0.0/8,
+ *    ::1, localhost) and nothing else private; for local development only.
+ *  - `timeoutMs` (default 10s) covers the connection and the response body;
+ *    the body is read up to `maxResponseBytes` (default 64KB).
+ *  - No retry here: the caller decides (alert delivery retries 429/5xx once). */
+export async function safePost(
+  url: string,
+  opts: {
+    body: string;
+    headers?: Record<string, string>;
+    timeoutMs?: number;
+    lookup?: HostLookup;
+    allowLoopback?: boolean;
+    maxResponseBytes?: number;
+  },
+): Promise<SafePostResult> {
+  const { body, headers = {}, timeoutMs = 10_000, allowLoopback = false, maxResponseBytes = 65_536 } = opts;
+  const base = opts.lookup ?? defaultLookup;
+  // URL.hostname keeps an IPv6 literal's brackets; a resolver wants it bare
+  const lookup: HostLookup = (h) => base(h.replace(/^\[|\]$/g, ""));
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return { status: 0, text: "", headers: null, error: "not a valid URL" };
+  }
+  try {
+    const refusal = await vetHop(parsed, { lookup, allowPrivate: false, allowLoopback });
+    if (refusal) return { status: 0, text: "", headers: null, error: REFUSAL_TEXT[refusal] };
+    const dispatcher = await getPinnedDispatcher();
+    const res = await fetch(url, {
+      method: "POST",
+      headers,
+      body,
+      redirect: "manual",
+      signal: AbortSignal.timeout(timeoutMs),
+      ...(dispatcher ? { dispatcher } : {}),
+    } as RequestInit);
+    if (res.status >= 300 && res.status < 400) {
+      await res.body?.cancel().catch(() => {});
+      return { status: res.status, text: "", headers: res.headers };
+    }
+    const text = await readCappedText(res, maxResponseBytes);
+    return { status: res.status, text, headers: res.headers };
+  } catch (e) {
+    return { status: 0, text: "", headers: null, error: describeTransportError(e, timeoutMs) };
+  }
+}
+
+/** The save-time half of the same judgement: does `hostname` resolve, and
+ *  only to addresses safePost would send to? null when it does, else
+ *  "unresolved" or "private_address". A usability check (a DNS answer can
+ *  change after saving); the send-time check in safePost is the defence. */
+export async function checkHostResolvesPublic(
+  hostname: string,
+  opts: { lookup?: HostLookup; allowLoopback?: boolean } = {},
+): Promise<"unresolved" | "private_address" | null> {
+  const base = opts.lookup ?? defaultLookup;
+  const judged = await resolveAndJudge(hostname.replace(/^\[|\]$/g, ""), {
+    lookup: base,
+    allowPrivate: false,
+    allowLoopback: opts.allowLoopback ?? false,
+  });
+  if (!("refusal" in judged)) return null;
+  return judged.refusal === "unresolved" ? "unresolved" : "private_address";
 }
 
 /** Wayback Machine fallback (fully legal: reads the PUBLIC ARCHIVE, never the

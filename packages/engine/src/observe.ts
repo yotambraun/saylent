@@ -11,14 +11,13 @@
 // answer, and persists (functions.ts judge step) — so observe writes NO answer rows
 // itself (the canonical raw_text is the voted representative, unknown until judged).
 import type { AskResult } from "./adapters";
+import { ENGINE_IDS, SURFACES } from "./surfaces";
 import type { AnswerRow, BrandModel, DbWriter, Engine, Question } from "./types";
 
-export const STAGE_LABELS: Record<Engine, string> = {
-  chatgpt: "Asking ChatGPT",
-  claude: "Asking Claude",
-  gemini: "Asking Gemini",
-  perplexity: "Asking Perplexity",
-};
+/** The live stage label per answer source, from the surfaces registry. */
+export const STAGE_LABELS: Record<Engine, string> = Object.fromEntries(
+  ENGINE_IDS.map((e) => [e, SURFACES[e].stageLabel]),
+) as Record<Engine, string>;
 
 // Raised from 150 for sampling: the adaptive full-v2 WORST case (every scored
 // question needing its tiebreak) = (12 scored ×3 + 11 ×1) ×4 engines = 188 draws
@@ -26,6 +25,14 @@ export const STAGE_LABELS: Record<Engine, string> = {
 // run draws far fewer (2× on scored + only the disagreements). 200 keeps a real
 // backstop against a call-storm bug while clearing the legitimate sampled maximum.
 export const CALL_CAP = 200;
+
+/** The backstop scales with the answer sources asked: the four-engine worst
+ *  case is 47 draws per engine, so 50 per source keeps the same headroom when
+ *  answer surfaces are added (seven sources: 350). Never below CALL_CAP. */
+export const CALL_CAP_PER_ENGINE = 50;
+export function callCapFor(engineCount: number): number {
+  return Math.max(CALL_CAP, CALL_CAP_PER_ENGINE * engineCount);
+}
 
 export type AskFn = (engine: Engine, question: string) => Promise<AskResult>;
 /** How many draws to take for THIS question (profiles.sampleCountFor) — takes
@@ -99,6 +106,7 @@ export async function observeEngine(
         citations: r.citations,
         ...(r.error ? { error: r.error } : {}),
         ...(r.usage ? { usage: r.usage } : {}),
+        ...(r.search_queries ? { search_queries: r.search_queries } : {}),
       });
     }
     done++;
@@ -128,6 +136,7 @@ export async function askTiebreakDraw(group: DrawRow[], ask: AskFn): Promise<Dra
     citations: r.citations,
     ...(r.error ? { error: r.error } : {}),
     ...(r.usage ? { usage: r.usage } : {}),
+    ...(r.search_queries ? { search_queries: r.search_queries } : {}),
   };
 }
 
@@ -142,7 +151,7 @@ export async function observe(
   engines: Engine[] = ["chatgpt", "claude", "gemini", "perplexity"],
   sampleCountFn: SampleCountFn = () => 1,
 ): Promise<DrawRow[] | null> {
-  if (plannedDraws(questions, engines, sampleCountFn) > CALL_CAP) {
+  if (plannedDraws(questions, engines, sampleCountFn) > callCapFor(engines.length)) {
     await db.failRun(runId, "internal call-cap guard");
     return null;
   }

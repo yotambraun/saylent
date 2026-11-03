@@ -14,7 +14,7 @@ import { buildBrief, storyBranch, type BriefInput } from "./brief";
 /* The dossier section ids the Brief may deep-link into. Verified by grepping
  * dossier.tsx for `id=` (battlefield, verdicts, voice, gates, fix-plan, method —
  * note the fix section anchor is "fix-plan", not "fixes"). */
-const KNOWN_ANCHORS = new Set(["battlefield", "verdicts", "voice", "gates", "fix-plan", "method", "source-map"]);
+const KNOWN_ANCHORS = new Set(["battlefield", "verdicts", "voice", "gates", "fix-plan", "method", "source-map", "sources"]);
 
 /* ------- load the real Kestrel Uptime smoke capture (challenger fixture) --- */
 interface Fixture {
@@ -60,6 +60,41 @@ function assertBriefInvariants(brief: ReturnType<typeof buildBrief>) {
   // ids are unique
   expect(ids.size).toBe(brief.cards.length);
 }
+
+/* ===== a point band only means "it held" when the question was re-asked ==== */
+
+describe("buildBrief — a one-draw point band is never called stable", () => {
+  function pointBandInput(sampleSets: number | undefined): BriefInput {
+    const base = fixtureInput();
+    const scores = JSON.parse(JSON.stringify(base.scores ?? {})) as NonNullable<BriefInput["scores"]>;
+    const recommended = scores.overall?.recommended ?? 0;
+    scores.recommended_band = {
+      overall: { min: recommended, max: recommended }, // a POINT band either way
+      ...(sampleSets === undefined ? {} : { sample_sets: sampleSets }),
+    };
+    return { ...base, scores };
+  }
+  function sampledRow(input: BriefInput): string {
+    const card = buildBrief(input).cards.find((c) => c.id === "trust-this")!;
+    const kv = card.blocks.find((b) => b.kind === "kv");
+    if (kv?.kind !== "kv") throw new Error("no kv table");
+    return kv.rows.find((r) => r.k === "Sampled")?.v ?? "";
+  }
+
+  it("one sample-set (smoke): says it was asked once, never 'the number held'", () => {
+    const v = sampledRow(pointBandInput(1));
+    expect(v).toBe("one answer per question and engine, asked once");
+    expect(v).not.toMatch(/re-asked|held/);
+  });
+
+  it("an old run with no sample_sets field makes no re-ask claim either", () => {
+    expect(sampledRow(pointBandInput(undefined))).not.toMatch(/re-asked|held/);
+  });
+
+  it("two agreeing draws: the claim is earned", () => {
+    expect(sampledRow(pointBandInput(2))).toBe("every scored question re-asked; the number held");
+  });
+});
 
 /* ============================ storyBranch ================================= */
 
@@ -879,5 +914,31 @@ describe("buildBrief — thin (4 scored answers)", () => {
 
   it("holds every Brief invariant with its trimmed deck", () => {
     assertBriefInvariants(brief);
+  });
+});
+
+describe("get-cited card: off-site opportunities in the summary", () => {
+  it("names the top opportunity domains from source intelligence, each with an answer receipt, linking to Sources", () => {
+    const brief = buildBrief(fixtureInput());
+    assertBriefInvariants(brief);
+    const card = brief.cards.find((c) => c.id === "get-cited");
+    expect(card, "the Kestrel capture has off-site opportunities").toBeDefined();
+    expect(card!.anchor).toBe("sources");
+    expect(card!.teaser).toMatch(/^\d+ sites are cited in answers that skip you; .+ leads\.$/);
+    const kv = card!.blocks.find((b) => b.kind === "kv") as Extract<NonNullable<typeof card>["blocks"][number], { kind: "kv" }>;
+    expect(kv.rows.length).toBeGreaterThan(0);
+    expect(kv.rows.length).toBeLessThanOrEqual(3);
+    for (const r of kv.rows) {
+      expect(r.receipt?.kind).toBe("answer");
+      expect(r.v).toMatch(/answers? that skip you/);
+    }
+    // no AI-tell em-dash in authored copy
+    for (const b of card!.blocks) if (b.kind === "text") expect(b.text).not.toContain(" — ");
+  });
+
+  it("self-hides when no answer cites a domain", () => {
+    const input = fixtureInput();
+    input.answers = (input.answers as unknown as Record<string, unknown>[]).map((a) => ({ ...a, citations: [] })) as unknown as BriefInput["answers"];
+    expect(buildBrief(input).cards.find((c) => c.id === "get-cited")).toBeUndefined();
   });
 });

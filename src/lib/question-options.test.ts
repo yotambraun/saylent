@@ -19,6 +19,7 @@ import {
   FULL_COST_SENTENCE as CLI_FULL_COST_SENTENCE,
   SMOKE_COST_SENTENCE as CLI_SMOKE_COST_SENTENCE,
 } from "../../packages/cli/src/preflight";
+import { COST_CENTS } from "@saylent/engine/answer-cost";
 import { ALL_ENGINES } from "@saylent/engine/engines";
 import { MAX_SAMPLES, PROFILES } from "@saylent/engine/profiles";
 import { generateQuestions } from "@saylent/engine/questions";
@@ -45,6 +46,8 @@ import {
   MAX_QUESTIONS,
   normalizeDraftQuestions,
   normalizeRunOptions,
+  normalizeSourceOverrides,
+  MAX_SOURCE_OVERRIDES,
   QUESTION_TYPES,
   questionIdError,
   questionsChanged,
@@ -54,6 +57,7 @@ import {
   toDraftQuestions,
   toEngineQuestions,
   askedForProfile,
+  surfaceLocaleFor,
 } from "./question-options";
 
 const row = (over: Partial<DraftQuestion> = {}): DraftQuestion => ({
@@ -182,6 +186,93 @@ describe("normalizeRunOptions", () => {
   });
 });
 
+describe("normalizeRunOptions: answer surfaces", () => {
+  const base = { questions: [row()], now: "2026-11-02T00:00:00.000Z" };
+
+  it("keeps the four model APIs plus a surface, in canonical order", () => {
+    const res = normalizeRunOptions({
+      ...base,
+      engines: ["copilot", "perplexity", "claude", "gemini", "chatgpt", "google_ai_mode"],
+    });
+    expect(res.ok).toBe(true);
+    if (res.ok) {
+      expect(res.value.engines).toEqual(["chatgpt", "claude", "gemini", "perplexity", "google_ai_mode", "copilot"]);
+    }
+  });
+
+  it("counts surfaces toward the floor, and still stores nothing for exactly the four", () => {
+    const two = normalizeRunOptions({ ...base, engines: ["chatgpt", "google_ai_overview"] });
+    expect(two.ok).toBe(true);
+    if (two.ok) expect(two.value.engines).toEqual(["chatgpt", "google_ai_overview"]);
+    const one = normalizeRunOptions({ ...base, engines: ["google_ai_overview", "bing"] });
+    expect(one.ok).toBe(false);
+    const four = normalizeRunOptions({ ...base, engines: [...ALL_ENGINES] });
+    if (four.ok) expect(four.value.engines).toBeUndefined();
+  });
+
+  it("validates and cleans the surface locale, and drops an empty one", () => {
+    const ok = normalizeRunOptions({ ...base, surfaceLocale: { country: "GB", language: "en", location: "  London,  England " } });
+    expect(ok.ok).toBe(true);
+    if (ok.ok) expect(ok.value.surfaceLocale).toEqual({ country: "gb", language: "en", location: "London, England" });
+    const empty = normalizeRunOptions({ ...base, surfaceLocale: { country: " ", language: "", location: "" } });
+    if (empty.ok) expect(empty.value.surfaceLocale).toBeUndefined();
+    const bad = normalizeRunOptions({ ...base, surfaceLocale: { country: "Britain" } });
+    expect(bad.ok).toBe(false);
+    if (!bad.ok) expect(bad.error).toContain("two-letter country code");
+  });
+});
+
+describe("normalizeSourceOverrides", () => {
+  it("lowercases hosts, strips www, schemes and paths, and keeps the last row for a host", () => {
+    const res = normalizeSourceOverrides([
+      { host: "https://WWW.G2.com/products/x", type: "review_site" },
+      { host: "news.ycombinator.com", type: "forum" },
+      { host: "g2.com", type: "marketplace" },
+      { host: "", type: "" },
+    ]);
+    expect(res).toEqual({
+      ok: true,
+      value: { domainTypes: { "g2.com": "marketplace", "news.ycombinator.com": "forum" } },
+    });
+  });
+
+  it("accepts a stored map as well as form rows, and stores nothing when empty", () => {
+    expect(normalizeSourceOverrides({ domainTypes: { "Reddit.com": "forum" } })).toEqual({
+      ok: true,
+      value: { domainTypes: { "reddit.com": "forum" } },
+    });
+    expect(normalizeSourceOverrides([])).toEqual({ ok: true, value: null });
+    expect(normalizeSourceOverrides(null)).toEqual({ ok: true, value: null });
+  });
+
+  it("refuses a non-domain, an unknown type and more than the cap", () => {
+    expect(normalizeSourceOverrides([{ host: "not a host", type: "forum" }]).ok).toBe(false);
+    expect(normalizeSourceOverrides([{ host: "localhost", type: "forum" }]).ok).toBe(false);
+    expect(normalizeSourceOverrides([{ host: "g2.com", type: "great_site" }]).ok).toBe(false);
+    const many = Array.from({ length: MAX_SOURCE_OVERRIDES + 1 }, (_, i) => ({ host: `site${i}.com`, type: "other" }));
+    const res = normalizeSourceOverrides(many);
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.error).toContain(String(MAX_SOURCE_OVERRIDES));
+  });
+
+  it("rides along in normalizeRunOptions", () => {
+    const res = normalizeRunOptions({ questions: [row()], sourceOverrides: [{ host: "capterra.com", type: "review_site" }] });
+    expect(res.ok).toBe(true);
+    if (res.ok) expect(res.value.sourceOverrides).toEqual({ domainTypes: { "capterra.com": "review_site" } });
+    const bad = normalizeRunOptions({ questions: [row()], sourceOverrides: [{ host: "capterra.com", type: "x" }] });
+    expect(bad.ok).toBe(false);
+  });
+});
+
+describe("surfaceLocaleFor", () => {
+  it("falls back to the run locale for an empty language, and is null when nothing is set", () => {
+    expect(surfaceLocaleFor({ locale: "de", surfaceLocale: { country: "de" } })).toEqual({ country: "de", language: "de" });
+    expect(surfaceLocaleFor({ locale: "de", surfaceLocale: { language: "en" } })).toEqual({ language: "en" });
+    expect(surfaceLocaleFor({})).toBeNull();
+    expect(surfaceLocaleFor(null)).toBeNull();
+  });
+});
+
 describe("questionsChanged", () => {
   const baseline = [row(), row({ id: "q02", type: "problem", text: "How do I stop pager noise?" })];
 
@@ -284,7 +375,8 @@ describe("estimateRunCost", () => {
       skip: { drafts: true },
     });
     const drafterCost = (ROLE_CENTS.drafter * PROFILES.full.draftTop) / 100;
-    expect(full.highUsd - noDrafts.highUsd).toBeCloseTo(drafterCost, 2);
+    // Both ends are rounded to whole cents, so the difference is exact to a cent.
+    expect(Math.abs(full.highUsd - noDrafts.highUsd - drafterCost)).toBeLessThanOrEqual(0.01 + 1e-9);
     // The corpus and the gate checks are our own crawl, not a model call: they
     // change what the report can show, never the bill.
     const noCorpus = estimateRunCost({
@@ -294,6 +386,23 @@ describe("estimateRunCost", () => {
       skip: { corpus: true, gates: true },
     });
     expect(noCorpus.highUsd).toBe(full.highUsd);
+  });
+
+  it("prices an answer surface per request, on top of the four engines", () => {
+    const base = estimateRunCost({ questions: scored, engines: four, samples: 1 });
+    const plus = estimateRunCost({ questions: scored, engines: [...four, "google_ai_mode"], samples: 1 });
+    expect(plus.engines).toBe(5);
+    expect(plus.drawsLow).toBe(base.drawsLow + scored.length);
+    // the answer cost grows by exactly one surface request per draw (plus its judging)
+    const extraAnswerCents = scored.length * COST_CENTS.google_ai_mode;
+    expect(plus.lowUsd).toBeGreaterThan(base.lowUsd);
+    expect(plus.lowUsd - base.lowUsd).toBeGreaterThanOrEqual(Math.floor(extraAnswerCents) / 100 - 0.01);
+  });
+
+  it("prices a two-request AI Overview higher than a one-request AI Mode answer", () => {
+    const aio = estimateRunCost({ questions: scored, engines: ["chatgpt", "google_ai_overview"], samples: 1 });
+    const mode = estimateRunCost({ questions: scored, engines: ["chatgpt", "google_ai_mode"], samples: 1 });
+    expect(aio.lowUsd).toBeGreaterThan(mode.lowUsd);
   });
 
   it("falls back to all four engines when the selection is below the floor", () => {
@@ -354,6 +463,38 @@ describe("runInputFromOptions", () => {
     });
     expect(mapped.questionSet).toBe(frozen);
     expect(mapped.suppliedQuestions).toBe(false);
+  });
+
+  it("hands the surface locale to an audit, with the run locale as its language fallback", () => {
+    const mapped = runInputFromOptions({
+      kind: "audit",
+      runOptions: { locale: "fr", surfaceLocale: { country: "fr" }, engines: ["chatgpt", "google_ai_mode"] },
+      brandEngines: null,
+      brandQuestionSet: null,
+      brandQuestionSetVersion: 1,
+    });
+    expect(mapped.surfaceLocale).toEqual({ country: "fr", language: "fr" });
+    expect(mapped.engines).toEqual(["chatgpt", "google_ai_mode"]);
+  });
+
+  it("a verify reads the surfaces from where its BASELINE read them, not from today's draft", () => {
+    const mapped = runInputFromOptions({
+      kind: "verify",
+      runOptions: { surfaceLocale: { country: "de" } },
+      baselineRunOptions: { surfaceLocale: { country: "gb", location: "London, England" }, locale: "en" },
+      brandEngines: ["chatgpt", "google_ai_overview"],
+      brandQuestionSet: frozen,
+      brandQuestionSetVersion: 3,
+    });
+    expect(mapped.surfaceLocale).toEqual({ country: "gb", language: "en", location: "London, England" });
+    const noBaseline = runInputFromOptions({
+      kind: "verify",
+      runOptions: { surfaceLocale: { country: "de" } },
+      brandEngines: null,
+      brandQuestionSet: frozen,
+      brandQuestionSetVersion: 3,
+    });
+    expect(noBaseline.surfaceLocale).toBeNull();
   });
 
   it("ignores every run option on a verify, because a verify must re-ask the baseline", () => {

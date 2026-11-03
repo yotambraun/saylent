@@ -1,6 +1,6 @@
 {
   "name": "@saylent/engine",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "private": false,
   "description": "The pure audit pipeline behind Saylent: run AI-visibility audits from your own code, with zero app-framework dependencies.",
   "license": "Apache-2.0",
@@ -23,10 +23,13 @@
     "gemini",
     "perplexity",
     "brand-monitoring",
-    "audit"
+    "audit",
+    "geo",
+    "aeo",
+    "answer-engine-optimization"
   ],
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "publishConfig": {
     "access": "public"

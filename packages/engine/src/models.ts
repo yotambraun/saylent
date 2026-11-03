@@ -1,5 +1,6 @@
 // Implements METHODOLOGY.md (model registry) — the model registry. THE ONLY place model names exist.
-// Every value is env-overridable; defaults verified July 2026. When a default 404s
+// Every value is env-overridable; defaults verified 2026-11-02 against each
+// provider's official model and pricing pages (sources in rates.ts). When a default 404s
 // (models drift), pick the closest current tier from the provider's model list,
 // update the default here and note it in the changelog (verified at build time).
 // Never import a model string from anywhere else in src/.
@@ -11,7 +12,8 @@
 // on that family and the run is stamped judge_mode:"single-family" so the report
 // can say so. Gemini/Perplexity are ANSWER engines only: they never judge or draft.
 import type { ModelSelection } from "./config";
-import { ALL_ENGINES } from "./engines";
+import { DEFAULT_MODELS } from "./model-defaults";
+import { ENGINE_IDS, isSurfaceId, surfaceSourceId } from "./surfaces";
 import type { Engine } from "./types";
 
 /** Where a resolved model id came from. PRECEDENCE, highest first:
@@ -92,21 +94,21 @@ interface SlotSpec {
   pick: (sel: ModelSelection | undefined) => string | undefined;
 }
 
-/** The ONE place a model default lives (see the header). Every slot: which env
- *  var overrides it, which saylent.config `models` field selects it, and the
- *  shipped default. `brand`/`drafter` map to BOTH family slots — the run uses
+/** Every slot: which env var overrides it, which saylent.config `models` field
+ *  selects it, and the shipped default (the ids themselves live in
+ *  model-defaults.ts, a pure constant client-safe code can read). `brand`/`drafter` map to BOTH family slots — the run uses
  *  the slot for the family that actually serves the role (resolveRoles). */
 const SLOTS: SlotSpec[] = [
-  { role: "chatgptAnswer", envVar: "MODEL_CHATGPT_ANSWER", label: "chatgpt (answer)", fallback: "gpt-5.4", pick: (s) => s?.engines?.chatgpt },
-  { role: "claudeAnswer", envVar: "MODEL_CLAUDE_ANSWER", label: "claude (answer)", fallback: "claude-sonnet-4-6", pick: (s) => s?.engines?.claude },
-  { role: "geminiAnswer", envVar: "MODEL_GEMINI_ANSWER", label: "gemini (answer)", fallback: "gemini-3.6-flash", pick: (s) => s?.engines?.gemini },
-  { role: "perplexityAnswer", envVar: "MODEL_PERPLEXITY_ANSWER", label: "perplexity (answer)", fallback: "sonar", pick: (s) => s?.engines?.perplexity },
-  { role: "judgeAnthropic", envVar: "MODEL_JUDGE_ANTHROPIC", label: "judge (anthropic)", fallback: "claude-haiku-4-5", pick: (s) => s?.judge?.anthropic },
-  { role: "judgeOpenai", envVar: "MODEL_JUDGE_OPENAI", label: "judge (openai)", fallback: "gpt-5-mini", pick: (s) => s?.judge?.openai },
-  { role: "brand", envVar: "MODEL_BRAND", label: "brand model (anthropic)", fallback: "claude-haiku-4-5", pick: (s) => s?.brand },
-  { role: "drafter", envVar: "MODEL_DRAFTER", label: "drafter (anthropic)", fallback: "claude-sonnet-4-6", pick: (s) => s?.drafter },
-  { role: "brandOpenai", envVar: "MODEL_BRAND_OPENAI", label: "brand model (openai)", fallback: "gpt-5-mini", pick: (s) => s?.brand },
-  { role: "drafterOpenai", envVar: "MODEL_DRAFTER_OPENAI", label: "drafter (openai)", fallback: "gpt-5.4", pick: (s) => s?.drafter },
+  { role: "chatgptAnswer", envVar: "MODEL_CHATGPT_ANSWER", label: "chatgpt (answer)", fallback: DEFAULT_MODELS.chatgptAnswer, pick: (s) => s?.engines?.chatgpt },
+  { role: "claudeAnswer", envVar: "MODEL_CLAUDE_ANSWER", label: "claude (answer)", fallback: DEFAULT_MODELS.claudeAnswer, pick: (s) => s?.engines?.claude },
+  { role: "geminiAnswer", envVar: "MODEL_GEMINI_ANSWER", label: "gemini (answer)", fallback: DEFAULT_MODELS.geminiAnswer, pick: (s) => s?.engines?.gemini },
+  { role: "perplexityAnswer", envVar: "MODEL_PERPLEXITY_ANSWER", label: "perplexity (answer)", fallback: DEFAULT_MODELS.perplexityAnswer, pick: (s) => s?.engines?.perplexity },
+  { role: "judgeAnthropic", envVar: "MODEL_JUDGE_ANTHROPIC", label: "judge (anthropic)", fallback: DEFAULT_MODELS.judgeAnthropic, pick: (s) => s?.judge?.anthropic },
+  { role: "judgeOpenai", envVar: "MODEL_JUDGE_OPENAI", label: "judge (openai)", fallback: DEFAULT_MODELS.judgeOpenai, pick: (s) => s?.judge?.openai },
+  { role: "brand", envVar: "MODEL_BRAND", label: "brand model (anthropic)", fallback: DEFAULT_MODELS.brand, pick: (s) => s?.brand },
+  { role: "drafter", envVar: "MODEL_DRAFTER", label: "drafter (anthropic)", fallback: DEFAULT_MODELS.drafter, pick: (s) => s?.drafter },
+  { role: "brandOpenai", envVar: "MODEL_BRAND_OPENAI", label: "brand model (openai)", fallback: DEFAULT_MODELS.brandOpenai, pick: (s) => s?.brand },
+  { role: "drafterOpenai", envVar: "MODEL_DRAFTER_OPENAI", label: "drafter (openai)", fallback: DEFAULT_MODELS.drafterOpenai, pick: (s) => s?.drafter },
 ];
 
 /** Resolve every slot with its provenance. Pure apart from reading env. */
@@ -160,14 +162,18 @@ function readModels(inputs: ModelInputs = {}): ModelRegistry {
 
 /** WHAT EACH SLOT IS (the defaults themselves live in SLOTS above):
  *  chatgptAnswer     ChatGPT answer engine - OpenAI Responses API + {type:"web_search"} tool
- *  claudeAnswer      Claude answer engine - messages + web_search_20250305 tool
- *  geminiAnswer      Gemini answer engine - googleSearch tool; 3.x-flash bills PER SEARCH QUERY.
- *                    Default moved 2.5-flash -> 3.6-flash: Google 404s gemini-2.5-flash for new
- *                    projects. Search-GROUNDED calls need paid billing on the key's project
- *                    (free-tier grounding quota = 0); plain generation works unbilled.
- *  perplexityAnswer  Perplexity answer engine - chat/completions; per-request search fee
+ *  claudeAnswer      Claude answer engine - messages + web_search_20250305 tool (the basic
+ *                    version, on purpose: see adapters/claude.ts)
+ *  geminiAnswer      Gemini answer engine - googleSearch tool; Gemini 3+ bills grounding PER SEARCH
+ *                    QUERY the model runs (5,000 free a month, then $14/1K). Search-GROUNDED calls
+ *                    need paid billing on the key's project; plain generation works unbilled.
+ *  perplexityAnswer  Perplexity answer engine - chat/completions with model "sonar". Perplexity
+ *                    ended Sonar Chat Completions support on 2026-09-27; synchronous requests keep
+ *                    working by being reformulated as Agent API requests (docs.perplexity.ai).
+ *                    Moving the adapter to the Agent API needs one live run first: see PROVIDERS.md
  *  judgeAnthropic    judges chatgpt+gemini answers in cross-family mode (METHODOLOGY.md)
- *  judgeOpenai       judges claude+perplexity answers; if deprecated, gpt-5.4-mini succeeds it
+ *  judgeOpenai       judges claude+perplexity answers (gpt-5-mini, the old default, shuts down
+ *                    2026-12-11 per OpenAI's deprecations page)
  *  brand / drafter   brand-model extraction (1 call/audit) and artifact drafting (3 calls/audit)
  *  brandOpenai /     the same two roles when OpenAI is the only family with a key
  *  drafterOpenai     (single-provider mode) */
@@ -217,6 +223,12 @@ export const CROSS_FAMILY_JUDGE: Record<Engine, Family> = {
   gemini: "anthropic",
   claude: "openai",
   perplexity: "openai",
+  // Answer surfaces: Google's two are Gemini-family answers and Copilot runs on
+  // OpenAI models, so every one is judged by Anthropic, the family that
+  // produced none of them.
+  google_ai_overview: "anthropic",
+  google_ai_mode: "anthropic",
+  copilot: "anthropic",
 };
 
 /** Which judge/drafter families have a key in this environment. */
@@ -273,6 +285,9 @@ export function resolveRoles(
     claude: M.claudeAnswer,
     gemini: M.geminiAnswer,
     perplexity: M.perplexityAnswer,
+    google_ai_overview: surfaceSourceId("google_ai_overview"),
+    google_ai_mode: surfaceSourceId("google_ai_mode"),
+    copilot: surfaceSourceId("copilot"),
   };
 
   const roles = {
@@ -287,10 +302,10 @@ export function resolveRoles(
   } as Record<RoleName, RoleAssignment>;
 
   const selfJudged: Engine[] = [];
-  for (const engine of ALL_ENGINES) {
+  for (const engine of ENGINE_IDS) {
     // Single-family: the judge model is the family's DEDICATED judge model from
     // the registry, which is a different model from the one that answered
-    // (gpt-5-mini judging gpt-5.4, claude-haiku judging claude-sonnet). Same
+    // (gpt-6-luna judging gpt-6.1-sol, claude-haiku judging claude-sonnet). Same
     // model on both sides is only reachable via overrides — flagged, not hidden.
     const family = only ?? CROSS_FAMILY_JUDGE[engine];
     const model = judgeModelOf(family);
@@ -311,13 +326,23 @@ export function judgeModelFor(family: Family, inputs: ModelInputs = {}): string 
 /** engine → judging family, the shape the judge transport wants. */
 export function judgeFamilies(roles: ResolvedRoles): Record<Engine, Family> {
   const out = {} as Record<Engine, Family>;
-  for (const engine of ALL_ENGINES) out[engine] = roles.roles[`judge:for-${engine}`].family;
+  for (const engine of ENGINE_IDS) out[engine] = roles.roles[`judge:for-${engine}`].family;
   return out;
 }
 
 /** Flat role → {family, model} map for the run bundle header (JSON-friendly). */
-export function rolesForBundle(roles: ResolvedRoles): Record<string, RoleAssignment> {
+export function rolesForBundle(
+  roles: ResolvedRoles,
+  /** the engines the run asked: an answer surface's judge role is listed only
+   *  when the run asked that surface (the four model APIs are always listed,
+   *  as they always were) */
+  engines?: readonly Engine[],
+): Record<string, RoleAssignment> {
   const out: Record<string, RoleAssignment> = {};
-  for (const [role, assignment] of Object.entries(roles.roles)) out[role] = { ...assignment };
+  for (const [role, assignment] of Object.entries(roles.roles)) {
+    const engine = role.startsWith("judge:for-") ? role.slice("judge:for-".length) : null;
+    if (engine && isSurfaceId(engine) && !engines?.includes(engine)) continue;
+    out[role] = { ...assignment };
+  }
   return out;
 }

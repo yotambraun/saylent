@@ -90,9 +90,11 @@ function textOf(result: unknown): string {
 }
 
 describe("tools/list", () => {
-  it("lists exactly the four tools the MCP server specifies", async () => {
+  it("lists exactly the ten tools the MCP server specifies", async () => {
     const { tools } = await client.listTools();
-    expect(tools.map((t) => t.name).sort()).toEqual(["audit", "gate_check", "read_report", "verify"]);
+    expect(tools.map((t) => t.name).sort()).toEqual([
+      "audit", "crawlers", "export", "fixes", "gate_check", "history", "questions_import", "read_report", "sources", "verify",
+    ]);
   });
 
   it("every tool description states its cost", async () => {
@@ -154,6 +156,35 @@ describe("tools/call", () => {
     expect(payload.summary_blocks.cards[0].blocks.length).toBeGreaterThan(0);
   });
 
+  it("fixes, history and export answer from the shipped example bundle at $0", async () => {
+    const fixes = JSON.parse(textOf(await client.callTool({ name: "fixes", arguments: { bundle_path: KESTREL_BUNDLE } }))) as {
+      cost_usd: number;
+      site_fixes: string[];
+      fixes: { evidence: string[] }[];
+    };
+    expect(fixes.cost_usd).toBe(0);
+    expect(fixes.site_fixes).toEqual(["access", "schema_missing"]);
+    expect(fixes.fixes[0].evidence.length).toBeGreaterThan(0);
+
+    const one = JSON.parse(textOf(await client.callTool({ name: "fixes", arguments: { bundle_path: KESTREL_BUNDLE, fix: "schema_missing" } }))) as {
+      fixes: { artifact: string }[];
+    };
+    expect(one.fixes[0].artifact).toContain("application/ld+json");
+
+    const exp = JSON.parse(textOf(await client.callTool({ name: "export", arguments: { bundle_paths: [KESTREL_BUNDLE], table: "opportunities", limit: 2 } }))) as {
+      export_format: string;
+      rows: unknown[];
+      truncated: boolean;
+    };
+    expect(exp.export_format).toBe("saylent.export/v1");
+    expect(exp.rows).toHaveLength(2);
+    expect(exp.truncated).toBe(true);
+
+    const hist = (await client.callTool({ name: "history", arguments: { bundle_paths: [KESTREL_BUNDLE] } })) as { isError?: boolean };
+    expect(hist.isError).toBe(true);
+    expect(textOf(hist)).toMatch(/at least two runs/);
+  });
+
   it("audit refuses without keys as a tool error, not a crashed server", async () => {
     const result = (await client.callTool({ name: "audit", arguments: { domain: "acme.example" } })) as {
       isError?: boolean;
@@ -162,7 +193,7 @@ describe("tools/call", () => {
     expect(textOf(result)).toMatch(/OPENAI_API_KEY/);
     // the connection survives the refusal
     const { tools } = await client.listTools();
-    expect(tools).toHaveLength(4);
+    expect(tools).toHaveLength(10);
   });
 });
 

@@ -4,6 +4,8 @@
 // - |Δ recommended| ≤ 1 answer = within noise (see METHODOLOGY.md verify rule);
 // - sparklines are shape-only and suppressed under 3 points.
 
+import { engineLabel } from "@saylent/engine/surfaces";
+
 export interface TrendRun {
   /** optional: present when the caller wants series points to link back to
    *  their run (Movement chart dots + table rows). Pure logic ignores it. */
@@ -107,8 +109,8 @@ export function runEvents(runs: RunEventInput[]): RunEvent[] {
     const left = prev.engines.filter((e) => !cur.engines.includes(e));
     if (joined.length > 0 || left.length > 0) {
       const parts = [
-        ...(joined.length ? [`${joined.join(", ")} joined`] : []),
-        ...(left.length ? [`${left.join(", ")} dropped`] : []),
+        ...(joined.length ? [`${joined.map(engineLabel).join(", ")} joined`] : []),
+        ...(left.length ? [`${left.map(engineLabel).join(", ")} dropped`] : []),
       ];
       out.push({
         run_id: cur.id,

@@ -42,6 +42,9 @@ export interface MemoryAnswerRow {
   verdict: Verdict | null;
   error: string | null;
   usage: AnswerRow["usage"] | null;
+  /** answers.search_queries (migration 0049); optional so rows read back
+   *  from a database without that column still map */
+  search_queries?: string[] | null;
 }
 
 export interface MemoryAnswerSampleRow {
@@ -53,6 +56,8 @@ export interface MemoryAnswerSampleRow {
   citations: AnswerRow["citations"];
   verdict: Verdict | null;
   usage: AnswerRow["usage"] | null;
+  /** answer_samples.search_queries (migration 0049) */
+  search_queries?: string[] | null;
 }
 
 export interface MemoryCitationRow {
@@ -158,6 +163,7 @@ export class MemoryDbWriter implements DbWriter {
       verdict: row.verdict ?? null,
       error: row.error ?? null,
       usage: row.usage ?? null,
+      search_queries: row.search_queries ?? null,
     });
   }
 
@@ -267,6 +273,7 @@ export class MemoryDbWriter implements DbWriter {
         citations: r.citations ?? [],
         verdict: r.verdict ?? null,
         usage: r.usage ?? null,
+        search_queries: r.search_queries ?? null,
       });
     }
   }

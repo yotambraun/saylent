@@ -8,6 +8,8 @@ import path from "node:path";
 import { parseArgs } from "node:util";
 import type { EngineConfigModule, EngineModule } from "../engine-loader";
 import { loadEngine, loadEngineConfig } from "../engine-loader";
+import { isSurfaceId } from "@saylent/engine/surfaces";
+import { missingSurfaceKeyMessage, surfacesLine } from "../surfaces";
 import { applyKeysToEnv, hasMinimumKeys, missingKeysError, resolveKeys, promptForKeys, saveKeys, type KeyMap } from "../keys";
 import { testProviderKey } from "../key-test";
 import { MODEL_FLAG_HELP, MODEL_FLAG_OPTIONS, parseModelFlags } from "../model-flags";
@@ -36,6 +38,7 @@ import {
 } from "../run";
 import { glyph } from "../glyphs";
 import { HELP_OPTION, opt, options } from "../help";
+import { missingFor, notify, parseNotifyFlag, payloadForBundles, targetsFromEnv } from "../notify";
 
 const HELP = `saylent verify <run.json> [options]
 
@@ -64,6 +67,22 @@ ${options([
   opt("--yes", 'Skip the "Run it?" confirmation'),
   opt("--max-usd <n>", "Refuse to run if the estimate exceeds this"),
   opt(
+    "--notify <a,b>",
+    "When the run finishes, send what changed vs the baseline",
+    "(recommendations gained/lost, new rivals, new off-site",
+    "opportunities) to slack, webhook and/or email. Targets come",
+    "from SAYLENT_SLACK_WEBHOOK_URL, SAYLENT_WEBHOOK_URL (+",
+    "SAYLENT_WEBHOOK_SECRET to sign), SAYLENT_SMTP_URL with",
+    "SAYLENT_ALERT_EMAIL_FROM/_TO. Nothing changed: nothing sent.",
+  ),
+  opt("--notify-always", "Send even when nothing changed (a heartbeat)"),
+  opt(
+    "--notify-allow-loopback",
+    "Let the webhook or Slack URL point at this machine (localhost,",
+    "127.0.0.1, ::1; http allowed), for testing a local receiver.",
+    "Off by default; other private addresses are always refused.",
+  ),
+  opt(
     "--format <a,b>",
     "Which files to write: json (run.json), html (movement.html).",
     "md is accepted for parity with `audit` but names no file",
@@ -89,6 +108,8 @@ export interface VerifyCommandIo {
   stdinIsTTY: boolean;
   promptKeysIo: { input: NodeJS.ReadableStream; output: NodeJS.WritableStream };
   confirmIo?: { input: NodeJS.ReadableStream; output: NodeJS.WritableStream };
+  /** injectable for tests: the --notify delivery */
+  notify?: typeof notify;
 }
 
 const REAL_IO: VerifyCommandIo = {
@@ -120,6 +141,9 @@ export async function runVerifyCommandWith(
     allowPositionals: true,
     options: {
       yes: { type: "boolean", default: false },
+      notify: { type: "string" },
+      "notify-always": { type: "boolean", default: false },
+      "notify-allow-loopback": { type: "boolean", default: false },
       ...cliParseOptions(VERIFY_FIELD_KEYS),
       ...MODEL_FLAG_OPTIONS,
     },
@@ -133,6 +157,11 @@ export async function runVerifyCommandWith(
   const baselinePath = positionals[0];
   if (!baselinePath) {
     process.stderr.write(`Missing <run.json>.\n\n${HELP}\n`);
+    return 1;
+  }
+  const notifyFlag = parseNotifyFlag(parsed.values.notify as string | undefined);
+  if ("error" in notifyFlag) {
+    process.stderr.write(`\n  ${notifyFlag.error}\n`);
     return 1;
   }
 
@@ -256,6 +285,16 @@ export async function runVerifyCommandWith(
   }
   applyKeysToEnv(keys);
 
+  // A baseline that asked an answer surface needs the SerpApi key again: the
+  // verify asks the SAME engine set, so a missing key is refused by name.
+  const baselineSurfaces = (baseline.run.engines as Engine[]).filter(isSurfaceId);
+  if (baselineSurfaces.length > 0 && !keys.serpapi) {
+    process.stderr.write(`
+  ${missingSurfaceKeyMessage(baselineSurfaces)}
+`);
+    return 1;
+  }
+
   // Same precedence as audit: flag > MODEL_* env > saylent.config models >
   // shipped registry default (models.ts).
   const table = engineMod.resolveModelTable({ flags: modelFlags, config: config.models });
@@ -271,7 +310,16 @@ export async function runVerifyCommandWith(
     `  same ${baseline.questions.length} frozen questions ${glyph("sep")} same ${baseline.run.engines.length} engines ${glyph("sep")} est. ${formatCostRange(estimate)}\n`,
   );
   process.stdout.write(`  Judge     ${formatJudgeModels(roles)}\n`);
+  const surfLine = surfacesLine(baseline.run.engines as Engine[], baseline.run.surfaces?.locale ?? null);
+  if (surfLine) process.stdout.write(`  Surfaces  ${surfLine}  (the baseline's own locale)\n`);
   process.stdout.write(`  Sampling  ${formatSamplingLine(requestedSampling, baseline.run.profile)}\n`);
+  if (notifyFlag.channels.length > 0) {
+    const targets = targetsFromEnv();
+    const missing = notifyFlag.channels.map((c) => [c, missingFor(c, targets)] as const).filter(([, m]) => m);
+    process.stdout.write(
+      `  Notify    ${notifyFlag.channels.join(", ")} when it finishes, if anything changed${missing.length ? ` ${glyph("sep")} ${missing.map(([c, m]) => `${c} needs ${m}`).join("; ")}` : ""}\n`,
+    );
+  }
   if (requestedSkip.drafts || requestedSkip.corpus || requestedSkip.gates) {
     process.stdout.write(
       "  Skip      no effect here — verify never drafts artifacts, fetches corpus, or checks gates\n",
@@ -312,7 +360,7 @@ export async function runVerifyCommandWith(
   // output dir, so re-verifying the same brand never clobbers the baseline.
   const dateDir = path.join(path.dirname(outDir), new Date().toISOString().slice(0, 10));
 
-  const { result, movementHtmlPath, runJsonPath } = await runVerifyToFilesWith(
+  const verified = await runVerifyToFilesWith(
     engineMod,
     reportMod,
     {
@@ -325,9 +373,11 @@ export async function runVerifyCommandWith(
       roles,
       sampling: { samples: samplesFlag ?? null, sampling: config.sampling ?? null },
       format: formats,
+      ...(config.sources?.domainTypes ? { sourceOverrides: { domainTypes: config.sources.domainTypes } } : {}),
     },
     dateDir,
   );
+  const { result, movementHtmlPath, runJsonPath } = verified;
 
   progress.finish(result, {
     reportPath: movementHtmlPath ?? runJsonPath,
@@ -335,6 +385,27 @@ export async function runVerifyCommandWith(
     brandDomain: baseline.brand_model.domain,
   });
   if (movementHtmlPath) process.stdout.write(`  Movement  ${movementHtmlPath}\n`);
+
+  // Alerts: what changed vs the baseline, to the channels asked for. A failed
+  // delivery is reported and never changes the exit code.
+  if (notifyFlag.channels.length > 0 && result.status !== "failed") {
+    try {
+      const payload = payloadForBundles({
+        baseline: verified.baseline,
+        current: verified.current,
+        reportPath: movementHtmlPath ?? runJsonPath,
+        movementPath: movementHtmlPath,
+        baselinePath,
+      });
+      const lines = await (io.notify ?? notify)(payload, notifyFlag.channels, {
+        always: Boolean(parsed.values["notify-always"]),
+        allowLoopback: Boolean(parsed.values["notify-allow-loopback"]),
+      });
+      for (const l of lines) process.stdout.write(`${l}\n`);
+    } catch (e) {
+      process.stdout.write(`  Notify    failed: ${e instanceof Error ? e.message.slice(0, 200) : "unknown error"}\n`);
+    }
+  }
 
   if (result.costUsd > 0) recordSpend(result.costUsd);
   if (result.status === "failed") return 1;

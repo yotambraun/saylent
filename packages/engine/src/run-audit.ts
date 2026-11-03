@@ -41,7 +41,7 @@ import {
 import {
   type AskFn,
   askTiebreakDraw,
-  CALL_CAP,
+  callCapFor,
   type DrawRow,
   observeEngine,
   plannedDraws,
@@ -82,13 +82,16 @@ import type {
   SitePage,
   SkipStages,
 } from "./types";
+import { surfaceSourceId } from "./surfaces";
 import { normUrl } from "./util";
 import type { HostLookup, SafeFetchResult } from "./util";
 import { answerCents } from "./answer-cost";
+import { ROLE_COST_CENTS, roleCallCents } from "./rates";
 
-/** METHODOLOGY.md (model registry) cost map — the per-CALL fallback estimates for the non-answer
- *  roles. The per-ANSWER rates live in answer-cost.ts (one source of truth). */
-export const ROLE_COST_CENTS = { judge: 0.4, drafter: 2.5, brand: 2 } as const;
+/** Per-CALL estimates for the non-answer roles at their default models, from
+ *  the one rate table (rates.ts). Re-exported here, where callers have always
+ *  imported it from. */
+export { ROLE_COST_CENTS };
 
 export type RunKind = "audit" | "verify";
 
@@ -321,6 +324,9 @@ export function modelsUsed(
     claude: registry.claudeAnswer,
     gemini: registry.geminiAnswer,
     perplexity: registry.perplexityAnswer,
+    google_ai_overview: surfaceSourceId("google_ai_overview"),
+    google_ai_mode: surfaceSourceId("google_ai_mode"),
+    copilot: surfaceSourceId("copilot"),
   };
   const used: Record<string, string> = {};
   for (const e of engines) used[e] = answer[e];
@@ -334,8 +340,8 @@ export function modelsUsed(
 }
 
 /** The bundle header's role map: role name → {family, model}. */
-export function runRoles(roles: ResolvedRoles): Record<string, RoleAssignment> {
-  return rolesForBundle(roles);
+export function runRoles(roles: ResolvedRoles, engines?: readonly Engine[]): Record<string, RoleAssignment> {
+  return rolesForBundle(roles, engines);
 }
 
 /**
@@ -492,7 +498,7 @@ export async function runAudit(input: RunAuditInput, deps: RunAuditDeps): Promis
   // case (maxDrawsFor, incl. that tiebreak). ----
   const sc = (q: Question) => sampleCountFor(q, resolvedSampling.samples);
   const maxSc = (q: Question) => maxDrawsFor(q, resolvedSampling);
-  if (plannedDraws(questions, engines, maxSc) > CALL_CAP) {
+  if (plannedDraws(questions, engines, maxSc) > callCapFor(engines.length)) {
     await db.failRun(runId, "internal call-cap guard");
     return {
       status: "failed",
@@ -666,6 +672,7 @@ export async function runAudit(input: RunAuditInput, deps: RunAuditDeps): Promis
             citations: d.citations,
             verdict: d.verdict ?? null,
             usage: d.usage ?? null,
+            search_queries: d.search_queries ?? null,
           });
           if (isScored(d.qtype)) {
             sampleMentions.push({
@@ -772,11 +779,17 @@ export async function runAudit(input: RunAuditInput, deps: RunAuditDeps): Promis
     // is SUMMED across draws incl. any adaptive tiebreak (voteAnswer). Judge cost
     // uses the REAL number of judge calls made.
     const draftedCount = fixes.filter((f) => f.artifact).length;
+    // Every price is at the model this run actually used (the bundle header's
+    // `models`), so a MODEL_* override is priced as what it is.
+    const judgeCents = Math.max(
+      roleCallCents("judge", models.judge_anthropic),
+      roleCallCents("judge", models.judge_openai),
+    );
     const cents =
-      judged.reduce((s, a) => s + answerCents(a), 0) +
-      settled.judgeCalls * ROLE_COST_CENTS.judge +
-      draftedCount * ROLE_COST_CENTS.drafter +
-      (isVerify ? 0 : ROLE_COST_CENTS.brand);
+      judged.reduce((s, a) => s + answerCents(a, models[a.engine]), 0) +
+      settled.judgeCalls * judgeCents +
+      draftedCount * roleCallCents("drafter", models.drafter) +
+      (isVerify ? 0 : roleCallCents("brand", models.brand));
     const costUsd = Math.round(cents) / 100;
     await db.finishRun(runId, { ...scores, ...verifyExtra }, costUsd);
 

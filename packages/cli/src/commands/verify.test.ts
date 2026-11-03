@@ -53,9 +53,11 @@ beforeEach(() => {
 afterEach(() => {
   // Windows can hold a handle on a just-written file for a moment (EBUSY on
   // rmdir); retry, and never fail a test over a temp folder that would not go.
+  // rmSync backs off linearly (retryDelay x attempt), so 4 x 100 ms caps a
+  // locked folder at about 1 s instead of 11 s, which overran the hook budget.
   const tidy = (d: string) => {
     try {
-      rmSync(d, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+      rmSync(d, { recursive: true, force: true, maxRetries: 4, retryDelay: 100 });
     } catch {
       /* leftover temp dir: harmless */
     }
@@ -69,7 +71,7 @@ afterEach(() => {
     else process.env[k] = v;
   }
   vi.restoreAllMocks();
-});
+}, 30000);
 
 const page = (title: string) =>
   `<!doctype html><html><head><title>${title}</title>` +
@@ -340,5 +342,37 @@ describe("runVerifyCommandWith — --judge / --model flag wiring", () => {
     restore();
     expect(code).toBe(1);
     expect(chunks.join("")).toMatch(/cannot tell which provider/);
+  }, 90000);
+
+  it("--notify names the channels and the env var each one still needs, before any spend", async () => {
+    const baselinePath = await makeBaseline();
+    const saved = process.env.SAYLENT_SLACK_WEBHOOK_URL;
+    delete process.env.SAYLENT_SLACK_WEBHOOK_URL;
+    const { chunks, restore } = captureStdout();
+    const code = await runVerifyCommandWith(
+      engineMod,
+      configMod({}),
+      reportMod,
+      [baselinePath, "--yes", "--max-usd", "0", "--notify", "slack"],
+      { stdinIsTTY: false, promptKeysIo: { input: process.stdin, output: process.stdout } },
+    );
+    restore();
+    if (saved !== undefined) process.env.SAYLENT_SLACK_WEBHOOK_URL = saved;
+    expect(code).toBe(1); // stopped by --max-usd 0, after the preflight
+    expect(chunks.join("")).toMatch(/Notify\s+slack when it finishes, if anything changed .* slack needs SAYLENT_SLACK_WEBHOOK_URL/);
+  }, 90000);
+
+  it("refuses an unknown --notify channel", async () => {
+    const baselinePath = await makeBaseline();
+    const err: string[] = [];
+    const orig = process.stderr.write.bind(process.stderr);
+    process.stderr.write = ((c: string) => (err.push(String(c)), true)) as typeof process.stderr.write;
+    const code = await runVerifyCommandWith(engineMod, configMod({}), reportMod, [baselinePath, "--notify", "pager"], {
+      stdinIsTTY: false,
+      promptKeysIo: { input: process.stdin, output: process.stdout },
+    });
+    process.stderr.write = orig;
+    expect(code).toBe(1);
+    expect(err.join("")).toContain("--notify pager: expected webhook, slack, email");
   }, 90000);
 });

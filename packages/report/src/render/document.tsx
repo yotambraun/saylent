@@ -184,6 +184,7 @@ export function ReportDocument({ data, options }: ReportPayload) {
           fixes={data.fixes as never}
           engineModels={options.meta.models}
           judgeMode={options.meta.judgeMode}
+          sourceOverrides={data.sourceOverrides ?? null}
           demo
         />
         {/* The two layers are stacked in ONE document here: a file has no view
@@ -202,6 +203,7 @@ export function ReportDocument({ data, options }: ReportPayload) {
             .filter(Boolean)
             .join(" · ")}
           engineModels={options.meta.models}
+          sourceOverrides={data.sourceOverrides ?? null}
           demo
         />
       </div>

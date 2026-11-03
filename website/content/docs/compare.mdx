@@ -1,6 +1,6 @@
 ---
 title: Compared with hosted tools
-description: Saylent next to Profound, Peec, Otterly, Scrunch, AthenaHQ, Semrush AI Toolkit, Ahrefs Brand Radar, and HubSpot AEO Grader - facts and sources, no adjectives.
+description: Saylent next to Profound, Peec, Otterly, Scrunch, AthenaHQ, Semrush AI Visibility, Ahrefs Brand Radar and HubSpot AEO, and next to the open-source trackers - facts and sources, no adjectives.
 ---
 
 Looking for how to compare your own brand against a rival inside the app? That
@@ -8,17 +8,21 @@ is a different feature: see [Compare against a
 rival](/docs/tour#compare-rivals). This page is about Saylent next to other
 products.
 
+<Callout title="Which tool?">
+[promptbeacon](https://github.com/yotambraun/promptbeacon) is for developers and open-source maintainers: does AI recommend your library or dev product — a number in CI and a README badge. Saylent is for brand and website teams: an audit of what AI assistants say about your site, with the answers and cited pages as receipts, plus fixes for your site.
+</Callout>
+
 Saylent is one shape of tool in a category that also has well-funded hosted
-products. This page states what is structurally different, and separately
-what has been reported about those products' pricing, with a source and a
-date for every number, plus the vendor's own pricing page linked where one
-exists publicly. It does not rate any product's quality - see [the
-methodology](/docs/methodology) for what Saylent itself does and does not
-claim.
+products, and a growing number of open-source projects. This page states
+what is structurally different, each hosted product's entry price as its own
+pricing page shows it, and what the open-source trackers say about
+themselves, all as of November 2026 and each with a link. It does not rate
+any product's quality - see [the methodology](/docs/methodology) for what
+Saylent itself does and does not claim.
 
 ## What is structurally different
 
-| | Saylent | Hosted tools (Profound, Peec, Otterly, Scrunch, AthenaHQ, Semrush AI Toolkit, Ahrefs Brand Radar, HubSpot AEO Grader) |
+| | Saylent | Hosted tools (Profound, Peec, Otterly, Scrunch, AthenaHQ, Semrush AI Visibility, Ahrefs Brand Radar, HubSpot AEO) |
 |---|---|---|
 | Open source | Yes - Apache-2.0, this repository | No - proprietary, closed-source products |
 | Runs on your own provider keys | Yes - every dollar goes to OpenAI/Anthropic/Google/Perplexity directly, never through us ([What it costs](/docs/costs)) | No - usage runs on the vendor's own infrastructure and account, priced into their subscription |
@@ -33,13 +37,21 @@ claim.
 
 This is the honest gap, not a hedge:
 
-- **Continuous historical tracking at scale.** Saylent's `verify` command
-  re-runs the frozen question set and diffs against one baseline run - a
-  before/after, not a running multi-week or multi-month trend line across
-  many brands.
-- **Alerts.** Saylent has two *optional*, off-by-default scheduled jobs
-  (`FLAG_SCHEDULED_RUNS`: a weekly verify, a monthly audit) on a self-hosted
-  deployment - not real-time or threshold-based alerting.
+- **Daily tracking, run for you.** The hosted tools re-ask their prompts
+  every day on their own infrastructure. Saylent asks when you run it: by
+  hand, from cron or CI ([scheduled checks](/docs/scheduled-checks)), or on
+  the app's optional weekly-verify and monthly-audit schedules
+  (`FLAG_SCHEDULED_RUNS`, off by default), each run billed to your own keys.
+  It keeps every run you save and compares them ([verify and
+  history](/docs/verify-and-history)), and since 0.2.0 sends
+  [alerts](/docs/alerts) when the answers move between two runs and a
+  weekly digest; there is no alert between runs, because nothing is asked
+  between runs.
+- **Answers as the consumer apps show them.** Saylent asks the providers'
+  official APIs, and reads Google AI Overviews, Google AI Mode and Microsoft
+  Copilot through your own SerpApi key ([answer surfaces](/docs/surfaces)).
+  It does not drive chatgpt.com or the other consumer apps, which can
+  answer differently from the API ([methodology](/docs/methodology)).
 - **A shared workspace.** One deployment supports as many user accounts as you
   like, each isolated from the others by row-level security, with one operator
   who owns the keys and the bill. What it does not have is a workspace those
@@ -51,31 +63,49 @@ This is the honest gap, not a hedge:
   an open-source project's support is public GitHub issues and (where
   enabled) Discussions.
 
-## Entry price, by vendor
+## Entry price, by vendor (as of November 2026)
 
-| Vendor | Entry price | As reported by | As of | Vendor's own pricing page |
-|---|---|---|---|---|
-| Saylent | $0 (open source, self-hosted; provider API cost only - [What it costs](/docs/costs)) | this repository | 2026-09 | - |
-| Profound | $99/mo (Starter: ChatGPT tracking, 50 prompts) | [tryprofound.com](https://www.tryprofound.com/pricing), the vendor's own page | 2026-09 | [tryprofound.com/pricing](https://www.tryprofound.com/pricing) |
-| Peec AI | €85-89/mo (Starter, 50 prompts) | [geoptie.com review](https://geoptie.com/blog/peec-ai-review) | 2026-09 | [peec.ai/pricing](https://peec.ai/pricing) |
-| Otterly.ai | $29/mo (Lite: 15 prompts, monthly billing) | [otterly.ai](https://otterly.ai/pricing), the vendor's own page | 2026-09 | [otterly.ai/pricing](https://otterly.ai/pricing) |
-| Scrunch AI | $300/mo monthly, $250/mo billed annually | [PR Newswire](https://www.prnewswire.com/news-releases/scrunch-ai-raises-15-million-series-a-to-rebuild-the-internet-for-ai-consumption-302510915.html) | 2026-09 | [scrunch.com/pricing](https://scrunch.com/pricing/) |
-| AthenaHQ | Free "Essential" tier ($25 of credits); $295/mo Starter | [trakkr.ai pricing page](https://trakkr.ai/reviews/athenahq-review/pricing) | 2026-09 | [athenahq.ai/pricing](https://www.athenahq.ai/pricing) |
-| Semrush AI Toolkit | $99/mo (25 prompts) | [explodingtopics.com](https://explodingtopics.com/blog/ai-visibility-vs-brand-radar) | 2026-09 | [semrush.com/pricing/ai](https://www.semrush.com/pricing/ai/) |
-| Ahrefs Brand Radar | $199/mo per AI platform; $828/mo minimum for all platforms | [tryanalyze.ai comparison](https://www.tryanalyze.ai/blog/ahrefs-vs-semrush) | 2026-09 | [ahrefs.com/brand-radar](https://ahrefs.com/brand-radar/) |
-| HubSpot AEO Grader | Free one-shot 0-100 grade; $50/mo for the paid tier | [rankability.com review](https://www.rankability.com/blog/hubspot-aeo-review/) | 2026-09 | [hubspot.com/aeo-grader](https://www.hubspot.com/aeo-grader) |
+Every price below was read off the vendor's own pricing page on 2026-11-02.
+Where a vendor publishes no price, the table says so instead of quoting a
+third party. Prices change, and none of these vendors were contacted; the
+link is the place to check.
 
-Numbers marked "the vendor's own page" were read directly off that vendor's
-pricing page; every other number is as reported by the linked third party
-and has not been independently re-confirmed against the vendor's own page
-for this table - the "Vendor's own pricing page" column links to it either
-way, so that is the place to check current pricing yourself. All of it is
-subject to change and none of these vendors were contacted for this
-comparison.
+| Vendor | Entry price, as published | Vendor's own page |
+|---|---|---|
+| Saylent | $0 (open source, self-hosted; provider API cost only - [What it costs](/docs/costs)) | - |
+| Profound | No public price: a free 7-day trial (50 prompts a day), then Enterprise at a custom price | [tryprofound.com/pricing](https://www.tryprofound.com/pricing) |
+| Peec AI | $95/mo (Starter, 50 prompts) | [peec.ai/pricing](https://peec.ai/pricing) |
+| Otterly.ai | $29/mo (Lite: 15 prompts, monthly billing) | [otterly.ai/pricing](https://otterly.ai/pricing) |
+| Scrunch | $300/mo month-to-month, $250/mo billed annually (Starter) | [scrunch.com/pricing](https://scrunch.com/pricing/) |
+| AthenaHQ | Free Essential tier (300 credits); $295/mo Starter | [athenahq.ai/pricing](https://www.athenahq.ai/pricing) |
+| Semrush AI Visibility | $99/mo per domain, billed annually (25 prompts) | [semrush.com/pricing/ai](https://www.semrush.com/pricing/ai/) |
+| Ahrefs Brand Radar | Custom prompts from $50/mo; AI Visibility Index $199/mo | [ahrefs.com/brand-radar](https://ahrefs.com/brand-radar/) |
+| HubSpot AEO | A free one-time grade (AEO Grader); $50/mo for ongoing monitoring | [hubspot.com/aeo-grader](https://www.hubspot.com/aeo-grader) |
+
+## Open-source alternatives
+
+Saylent is not the only open-source project here. These describe themselves
+as follows in their own repositories (read 2026-11-02); each is worth
+reading in full before you choose. The largest difference between them is
+where the answers come from: an official API, a search-results provider, or
+the consumer app itself.
+
+| Project | License | What its README says it does | Where answers come from |
+|---|---|---|---|
+| [Elmo](https://github.com/elmohq/elmo) | MIT | AEO/GEO platform: visibility per prompt and model over time, share of voice, sentiment and position, citations, query fan-out, opportunities, shareable reports, a REST API, SDKs and an MCP server. Self-hosted with Docker Compose; a hosted Elmo Cloud also exists | ChatGPT, Google AI Mode and AI Overviews, Gemini, Perplexity and Copilot scraped from the consumer apps through a Cloro key; Claude, Grok and others through model APIs (OpenRouter) |
+| [Limelit Open](https://github.com/limelit-co/open) | Apache-2.0 | Self-hosted AI visibility tracking in one Go binary with SQLite, MCP-first, bring your own keys: visibility and share of voice, citation classes, a prompt-by-engine grid, a scheduler, JSON/CSV export. Describes itself as pre-release | ChatGPT, Claude, Perplexity, Gemini, Google AI Overview, Google AI Mode and Bing Copilot, with your own keys; some providers not yet built |
+| [OneGlanse](https://github.com/oneglanse/oneglanse) | MIT | AI visibility tracker: saves answers and citations, whether and how a brand is recommended, competing brands, cited domains, changes across runs. Runs locally or self-hosted with Docker Compose | The AI products' websites, with your own logged-in accounts, for ChatGPT, Perplexity, Gemini, Claude and Google AI Overview; scores come from an analysis model you connect |
+| [geo-aeo-tracker](https://github.com/danishashko/geo-aeo-tracker) | MIT | Self-hosted visibility tracker: a 0-100 visibility score, citation opportunities, competitor battlecards, a site audit, scheduled runs and drift alerts, workspaces. Data in the browser by default, optional sync to your own Supabase | Bright Data's AI scraper for ChatGPT, Perplexity, Gemini, Copilot and Google AI Mode; OpenRouter and the Gemini API for analysis |
+
+Saylent's own choices, for the same comparison: official provider APIs for
+ChatGPT, Claude, Gemini and Perplexity, SerpApi for the three answer
+surfaces, a cross-family judge, a site-access check, drafted fixes tied to
+their evidence, and a receipt behind every number. It does not scrape the
+consumer apps.
 
 ## Why this page exists
 
-Every paid entry tier above is roughly $29-300/mo, and several already offer a free
+The published paid entry tiers above run from about $29 to $300 a month, and several already offer a free
 one-shot check as their own lead-generation ([Ahrefs' free AI visibility
 checker](https://ahrefs.com/ai-visibility-checker) is a "no signup" example).
 An "open-source alternative to an expensive incumbent" story does not

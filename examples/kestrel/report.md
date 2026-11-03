@@ -87,6 +87,20 @@ Where each engine drew its answers from, most-cited hosts first:
 
 45% of the pages behind these answers are best-of listicles. You appear on 0 of the 5 we could verify.
 
+### Which sites should I get onto?
+
+12 sites are cited in answers that skip you; livecheck.example leads.
+
+12 domains are cited in answers that name a rival and not you (14 such answers). Getting onto these pages is the off-site move:
+
+| Measure | Value |
+| --- | --- |
+| livecheck.example | 4 answers that skip you · names Beacon Uptime, Upcheck |
+| quiethollow.example | 3 answers that skip you · names Beacon Uptime, Upcheck |
+| amberharbour.example | 3 answers that skip you · names Beacon Uptime, Upcheck |
+
++9 more in Sources & opportunities, each with its receipts.
+
 ### What should I fix first, and what will it move?
 
 Your top 3 moves, ranked by the evidence behind each.
@@ -237,8 +251,8 @@ This is one run, a labelled snapshot, not a trend. Movement is only ever measure
 
 | Measure | Value |
 | --- | --- |
-| Sampled | every scored question re-asked; the number held |
-| Stable at | 0 of 11 |
+| Sampled | one answer per question and engine, asked once |
+| Counted at | 0 of 11 |
 | Calls made | 24 |
 | Calls that returned nothing | 1 of 24 |
 | Scored answers | 11 |
@@ -307,6 +321,66 @@ How to read the verdicts: **absent** = not in the answer at all · **mentioned /
 | Gemini | 10 Sept 2026 | yes | absent | There is no single standalone commercial product strictly named "Kestrel Uptime." Instead, the phrase typically refers to one of a few different technologies depending on the context: --- 1. ASP.NET Core Talonrun Web Server… |
 | Perplexity | 10 Sept 2026 | yes | recommended | Kestrel Uptime is usually a measurement or claim about the availability of a product or service named Kestrel, not a single universally defined company. In the search… |
 
+## Sources & opportunities
+
+204 citations to 94 domains across 21 of the 23 answers. The most-cited domain type is blog / editorial: 76 of them (37%).
+
+### Off-site opportunities
+
+Domains the answers cite when they name a rival and not you (non-branded questions only), where we did not find you on any page we read. Ranked by how many of those answers cite them.
+
+1. **livecheck.example** (Blog / editorial: 6 of 6 citations point to best-of listicles). Cited in 4 answers that name Beacon Uptime, Upcheck and 11 others and not you, across 3 engines and 2 questions. We read 1 page on it: Upcheck and Beacon Uptime are there, you are not. Top page: 10 Best Uptime Monitoring Tools for 2026 - Livecheck <https://livecheck.example/uptime-monitoring-tools>. Receipts: q01 · Claude, q02 · Claude, q02 · Gemini, q02 · Perplexity.
+2. **quiethollow.example** (Blog / editorial: 3 of 3 citations point to comparisons). Cited in 3 answers that name Beacon Uptime and Upcheck and not you, across 3 engines and 1 question. We read 1 page on it: Upcheck is there, you are not. Top page: beaconuptime vs Upcheck: 2026 Comparison — Quiethollow <https://quiethollow.example/en/articles/beaconuptime-vs-upcheck>. Receipts: q10 · Claude, q10 · Gemini, q10 · Perplexity.
+3. **amberharbour.example** (Blog / editorial: 2 of 4 citations point to best-of listicles). Cited in 3 answers that name Beacon Uptime, Upcheck and 6 others and not you, across 2 engines and 2 questions. Top page: <https://amberharbour.example/en/blog/best-uptime-monitoring-tools/>. Receipts: q10 · Gemini, q02 · Perplexity, q10 · Perplexity.
+4. **umberhollow.example** (Blog / editorial: 4 of 4 citations point to best-of listicles). Cited in 3 answers that name Upcheck, Beacon Uptime and 6 others and not you, across 2 engines and 2 questions. We read 1 page on it: Upcheck and Beacon Uptime are there, you are not. Top page: The 7 Best Uptime Monitoring Tools in 2026: I Tested Each | Umberhollow <https://umberhollow.example/blog/best-uptime-monitoring-tools/>. Receipts: q02 · Claude, q09 · Gemini, q02 · Gemini.
+5. **brighthollow.example** (Blog / editorial: 3 of 3 citations point to best-of listicles). Cited in 3 answers that name Beacon Uptime, Statusly and 10 others and not you, across 2 engines and 2 questions. We read 1 page on it: Upcheck and Beacon Uptime are there, you are not. Top page: The 11 Best Website Uptime Monitoring Tools Compared (2026) <https://brighthollow.example/blog/top-website-uptime-monitoring-tools>. Receipts: q01 · Claude, q02 · Claude, q02 · Perplexity.
+6. **umberbasin.example** (Other: no rule matched). Cited in 2 answers that name Beacon Uptime and Upcheck and not you, across 2 engines and 1 question. Top page: umberbasin.example <https://www.umberbasin.example/compare/better-stack-vs-upcheck>. Receipts: q10 · Gemini, q10 · Perplexity.
+7. **ambervale.example** (Blog / editorial: 2 of 4 citations point to comparisons). Cited in 2 answers that name Beacon Uptime, Upcheck and 5 others and not you, across 2 engines and 2 questions. Top page: Best Uptime Monitoring Tools in 2026: Compared - Ambervale Blog <https://ambervale.example/blog/best-uptime-monitoring-tools/>. Receipts: q01 · Claude, q10 · Perplexity.
+8. **amberhollow.example** (Blog / editorial: 2 of 2 citations point to best-of listicles). Cited in 2 answers that name Beacon Uptime, Statusly and 7 others and not you, across 2 engines and 1 question. Top page: Best Free Uptime Monitoring Tools 2026 Compared - Amberhollow <https://amberhollow.example/blog/best-free-uptime-monitoring-tools-2026>. Receipts: q02 · Claude, q02 · Perplexity.
+9. **ironcrest.example** (Blog / editorial: 2 of 2 citations point to comparisons). Cited in 2 answers that name Beacon Uptime and Upcheck and not you, across 2 engines and 1 question. Top page: Upcheck vs Beacon Uptime: Pricing & Features (2026) <https://www.ironcrest.example/compare/uptime-robot-vs-beaconuptime>. Receipts: q10 · Claude, q10 · Gemini.
+10. **lanterngrove.example** (Other: no rule matched). Cited in 2 answers that name Beacon Uptime, Fastbeacon and 9 others and not you, across 2 engines and 1 question. Top page: Lanterngrove <https://lanterngrove.example/tools/website-monitoring-tools>. Receipts: q02 · Gemini, q02 · Perplexity.
+11. **silvergate.example** (Blog / editorial: 2 of 2 citations point to comparisons). Cited in 2 answers that name Beacon Uptime and Upcheck and not you, across 2 engines and 1 question. Top page: Silvergate <https://www.silvergate.example/blog/upcheck-alternatives>. Receipts: q10 · Gemini, q10 · Perplexity.
+12. **violetgate.example** (Blog / editorial: 2 of 2 citations point to best-of listicles). Cited in 2 answers that name Beacon Uptime, Statusly and 7 others and not you, across 2 engines and 1 question. Top page: The Best Uptime Monitoring Tools For 2026 | Violetgate <https://www.violetgate.example/software/best-uptime-monitoring-tools>. Receipts: q02 · Claude, q02 · Perplexity.
+
+### Citation share by domain
+
+| Domain | Type | Citations | Share | Skip you | Name you | ChatGPT | Claude | Gemini | Perplexity |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| upcheck.example | Rival's site | 24 | 12% | 12 | 5 | 4 | 6 | 5 | 9 |
+| fastbeacon.example | Rival's site | 14 | 7% | 7 | 1 | 1 | 5 | 1 | 7 |
+| beacon-uptime.example | Rival's site | 10 | 5% | 8 | 0 | 6 | 2 | 1 | 1 |
+| livecheck.example | Blog / editorial | 6 | 3% | 4 | 1 | 0 | 3 | 1 | 2 |
+| learn.quietlanding.example | Docs / help | 6 | 3% | 1 | 3 | 0 | 3 | 1 | 2 |
+| umberbasin.example | Other | 5 | 2% | 2 | 1 | 0 | 2 | 2 | 1 |
+| amberharbour.example | Blog / editorial | 4 | 2% | 3 | 1 | 0 | 0 | 1 | 3 |
+| umberhollow.example | Blog / editorial | 4 | 2% | 3 | 2 | 0 | 1 | 2 | 1 |
+| ambervale.example | Blog / editorial | 4 | 2% | 2 | 1 | 0 | 1 | 0 | 3 |
+| falconware.example | Rival's site | 4 | 2% | 1 | 3 | 1 | 0 | 2 | 1 |
+| glasshollow.example | Other | 4 | 2% | 1 | 0 | 0 | 0 | 0 | 4 |
+| brighthollow.example | Blog / editorial | 3 | 1% | 3 | 0 | 0 | 2 | 0 | 1 |
+| cobaltreach.example | Blog / editorial | 3 | 1% | 2 | 1 | 0 | 0 | 0 | 3 |
+| quiethollow.example | Blog / editorial | 3 | 1% | 3 | 0 | 0 | 1 | 1 | 1 |
+| codeharbor.example | Other | 3 | 1% | 1 | 2 | 0 | 2 | 1 | 0 |
+
+79 more domains are cited; run.json carries all of them under `sources`.
+
+### Who the answers name, by engine
+
+| Brand | Named in | Recommended | ChatGPT | Claude | Gemini | Perplexity |
+| --- | --- | --- | --- | --- | --- | --- |
+| Upcheck | 17 |  | 5 | 4 | 5 | 3 |
+| Beacon Uptime | 15 |  | 6 | 3 | 3 | 3 |
+| **Kestrel Uptime** (you) | 8 | 1 | 2 | 2 | 2 | 2 |
+| Boardline Broadcastpage | 5 |  | 3 | 1 | 1 | 0 |
+| Pingwatch | 5 |  | 2 | 1 | 1 | 1 |
+| Statusly | 5 |  | 0 | 3 | 1 | 1 |
+| Fastbeacon | 4 |  | 1 | 1 | 1 | 1 |
+| Quickstatus | 4 |  | 2 | 1 | 1 | 0 |
+| Escalytics | 2 |  | 1 | 0 | 0 | 1 |
+| Falconware AI | 2 |  | 0 | 1 | 1 | 0 |
+
+Counted once per question and engine, over the answer this report shows. A domain's type comes from a short public rule list (the rule is named next to each opportunity); override it with `sources.domainTypes` in saylent.config.
+
 ## Cited pages
 
 | Host | URL | Title | Cited | Engines | You appear | Decides |
@@ -372,7 +446,7 @@ Both rows are true for PerplexityBot and ClaudeBot: your server answers us, and 
 
 ```markdown
 # Allow AI answer-engine crawlers that drive buyer discovery
-# Add the following lines to your brightfield.example file.
+# Add the following lines to your robots.txt file.
 # Lines beginning with # are comments and are ignored by crawlers.
 
 # --- AI answer-engine crawlers (explicitly allowed) ---
@@ -415,14 +489,14 @@ Allow: /
 
 ##### Step 1 — Confirm the live file is correct
 
-- Fetch `https:///brightfield.example` directly in a browser or run:
+- Fetch `https:///robots.txt` directly in a browser or run:
 
 ```
-curl -s https:///brightfield.example | grep -A2 "PerplexityBot\|OAI-SearchBot\|Claude-SearchBot"
+curl -s https:///robots.txt | grep -A2 "PerplexityBot\|OAI-SearchBot\|Claude-SearchBot"
 ```
 
 - Verify each of the six user-agents appears with `Allow: /` and **no** preceding `Disallow: /` that would override it.
-- Use Google Search Console's **brightfield.example Tester** (or any public brightfield.example validator) to confirm the rule resolves to `allowed` for a representative URL.
+- Use Google Search Console's **robots.txt Tester** (or any public robots.txt validator) to confirm the rule resolves to `allowed` for a representative URL.
 
 ---
 
@@ -432,13 +506,13 @@ curl -s https:///brightfield.example | grep -A2 "PerplexityBot\|OAI-SearchBot\|C
 2. Search for any rule whose description contains "AI", "bot", or the specific user-agent strings above.
 3. Confirm the action is set to **Allow** (not Block, Challenge, or JS-challenge) for each of the six crawlers.
 
-> ⚠️ A `brightfield.example` `Allow` directive is irrelevant if your CDN returns a 403/429/503 before the crawler ever reads the file.
+> ⚠️ A `robots.txt` `Allow` directive is irrelevant if your CDN returns a 403/429/503 before the crawler ever reads the file.
 
 ---
 
 ##### Step 3 — Verify access in your server logs
 
-- Wait 24–48 hours after deploying the updated `brightfield.example`.
+- Wait 24–48 hours after deploying the updated `robots.txt`.
 - Query your access logs (or your CDN's log analytics) for the user-agent strings:
 
 ```

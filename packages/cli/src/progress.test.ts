@@ -443,7 +443,7 @@ describe("running cost", () => {
     wrapSetStage(writer, p.onLiveLabel);
 
     p.onStage("judge", "24 draws");
-    // chatgpt bills 125c/M in + 1000c/M out: 20k + 20k = 2.5c + 20c = 22.5c
+    // chatgpt (gpt-6.1-sol) bills 200c/M in + 1000c/M out: 20k + 20k = 4c + 20c = 24c
     void writer.saveAnswer({ engine: "chatgpt", ok: true, usage: { input_tokens: 20_000, output_tokens: 20_000 } });
     now = 4000;
     p.onStage("score", "done");
@@ -451,7 +451,7 @@ describe("running cost", () => {
     expect(writer.saved).toBe(1);
     // the cost marker is an internal channel and must never be printed
     expect(lines().join("\n")).not.toContain("cost ");
-    expect(lines().join("\n")).toMatch(/05 judge\s+24 draws\s+4\.0s · \$0\.23 so far/);
+    expect(lines().join("\n")).toMatch(/05 judge\s+24 draws\s+4\.0s · \$0\.24 so far/);
   });
 
   it("a failed draw costs nothing, so no cost column appears", () => {

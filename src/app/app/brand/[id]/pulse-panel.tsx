@@ -9,6 +9,7 @@ import Link from "next/link";
 import type { AnswerDiff } from "@saylent/report/answer-diff";
 import { parseInline } from "@saylent/report/inline-markdown";
 import type { PulseView } from "@saylent/report/pulse";
+import { engineLabel } from "@saylent/engine/surfaces";
 
 // Render the engines' verbatim sentence with its light markdown resolved
 // (**bold** → bold, links → label) instead of showing raw `**` / `[..](..)` noise.
@@ -22,12 +23,6 @@ function InlineText({ text }: { text: string }) {
   );
 }
 
-const ENGINE_LABEL: Record<string, string> = {
-  chatgpt: "ChatGPT",
-  claude: "Claude",
-  gemini: "Gemini",
-  perplexity: "Perplexity",
-};
 
 export function PulsePanel({
   view,
@@ -97,7 +92,7 @@ function DeltaCard({ d, currentRunId }: { d: AnswerDiff; currentRunId: string })
         {entered && left && " · "}
         {left && <span className="text-signal">▼ left</span>}
         {" · "}
-        <span className="text-ink">{ENGINE_LABEL[d.engine] ?? d.engine}</span>
+        <span className="text-ink">{engineLabel(d.engine)}</span>
       </p>
       <p className="text-sm leading-snug text-ink">{d.question}</p>
 

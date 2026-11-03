@@ -28,9 +28,12 @@ interface BrandForm {
 export function BrandsList({
   brands,
   canPickEngines = false,
+  serpAvailable = false,
 }: {
   brands: BrandForm[];
   canPickEngines?: boolean;
+  /** the deployment has a SerpApi key (presence only), for the answer surfaces */
+  serpAvailable?: boolean;
 }) {
   const [openId, setOpenId] = useState<string | null>(null);
 
@@ -60,7 +63,7 @@ export function BrandsList({
           </button>
           {openId === b.id && (
             <div className="pb-3">
-              <BrandEditor initial={b} canPickEngines={canPickEngines} />
+              <BrandEditor initial={b} canPickEngines={canPickEngines} serpAvailable={serpAvailable} />
             </div>
           )}
         </div>
@@ -72,9 +75,11 @@ export function BrandsList({
 function BrandEditor({
   initial,
   canPickEngines,
+  serpAvailable,
 }: {
   initial: BrandForm;
   canPickEngines: boolean;
+  serpAvailable: boolean;
 }) {
   const [form, setForm] = useState(initial);
   // ENGINE-SELECT: resolve the stored selection (null → all four) for display.
@@ -190,6 +195,7 @@ function BrandEditor({
               setState("idle");
             }}
             idPrefix={`brand-${form.id}`}
+            serpAvailable={serpAvailable}
           />
         </div>
       )}

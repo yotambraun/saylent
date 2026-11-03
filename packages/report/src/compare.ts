@@ -21,6 +21,7 @@ import {
   type IntelAnswer,
   type IntelPage,
 } from "./report-intel";
+import { ENGINE_IDS, SURFACES } from "@saylent/engine/surfaces";
 
 /* ============================ public types =============================== */
 
@@ -165,12 +166,9 @@ export interface CompareInput {
 /* ============================ small helpers =============================== */
 
 const ENGINE_ORDER = ["chatgpt", "claude", "gemini", "perplexity"] as const;
-const ENGINE_LABEL: Record<string, string> = {
-  chatgpt: "ChatGPT",
-  claude: "Claude",
-  gemini: "Gemini",
-  perplexity: "Perplexity",
-};
+const ENGINE_LABEL: Record<string, string> = Object.fromEntries(
+  ENGINE_IDS.map((e) => [e, SURFACES[e].label]),
+);
 const engineLabel = (e: string): string =>
   ENGINE_LABEL[e] ?? e.charAt(0).toUpperCase() + e.slice(1);
 

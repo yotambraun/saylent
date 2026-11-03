@@ -18,6 +18,7 @@
 // re-freezes questions and engines together and becomes the new baseline.
 import { revalidatePath } from "next/cache";
 import { engineSetChanged, frozenEngines, resolveEngines } from "@saylent/engine/engines";
+import { isSurfaceId, SERP_PROVIDERS } from "@saylent/engine/surfaces";
 import type { Question } from "@saylent/engine/types";
 import { assertNotDemo } from "@/lib/demo-mode";
 import {
@@ -27,6 +28,7 @@ import {
   type RunOptions,
   type RunSkipOptions,
 } from "@/lib/question-options";
+import { serpKeyAvailable } from "@/lib/provider-settings";
 import { createRun } from "@/lib/runs";
 import { createClient } from "@/lib/supabase/server";
 import { baselineDraft } from "./baseline";
@@ -40,6 +42,11 @@ export interface RunOptionsForm {
   engines: string[];
   locale: string;
   skip: RunSkipOptions;
+  /** answer surfaces only: where they are read from (blank = provider default;
+   *  a blank language falls back to `locale` at run time) */
+  surfaceLocale?: { country: string; language: string; location: string };
+  /** the "Source types" editor rows: host -> domain type */
+  sourceOverrides?: { host: string; type: string }[];
 }
 
 export type SaveResult =
@@ -69,7 +76,10 @@ const BRAND_COLUMNS =
  *  different set. Shared by save and save-then-run so the two can never drift. */
 async function persist(
   input: RunOptionsForm,
-): Promise<{ ok: false; error: string } | { ok: true; userId: string; options: RunOptions; rebaselined: boolean }> {
+): Promise<
+  | { ok: false; error: string }
+  | { ok: true; userId: string; options: RunOptions; rebaselined: boolean; brandEngines: string[] | null }
+> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -96,6 +106,8 @@ async function persist(
     engines: input.engines,
     locale: input.locale,
     skip: input.skip,
+    surfaceLocale: input.surfaceLocale ?? null,
+    sourceOverrides: input.sourceOverrides ?? null,
   });
   if (!normalized.ok) return { ok: false, error: normalized.error };
   const options = normalized.value;
@@ -128,7 +140,7 @@ async function persist(
     .eq("user_id", user.id);
   if (error) return { ok: false, error: error.message };
 
-  return { ok: true, userId: user.id, options, rebaselined };
+  return { ok: true, userId: user.id, options, rebaselined, brandEngines: brand.engines };
 }
 
 /** Save the draft. Spends nothing, starts nothing. */
@@ -138,6 +150,7 @@ export async function saveRunOptions(input: RunOptionsForm): Promise<SaveResult>
   const saved = await persist(input);
   if (!saved.ok) return saved;
   revalidatePath(`/app/brand/${input.brandId}/questions`);
+  revalidatePath(`/app/brand/${input.brandId}`); // the source-types overrides feed its history
   revalidatePath("/app");
   return { ok: true, rebaselined: saved.rebaselined };
 }
@@ -150,6 +163,18 @@ export async function startRunWithOptions(input: RunOptionsForm): Promise<StartR
   if (demo) return demo;
   const saved = await persist(input);
   if (!saved.ok) return saved;
+
+  // An answer surface with no SerpApi key would come back as a column of
+  // key-missing failures. Say so before spending anything else (the draft is
+  // saved, so nothing the owner chose is lost).
+  const asked = resolveEngines(saved.options.engines ?? saved.brandEngines);
+  if (asked.some((e) => isSurfaceId(e)) && !(await serpKeyAvailable())) {
+    const serp = SERP_PROVIDERS.serpapi;
+    return {
+      ok: false,
+      error: `Answer surfaces need a ${serp.label} key and this deployment has none. Untick them, or ask your operator to add ${serp.envVar}. Your options are saved.`,
+    };
+  }
 
   const run = await createRun({
     userId: saved.userId,
@@ -165,7 +190,9 @@ export async function startRunWithOptions(input: RunOptionsForm): Promise<StartR
 }
 
 /** Drop the draft. The brand goes back to the generated set and every default;
- *  no re-baseline, because clearing a draft cannot change what a frozen set asks. */
+ *  no re-baseline, because clearing a draft cannot change what a frozen set asks.
+ *  The "Source types" overrides survive: they are corrections to how a report is
+ *  read, not run options, and "Reset to generated" is about what gets asked. */
 export async function resetRunOptions(brandId: string): Promise<SaveResult> {
   const demo = assertNotDemo();
   if (demo) return demo;
@@ -176,9 +203,21 @@ export async function resetRunOptions(brandId: string): Promise<SaveResult> {
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "Sign in first." };
 
+  const { data: current, error: readError } = await supabase
+    .from("brands")
+    .select("run_options")
+    .eq("id", brandId)
+    .eq("user_id", user.id)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (readError) return { ok: false, error: readError.message };
+  const kept = (current?.run_options as RunOptions | null)?.sourceOverrides;
+
   const { error } = await supabase
     .from("brands")
-    .update({ run_options: null })
+    .update({
+      run_options: kept ? { sourceOverrides: kept, updated_at: new Date().toISOString() } : null,
+    })
     .eq("id", brandId)
     .eq("user_id", user.id);
   if (error) return { ok: false, error: error.message };

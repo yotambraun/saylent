@@ -5,6 +5,7 @@
 // whose question set differs from its baseline cannot claim movement, and this
 // composer says so in `comparable` instead of quietly diffing a different set.
 import { diffAnswer, type DiffSentence } from "./answer-diff";
+import { ENGINE_IDS, SURFACES, SURFACE_IDS } from "@saylent/engine/surfaces";
 
 export interface MovementAnswer {
   qid: string;
@@ -92,12 +93,9 @@ export interface Movement {
 
 export const MOVEMENT_ENGINES = ["chatgpt", "claude", "gemini", "perplexity"];
 
-const ENGINE_LABEL: Record<string, string> = {
-  chatgpt: "ChatGPT",
-  claude: "Claude",
-  gemini: "Gemini",
-  perplexity: "Perplexity",
-};
+const ENGINE_LABEL: Record<string, string> = Object.fromEntries(
+  ENGINE_IDS.map((e) => [e, SURFACES[e].label]),
+);
 
 const mentionOf = (a: MovementAnswer) => a.verdict?.mention_type ?? null;
 const presentOf = (a: MovementAnswer) => a.verdict?.brand_present === true;
@@ -129,9 +127,16 @@ export function buildMovement(input: {
   const base = scores.verify?.baseline ?? baseline.scores ?? {};
   const before = base.overall?.recommended ?? 0;
   const after = scores.overall?.recommended ?? 0;
+  // the four model APIs always, plus any answer surface either run asked
+  const engines = [
+    ...MOVEMENT_ENGINES,
+    ...SURFACE_IDS.filter(
+      (e) => current.answers.some((a) => a.engine === e) || baseline.answers.some((a) => a.engine === e),
+    ),
+  ];
   const engineCount = Math.max(
     1,
-    MOVEMENT_ENGINES.filter((e) => (scores.per_engine?.[e]?.answered ?? 0) > 0).length,
+    engines.filter((e) => (scores.per_engine?.[e]?.answered ?? 0) > 0).length,
   );
   const questionCount = Math.round((scores.overall?.answered ?? 0) / engineCount) || 0;
 
@@ -155,7 +160,7 @@ export function buildMovement(input: {
   const questionOf = new Map<string, string>();
   for (const a of current.answers) questionOf.set(`${a.engine}:${a.qid}`, a.question);
 
-  const rows: MovementEngineRow[] = MOVEMENT_ENGINES.map((e) => {
+  const rows: MovementEngineRow[] = engines.map((e) => {
     const now = nowIdx.get(e);
     const was = wasIdx.get(e);
     const changes: MovementChange[] = [];
@@ -217,11 +222,11 @@ export function buildMovement(input: {
       set.add(a.engine);
       presentNow.set(a.qid, set);
     }
-    const engines = new Set<string>();
+    const movedEngines = new Set<string>();
     for (const qid of movedNote.newlyPresentQids) {
-      for (const e of presentNow.get(qid) ?? []) engines.add(e);
+      for (const e of presentNow.get(qid) ?? []) movedEngines.add(e);
     }
-    const only = engines.size === 1 ? [...engines][0] : null;
+    const only = movedEngines.size === 1 ? [...movedEngines][0] : null;
     celebration = {
       fixKey: movedNote.fixKey,
       line: only
@@ -240,7 +245,7 @@ export function buildMovement(input: {
     before,
     after,
     withinNoise: Math.abs(after - before) <= 1,
-    engines: MOVEMENT_ENGINES,
+    engines,
     rows,
     watchNotes,
     celebration,

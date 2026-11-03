@@ -42,7 +42,7 @@ const result = await build({
   // launcher that loads the file directly, regardless of any nearby
   // package.json "type" field.
   format: "cjs",
-  target: "node20",
+  target: "node22",
   external: [],
   // The engine sources live in a sibling directory, so Node's upward lookup
   // from packages/engine/src never reaches this service's node_modules. On

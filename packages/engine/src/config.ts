@@ -18,7 +18,54 @@ import { z } from "zod";
 
 const require_ = createRequire(import.meta.url);
 
-const engineEnum = z.enum(["chatgpt", "claude", "gemini", "perplexity"]);
+// every answer source a project may select: the four model APIs plus the
+// answer surfaces (surfaces.ts). Kept literal here (config.ts has node imports
+// and is never client code; surfaces.ts is the registry of what each id means).
+const engineEnum = z.enum([
+  "chatgpt",
+  "claude",
+  "gemini",
+  "perplexity",
+  "google_ai_overview",
+  "google_ai_mode",
+  "copilot",
+]);
+
+/** surfaces: where answer-surface answers are fetched from, and which BYO
+ *  SERP-data provider fetches them (surfaces.ts). Only read when the engine set
+ *  includes a surface. `language` defaults to `locale` when that is set. */
+export const surfacesConfigSchema = z.object({
+  provider: z.enum(["serpapi"]).optional(),
+  country: z.string().regex(/^[a-zA-Z]{2}$/, "two-letter country code, e.g. us").optional(),
+  language: z.string().regex(/^[a-zA-Z]{2,3}(-[a-zA-Z0-9]{2,8})*$/, "BCP47 tag, e.g. en or pt-BR").optional(),
+  location: z.string().min(1).max(120).optional(),
+});
+
+/** sources: the source-intelligence rule set's user overrides (sources.ts).
+ *  `domainTypes` maps a host (or a parent domain: "example.com" also covers
+ *  "blog.example.com") to the type you know it is. The override always wins
+ *  and is shown as "your override" next to the classification. */
+export const sourcesConfigSchema = z.object({
+  domainTypes: z
+    .record(
+      z.string().min(1),
+      z.enum([
+        "own_site",
+        "rival_site",
+        "review_site",
+        "forum",
+        "docs",
+        "news",
+        "marketplace",
+        "reference",
+        "video",
+        "social",
+        "editorial",
+        "other",
+      ]),
+    )
+    .optional(),
+});
 const profileEnum = z.enum(["full", "smoke"]);
 const botKindEnum = z.enum(["training", "search", "user"]);
 
@@ -134,6 +181,10 @@ export const saylentConfigSchema = z.object({
    *  true`. No effect on a reused/frozen --questions set or on `verify`
    *  (nothing generates a new question set there). */
   locale: z.string().optional(),
+  /** answer-surface locale + SERP provider (surfacesConfigSchema above) */
+  surfaces: surfacesConfigSchema.optional(),
+  /** source-intelligence overrides (sourcesConfigSchema above) */
+  sources: sourcesConfigSchema.optional(),
 });
 
 export type SaylentConfig = z.infer<typeof saylentConfigSchema>;

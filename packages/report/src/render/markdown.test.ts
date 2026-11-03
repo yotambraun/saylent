@@ -40,6 +40,20 @@ describe("renderMarkdown", () => {
     }
   });
 
+  it("lists the searches an engine reported under its question, and nothing when none did", () => {
+    expect(md).not.toContain("Searches the engines ran");
+    const first = data.answers[0];
+    const withQueries = {
+      ...data,
+      answers: data.answers.map((a) => (a === first ? { ...a, search_queries: ["best uptime `tool`", "uptime pricing"] } : a)),
+    };
+    const out = renderMarkdown(withQueries);
+    const at = out.indexOf(`### ${first.qid} · `);
+    const block = out.slice(at, out.indexOf("\n### ", at + 1));
+    expect(block).toContain("Searches the engines ran:");
+    expect(block).toContain("`best uptime 'tool'`, `uptime pricing`");
+  });
+
   it("attributes every answer row to an engine and a date", () => {
     // the evidence tables are the receipt: engine + date on every row
     const answerRows = md

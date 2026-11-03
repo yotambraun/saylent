@@ -46,6 +46,7 @@ runs:
   # node24 is the JavaScript-action runtime GitHub is moving everything to:
   # node20 stops being installed on the runners in September 2026, and an action
   # that still declares it stops working outright. dist/index.js is built for a
-  # Node 20 baseline, which runs unchanged on 24.
+  # Node 20 language baseline (packages/action/scripts/build.mjs), which runs
+  # unchanged on the node24 runtime.
   using: "node24"
   main: "packages/action/dist/index.js"

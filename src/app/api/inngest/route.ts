@@ -3,8 +3,10 @@ import { serve } from "inngest/next";
 import { inngest } from "@/inngest/client";
 import {
   monthlyAuditCron,
+  runAlerts,
   runAudit,
   verifyReminder,
+  weeklyDigestCron,
   weeklyVerifyCron,
 } from "@/inngest/functions";
 import { isDemoReadOnly } from "@/lib/demo-mode";
@@ -23,6 +25,6 @@ const handlers = isDemoReadOnly()
   ? { GET: notOnDemo, POST: notOnDemo, PUT: notOnDemo }
   : serve({
       client: inngest,
-      functions: [runAudit, verifyReminder, weeklyVerifyCron, monthlyAuditCron],
+      functions: [runAudit, verifyReminder, weeklyVerifyCron, monthlyAuditCron, runAlerts, weeklyDigestCron],
     });
 export const { GET, POST, PUT } = handlers;

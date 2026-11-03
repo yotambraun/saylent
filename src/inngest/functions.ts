@@ -18,7 +18,8 @@ import {
   type StepRunner,
   type VerifyBaseline,
 } from "@saylent/engine/run-audit";
-import type { AnswerRow, Engine, Scores } from "@saylent/engine/types";
+import { DEFAULT_SERP_PROVIDER, isSurfaceId, surfaceSourceId } from "@saylent/engine/surfaces";
+import type { AnswerRow, Engine, ModelEngine, Scores } from "@saylent/engine/types";
 import {
   assembleHealthFromDb,
   auditReadyNotice,
@@ -32,6 +33,7 @@ import {
   writeRunHealth,
   writeRunSnapshot,
 } from "@/lib/db";
+import { alertsForRun, weeklyDigests } from "@/lib/alerts";
 import { fetchDossierViaRpc } from "@/lib/dossier-data";
 import { sendEmail } from "@/lib/email";
 import { sitePagesMeta } from "@saylent/report/report-intel";
@@ -59,18 +61,23 @@ import {
   isEligible,
 } from "./schedule";
 
-/** Which provider key serves each answer engine, and which registry slot names its
- *  model. Static maps; the VALUES are resolved per run (see resolveRunProviders
- *  below) so an operator can change a key or a model in the admin console with no
- *  redeploy. */
+/** Which provider key serves each answer source, and which registry slot names a
+ *  model API's model. Static maps; the VALUES are resolved per run (see
+ *  resolveRunProviders below) so an operator can change a key or a model in the
+ *  admin console with no redeploy. The answer SURFACES all read through the
+ *  SERP-data provider's key (SerpApi) and have NO model role: their model string
+ *  is the provenance id surfaceSourceId() ("serpapi:google_ai_mode"). */
 const ENGINE_PROVIDER: Record<Engine, ProviderId> = {
   chatgpt: "openai",
   claude: "anthropic",
   gemini: "gemini",
   perplexity: "perplexity",
+  google_ai_overview: DEFAULT_SERP_PROVIDER,
+  google_ai_mode: DEFAULT_SERP_PROVIDER,
+  copilot: DEFAULT_SERP_PROVIDER,
 };
 
-const ENGINE_MODEL_ROLE: Record<Engine, ModelRole> = {
+const ENGINE_MODEL_ROLE: Record<ModelEngine, ModelRole> = {
   chatgpt: "chatgptAnswer",
   claude: "claudeAnswer",
   gemini: "geminiAnswer",
@@ -151,7 +158,19 @@ export const runAudit = inngest.createFunction(
         .eq("id", run.brand_id)
         .single();
       if (be || !brand) throw new Error(`brand ${run.brand_id} not found`);
-      return { run, brand };
+      // A verify reads the answer surfaces from where its BASELINE read them
+      // (country / language / location), so the comparison is like-for-like.
+      // The engine set itself is already frozen in the question_set envelope.
+      let baselineRunOptions: RunOptions | null = null;
+      if (run.kind === "verify" && run.baseline_run_id) {
+        const { data: base } = await admin
+          .from("runs")
+          .select("run_options")
+          .eq("id", run.baseline_run_id)
+          .maybeSingle();
+        baselineRunOptions = (base?.run_options as RunOptions | null) ?? null;
+      }
+      return { run, brand, baselineRunOptions };
     });
 
     const db = createDbWriter(admin, ctx.run.user_id);
@@ -192,6 +211,7 @@ export const runAudit = inngest.createFunction(
         brandEngines: (ctx.brand.engines as string[] | null) ?? null,
         brandQuestionSet: (ctx.brand.question_set as FrozenEnvelope | null) ?? null,
         brandQuestionSetVersion: (ctx.brand.question_set_version as number | null) ?? 1,
+        baselineRunOptions: (ctx.baselineRunOptions as RunOptions | null) ?? null,
       });
 
       // Resolve THIS run's provider keys and model
@@ -216,13 +236,22 @@ export const runAudit = inngest.createFunction(
       const { brandModelCall, drafterCall, judgeCall } = makeLlmCallers(llmKeys, roles);
 
       // The ONE ask seam — identical for observe draws AND adaptive tiebreaks
-      // (same ADAPTERS call, model, key, full search depth per engine).
+      // (same ADAPTERS call, model, key, full search depth per engine). An
+      // answer surface takes the SerpApi key, its provenance id as `model`, and
+      // the run's surface locale; a model API ignores the locale.
       const askEngine: AskFn = (eng, q) =>
-        ADAPTERS[eng](q, {
-          model: registry[ENGINE_MODEL_ROLE[eng]],
-          apiKey: providerKeys[ENGINE_PROVIDER[eng]],
-          maxSearches: eng === "claude" ? caps.claudeMaxSearches : undefined,
-        });
+        isSurfaceId(eng)
+          ? ADAPTERS[eng](q, {
+              model: surfaceSourceId(eng),
+              apiKey: providerKeys[ENGINE_PROVIDER[eng]],
+              serpProvider: DEFAULT_SERP_PROVIDER,
+              ...(opts.surfaceLocale ? { locale: opts.surfaceLocale } : {}),
+            })
+          : ADAPTERS[eng](q, {
+              model: registry[ENGINE_MODEL_ROLE[eng]],
+              apiKey: providerKeys[ENGINE_PROVIDER[eng]],
+              maxSearches: eng === "claude" ? caps.claudeMaxSearches : undefined,
+            });
 
       // Inngest's step.run IS the engine's step runner: one durable, memoized,
       // individually-retried step per pipeline step, with the same ids as before.
@@ -499,6 +528,14 @@ export const runAudit = inngest.createFunction(
         }
       }
 
+      // Alerts & digest (migration 0047): what changed vs the baseline, to the
+      // owner's channels. A dedicated function, so a slow webhook never holds
+      // this run, and an alert failure can never fail it.
+      await step.sendEvent("alerts-run-finished", {
+        name: "saylent/alerts.run.finished",
+        data: { runId },
+      });
+
       return { done: true };
     } catch (err) {
       if (err instanceof RunCancelled) {
@@ -721,4 +758,38 @@ export const weeklyVerifyCron = inngest.createFunction(
 export const monthlyAuditCron = inngest.createFunction(
   { id: "monthly-audit-cron", concurrency: { limit: 1 }, triggers: [{ cron: "TZ=UTC 0 8 1 * *" }] },
   async ({ step }) => runScheduleCron(step, "audit"),
+);
+
+// ---------------------------------------------------------------------------
+// Alerts & digest (src/lib/alerts.ts, migration 0047). Both are no-ops for a
+// brand whose owner has not turned alerts on, and never throw into a run.
+// ---------------------------------------------------------------------------
+export const runAlerts = inngest.createFunction(
+  { id: "run-alerts", concurrency: { limit: 5 }, triggers: [{ event: "saylent/alerts.run.finished" }] },
+  async ({ event, step }) => {
+    const runId = (event.data as { runId?: string }).runId;
+    if (!runId) return { skipped: "no-run" };
+    return step.run("deliver-alerts", async () => {
+      try {
+        const res = await alertsForRun(createAdminClient(), runId);
+        return { status: res.status, results: res.results?.map((r) => `${r.channel}:${r.status}`) ?? [] };
+      } catch (err) {
+        log.warn("alerts failed", { runId, error: err instanceof Error ? err.message : String(err) });
+        return { status: "error" };
+      }
+    });
+  },
+);
+
+export const weeklyDigestCron = inngest.createFunction(
+  { id: "weekly-digest-cron", concurrency: { limit: 1 }, triggers: [{ cron: "TZ=UTC 30 9 * * 1" }] },
+  async ({ step }) =>
+    step.run("send-digests", async () => {
+      try {
+        return await weeklyDigests(createAdminClient());
+      } catch (err) {
+        log.warn("weekly digests failed", { error: err instanceof Error ? err.message : String(err) });
+        return { brands: 0, sent: 0 };
+      }
+    }),
 );

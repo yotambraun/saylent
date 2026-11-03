@@ -56,6 +56,8 @@ invisible to them.
 |---|---|---|
 | Add brands, run audits and verifies, read their own reports | Yes | Yes |
 | Publish, revoke, export and print their own reports | Yes | Yes |
+| Send [alerts](/docs/alerts) to their own Slack or webhook URL | Yes, to public https hosts only: the server never sends to a private, loopback or link-local address, and does not follow redirects | Yes, same rule |
+| Create read-only [API tokens](/docs/export#read-only-api) for their own data (migration `0048`) | Yes | Yes, for their own data; a token never reaches another account's rows |
 | See anyone else's brands, runs or reports | No | Yes, through the console |
 | See the `/admin` link, or reach any `/admin` page | No, they are redirected to `/app` | Yes |
 | Change the spend cap, the kill switch, provider keys or models | No | Yes |

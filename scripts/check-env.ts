@@ -18,7 +18,8 @@
 // Optional (not checked here — every one has a code default or is inert unset),
 // except APP_SECRET which is WARNED about below:
 // DATABASE_URL / DIRECT_DATABASE_URL (needed for `npm run db:migrate`, not to boot),
-// GEMINI_API_KEY, PERPLEXITY_API_KEY, INNGEST_EVENT_KEY / INNGEST_SIGNING_KEY
+// GEMINI_API_KEY, PERPLEXITY_API_KEY, SERPAPI_API_KEY (the answer surfaces),
+// INNGEST_EVENT_KEY / INNGEST_SIGNING_KEY
 // (required in production only — src/lib/env.ts fails the boot there),
 // RESEND_API_KEY / EMAIL_FROM (email is a no-op without them), SENTRY_* (Sentry is
 // inert without a DSN), MODEL_* registry overrides, DEMO_RUN_ID, AUDIT_PROFILE

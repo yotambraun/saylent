@@ -6,6 +6,7 @@
 // receipt actually renders). No page jump — client disclosure state.
 import { useState } from "react";
 import type { DiffSentence } from "../answer-diff";
+import { engineLabel } from "@saylent/engine/surfaces";
 import { useReportHost } from "../host";
 
 export interface EngineChange {
@@ -102,12 +103,12 @@ function ExpandableRow({
               className="inline-flex items-center gap-1.5 hover:text-ink"
             >
               <span className="text-wire">{isOpen ? "▾" : "▸"}</span>
-              {row.engine}
+              {engineLabel(row.engine)}
             </button>
           ) : (
             <span className="inline-flex items-center gap-1.5">
               <span className="text-line">·</span>
-              {row.engine}
+              {engineLabel(row.engine)}
             </span>
           )}
         </td>

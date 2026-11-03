@@ -17,6 +17,7 @@ import { ALL_ENGINES, frozenEngines } from "@saylent/engine/engines";
 import { PROFILES } from "@saylent/engine/profiles";
 import { TEMPLATE_SET_VERSION } from "@saylent/engine/questions";
 import { type RunOptions } from "@/lib/question-options";
+import { serpKeyAvailable } from "@/lib/provider-settings";
 import { resolveRunProfile } from "@/lib/runs";
 import { createClient } from "@/lib/supabase/server";
 import { baselineDraft } from "./baseline";
@@ -50,6 +51,10 @@ export default async function QuestionsPage({ params }: { params: Promise<{ id: 
     .in("status", ["queued", "running"])
     .limit(1)
     .maybeSingle();
+
+  // Presence only (env or console): whether the answer surfaces can be offered.
+  // The key itself never leaves the server.
+  const serpAvailable = await serpKeyAvailable();
 
   const questionSet = brand.question_set as { questions?: Question[]; engines?: string[] } | null;
   const options = (brand.run_options as RunOptions | null) ?? null;
@@ -89,6 +94,15 @@ export default async function QuestionsPage({ params }: { params: Promise<{ id: 
       savedEngines={options?.engines ?? null}
       savedLocale={options?.locale ?? ""}
       savedSkip={options?.skip ?? {}}
+      savedSurfaceLocale={{
+        country: options?.surfaceLocale?.country ?? "",
+        language: options?.surfaceLocale?.language ?? "",
+        location: options?.surfaceLocale?.location ?? "",
+      }}
+      savedSourceOverrides={Object.entries(options?.sourceOverrides?.domainTypes ?? {}).map(
+        ([host, type]) => ({ host, type }),
+      )}
+      serpAvailable={serpAvailable}
       brandEngines={frozenEngines(questionSet, (brand.engines as string[] | null) ?? null)}
       allEngines={[...ALL_ENGINES]}
       hasFrozenSet={!!questionSet?.questions?.length}

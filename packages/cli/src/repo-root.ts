@@ -41,6 +41,22 @@ export function findReportAssets(startDir: string = HERE): ReportAssets | null {
   return null;
 }
 
+/** The file name the bundled sample run ships under in dist/assets/. */
+export const SAMPLE_BUNDLE_FILE = "kestrel-run.json";
+
+/** The bundled sample run `saylent demo` renders: dist/assets/kestrel-run.json
+ *  next to the published CLI (scripts/build.mjs copies it there), else the
+ *  checkout's examples/kestrel/run.json when running from source. */
+export function findSampleBundle(startDir: string = HERE): string | null {
+  for (const dir of assetDirCandidates(startDir)) {
+    const file = path.join(dir, SAMPLE_BUNDLE_FILE);
+    if (existsSync(file)) return file;
+  }
+  const root = findRepoRoot(startDir);
+  const inCheckout = root ? path.join(root, "examples", "kestrel", "run.json") : null;
+  return inCheckout && existsSync(inCheckout) ? inCheckout : null;
+}
+
 export function findRepoRoot(startDir: string = HERE): string | null {
   let dir = startDir;
   for (let i = 0; i < 12; i++) {

@@ -105,6 +105,8 @@ describe("runQuestionsCommandWith", () => {
     expect(chunks.join("")).toContain("Missing <domain>");
   });
 
+  // The first test in this file pays the cold import of the command and the
+  // engine; a slow macOS runner took over the 5 s default.
   it("--no-brand-model: $0, no keys needed, prints questions and writes questions.json", async () => {
     const { chunks, restore } = captureStdout();
     const code = await runQuestionsCommandWith(fakedEngineMod(), configMod, [
@@ -129,7 +131,7 @@ describe("runQuestionsCommandWith", () => {
     expect(json.questions[0]).toHaveProperty("id");
     expect(json.questions[0]).toHaveProperty("type");
     expect(json.questions[0]).toHaveProperty("text");
-  });
+  }, 20000);
 
   it("--print writes no file", async () => {
     const { restore } = captureStdout();
@@ -187,7 +189,7 @@ describe("runQuestionsCommandWith", () => {
     restore();
     expect(code).toBe(0);
     const out = chunks.join("");
-    expect(out).toContain("$0.02");
+    expect(out).toContain("one brand-model call, under $0.01");
     expect(out).not.toContain("template defaults)");
     // "edge CDN" only appears if the real (faked) brand-model JSON was used,
     // not the generic template-default brand model.

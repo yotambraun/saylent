@@ -2,7 +2,7 @@
 // BEFORE you spend anything on answering them, then edit them and hand the file
 // back to `saylent audit --questions`.
 //
-// Cost: ONE brand-model call (about $0.02 of your own credits) plus a free
+// Cost: ONE brand-model call (under $0.01 of your own credits at the default model) plus a free
 // crawl, because the questions are generated FROM the brand model (category,
 // ICP, problems, rivals). `--no-brand-model` skips both and generates from the
 // template defaults with the domain name, for $0 and no keys at all.
@@ -26,9 +26,10 @@ import { glyph } from "../glyphs";
 import { HELP_OPTION, opt, options } from "../help";
 
 const HELP = `saylent questions <domain> [options]
+saylent questions import <file> [options]   (see: saylent questions import --help)
 
 Print the buyer questions an audit would ask, and write them to a file you can
-edit. Cost: one brand-model call (about $0.02 of your credits) plus a free
+edit. Cost: one brand-model call (under $0.01 of your credits) plus a free
 crawl. Nothing is asked of any answer engine.
 
 Options:
@@ -54,6 +55,8 @@ ${options([
 ])}
 
 Edit the file, then: saylent audit <domain> --questions questions.json
+To start from what people really search, import a Search Console export or a
+CSV instead: saylent questions import Queries.csv
 Only ${SCORED_TYPES.join(" and ")} questions count toward the score and the
 recommended band; every other type (including "custom") is asked, judged and
 reported but never scored.`;
@@ -144,8 +147,9 @@ export async function runQuestionsCommandWith(
   process.stdout.write(`\nSaylent ${glyph("sep")} questions ${glyph("sep")} ${domain}\n\n`);
   if (useBrandModel) {
     const cents = engineMod.ROLE_COST_CENTS.brand;
+    const price = cents < 1 ? "under $0.01" : `about $${(cents / 100).toFixed(2)}`;
     process.stdout.write(
-      `  Cost      one brand-model call, about $${(cents / 100).toFixed(2)} of your credits (the crawl is free)\n`,
+      `  Cost      one brand-model call, ${price} of your credits (the crawl is free)\n`,
     );
   } else {
     process.stdout.write("  Cost      $0 — template defaults, no crawl, no model call\n");
@@ -213,6 +217,9 @@ export async function runQuestionsCommandWith(
 }
 
 export async function run(argv: string[]): Promise<number> {
+  // `saylent questions import <file>`: real questions from Search Console or
+  // a CSV; $0, no engine load, no keys (see questions-import.ts).
+  if (argv[0] === "import") return (await import("./questions-import")).runQuestionsImport(argv.slice(1));
   if (argv.includes("--help") || argv.includes("-h")) {
     process.stdout.write(`${HELP}\n`);
     return 0;

@@ -9,14 +9,14 @@
 import { heldBackRivalsLine } from "./questions";
 import { randomUUID } from "node:crypto";
 import { parseArgs } from "node:util";
-import type { Engine, ProfileName, Question } from "@saylent/engine";
+import type { Engine, ProfileName, Question, SurfaceId } from "@saylent/engine";
 import type { EngineConfigModule, EngineModule } from "../engine-loader";
 import { loadEngine, loadEngineConfig } from "../engine-loader";
 import {
+  ALL_KEY_PROVIDERS,
   applyKeysToEnv,
   hasMinimumKeys,
   missingKeysError,
-  PROVIDER_TO_ENGINE,
   PROVIDERS,
   promptForKeys,
   resolveKeys,
@@ -59,7 +59,14 @@ import {
   type ReportModules,
 } from "../run";
 import { glyph } from "../glyphs";
-import { ENGINE_NAMES, parseEngineList, parseProfileName } from "../validate";
+import { MODEL_ENGINE_NAMES, SURFACE_NAMES, parseEngineList, parseProfileName, parseSurfaceList } from "../validate";
+import {
+  missingSurfaceKeyMessage,
+  planEngines,
+  resolveSurfaceLocale,
+  sourcesSummaryLines,
+  surfacesLine,
+} from "../surfaces";
 import { HELP_OPTION, opt, options } from "../help";
 
 const HELP = `saylent audit <domain> [options]
@@ -79,9 +86,28 @@ ${options([
   ),
   opt(
     "--engines <a,b>",
-    `Comma-separated engines: ${ENGINE_NAMES.join(",")}.`,
+    `Comma-separated engines: ${MODEL_ENGINE_NAMES.join(",")},`,
+    `or an answer surface (${SURFACE_NAMES.join(",")}).`,
     "Overrides AUDIT_ENGINES and saylent.config engines.",
     "An unknown name is refused, never dropped.",
+  ),
+  opt(
+    "--surfaces <a,b>",
+    "Answer surfaces to ADD to the engines: google_ai_overview,",
+    "google_ai_mode,copilot. Read through your own SerpApi key",
+    "(SERPAPI_API_KEY; `saylent keys set serpapi`), billed per",
+    "search by your SerpApi plan. Google shows an AI Overview",
+    'for some queries only; the rest are recorded "not shown".',
+  ),
+  opt(
+    "--country <cc>",
+    'Two-letter country the surfaces answer for (e.g. "us",',
+    '"de"). Language follows --locale. Surfaces only.',
+  ),
+  opt(
+    "--location <city>",
+    'City-level location for the Google surfaces, e.g.',
+    '"Austin, Texas, United States". Surfaces only.',
   ),
   opt(
     "--questions <file>",
@@ -263,6 +289,7 @@ export async function runAuditCommandWith(
   let flagEngines: Engine[] | undefined;
   let envEngines: Engine[] | undefined;
   let configEngines: Engine[] | undefined;
+  let flagSurfaces: SurfaceId[] | undefined;
   const profileNames = Object.keys(engineMod.PROFILES) as ProfileName[];
   try {
     flagProfile = parseProfileName(values.profile, profileNames, "flag");
@@ -271,6 +298,7 @@ export async function runAuditCommandWith(
     flagEngines = parseEngineList(values.engines, "flag");
     envEngines = parseEngineList(process.env.AUDIT_ENGINES?.trim() || undefined, "env");
     configEngines = parseEngineList(config.engines, "config");
+    flagSurfaces = parseSurfaceList(values.surfaces);
   } catch (e) {
     process.stderr.write(`\n  ${e instanceof Error ? e.message : String(e)}\n`);
     return 1;
@@ -326,6 +354,24 @@ export async function runAuditCommandWith(
     process.stderr.write(`\n  --locale ${locale}: expected a BCP47 tag, e.g. "de" or "pt-BR".\n`);
     return 1;
   }
+  // Loaded here (ahead of the surface locale and the estimate) so a
+  // --questions file's locale and row count both reach the preflight.
+  const loadedQuestionFile = values.questions ? loadQuestionSetFile(values.questions) : null;
+
+  // Answer surfaces: the precedence lives in resolveSurfaceLocale (surfaces.ts).
+  let surfaceLocale;
+  try {
+    surfaceLocale = resolveSurfaceLocale({
+      country: values.country,
+      location: values.location,
+      locale,
+      config: config.surfaces ?? null,
+      questions: loadedQuestionFile?.locale ?? null,
+    });
+  } catch (e) {
+    process.stderr.write(`\n  ${e instanceof Error ? e.message : String(e)}\n`);
+    return 1;
+  }
 
   // Samples feature: --samples flag > AUDIT_SAMPLES env > saylent.config
   // sampling > the profile default. Resolved ONCE, printed in the preflight,
@@ -360,11 +406,14 @@ export async function runAuditCommandWith(
 
   applyKeysToEnv(keys);
 
-  const requestedEngines: Engine[] = merged.engines ?? PROVIDERS.map((p) => PROVIDER_TO_ENGINE[p.id]);
-  const availableEngines = requestedEngines.filter((e) => {
-    const provider = PROVIDERS.find((p) => PROVIDER_TO_ENGINE[p.id] === e);
-    return provider ? Boolean(keys[provider.id]) : false;
-  });
+  const plan = planEngines(merged.engines, flagSurfaces, keys);
+  const requestedEngines: Engine[] = plan.requested;
+  const availableEngines = plan.available;
+  // A surface the operator asked for by name is never silently dropped.
+  if (plan.surfacesWithoutKey.length > 0 && !dryRun) {
+    process.stderr.write(`\n  ${missingSurfaceKeyMessage(plan.surfacesWithoutKey)}\n`);
+    return 1;
+  }
   if (availableEngines.length === 0 && !dryRun) {
     process.stderr.write("No engine has a usable key. Run `saylent keys` to add one.\n");
     return 1;
@@ -378,10 +427,6 @@ export async function runAuditCommandWith(
   const models = engineMod.modelRegistry(table);
   const roles = engineMod.resolveRoles(engineMod.availableFamilies(), { flags: modelFlags, config: config.models });
 
-  // Loaded ahead of the estimate (not just before dry-run) so a --questions
-  // file's row count/removals/additions are reflected in the printed estimate,
-  // not only in the frozen set the run actually asks.
-  const loadedQuestionFile = values.questions ? loadQuestionSetFile(values.questions) : null;
   const questionSet: { questions: Question[]; version?: number; engines?: string[] } | null = loadedQuestionFile
     ? {
         questions: loadedQuestionFile.questions as Question[],
@@ -400,7 +445,13 @@ export async function runAuditCommandWith(
 
   process.stdout.write("\n");
   process.stdout.write(`Saylent ${glyph("sep")} audit ${glyph("sep")} ${domain}\n\n`);
-  const keyLine = PROVIDERS.map((p) => `${p.label} ${keys[p.id] ? glyph("check") : glyph("ndash")}`).join("   ");
+  // SerpApi is listed only when the run touches a surface or a key is set,
+  // so a plain four-engine preflight reads exactly as it always has.
+  const keyProviders =
+    requestedEngines.some((e) => (SURFACE_NAMES as readonly string[]).includes(e)) || keys.serpapi
+      ? ALL_KEY_PROVIDERS
+      : PROVIDERS;
+  const keyLine = keyProviders.map((p) => `${p.label} ${keys[p.id] ? glyph("check") : glyph("ndash")}`).join("   ");
   process.stdout.write(`  Keys      ${keyLine}\n`);
   const missingHint = PROVIDERS.filter((p) => !p.required && !keys[p.id])
     .map((p) => `${p.envVar}`)
@@ -415,6 +466,11 @@ export async function runAuditCommandWith(
   // SINGLE-PROVIDER MODE + model overrides: say which family judges, and with
   // which exact model(s), before a cent is spent.
   process.stdout.write(`  Judge     ${formatJudgeMode(keys)}  ${glyph("sep")}  ${formatJudgeModels(roles)}\n`);
+  const surfLine = surfacesLine(availableEngines, surfaceLocale);
+  if (surfLine) process.stdout.write(`  Surfaces  ${surfLine}\n`);
+  if (dryRun && plan.surfacesWithoutKey.length > 0) {
+    process.stdout.write(`  Surfaces  ${missingSurfaceKeyMessage(plan.surfacesWithoutKey)}\n`);
+  }
   // With no key there is no engine, and with no engine there is nothing to
   // price: the fixed brand/judge/drafter overhead alone used to print
   // "est. $0.40-$0.60" next to "0 engines", which is a number that cannot be
@@ -531,7 +587,7 @@ export async function runAuditCommandWith(
   const progress = new Progress();
 
   const runId = randomUUID();
-  const { result, reportHtmlPath, reportMdPath, runJsonPath } = await runAuditToFilesWith(
+  const { result, bundle, reportHtmlPath, reportMdPath, runJsonPath } = await runAuditToFilesWith(
     engineMod,
     reportMod,
     {
@@ -559,6 +615,9 @@ export async function runAuditCommandWith(
           ? { drafts: resolvedSkip.drafts, corpus: resolvedSkip.corpus, gates: resolvedSkip.gates }
           : null,
       format: formats,
+      surfaceLocale,
+      ...(config.surfaces?.provider ? { serpProvider: config.surfaces.provider } : {}),
+      ...(config.sources?.domainTypes ? { sourceOverrides: { domainTypes: config.sources.domainTypes } } : {}),
     },
     outDir,
   );
@@ -569,6 +628,7 @@ export async function runAuditCommandWith(
     reportPath: reportHtmlPath ?? reportMdPath ?? runJsonPath,
     verifyPath: runJsonPath,
     brandDomain: domain,
+    sourcesLines: sourcesSummaryLines(bundle.sources),
   });
 
   if (result.costUsd > 0) recordSpend(result.costUsd);

@@ -11,6 +11,7 @@ import { Button } from "@saylent/report/ui/button";
 import { buildRivalCompare, rivalOptions, type CompareInput } from "@saylent/report/compare";
 import { fetchDossierViaRpc } from "@/lib/dossier-data";
 import { MODELS } from "@saylent/engine/models";
+import { SURFACE_IDS, surfaceSourceId } from "@saylent/engine/surfaces";
 import { createClient } from "@/lib/supabase/server";
 import { VsClient } from "../brand/[id]/vs/vs-client";
 
@@ -21,6 +22,8 @@ const ENGINE_MODELS: Record<string, string> = {
   claude: MODELS.claudeAnswer,
   gemini: MODELS.geminiAnswer,
   perplexity: MODELS.perplexityAnswer,
+  // answer surfaces carry a provenance id, not a model ("serpapi:google_ai_mode")
+  ...Object.fromEntries(SURFACE_IDS.map((s) => [s, surfaceSourceId(s)])),
 };
 
 function Shell({ children, picker }: { children: React.ReactNode; picker?: React.ReactNode }) {

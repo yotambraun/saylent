@@ -17,14 +17,7 @@ import type {
   RivalOption,
 } from "@saylent/report/compare";
 import { AnswerDrawer, PageDrawer, type AnswerRow, type CorpusRow } from "@saylent/report/components/drawers";
-
-const ENGINE_LABEL: Record<string, string> = {
-  chatgpt: "ChatGPT",
-  claude: "Claude",
-  gemini: "Gemini",
-  perplexity: "Perplexity",
-};
-const engineLabel = (e: string) => ENGINE_LABEL[e] ?? e;
+import { engineLabel } from "@saylent/engine/surfaces";
 
 /* Each favour token: a glyph + a word + a house colour. The word carries the
  * meaning on its own (WCAG color-not-only) — colour and glyph reinforce it. */

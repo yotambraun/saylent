@@ -211,7 +211,8 @@ function adminRow(admins: ReadinessAdminsInput): ReadinessRow {
 
 /** At least one of openai/anthropic must be present — packages/engine/src/models.ts
  *  resolveRoles() and scripts/check-env.ts --profile cli both gate on exactly this.
- *  Every other provider id is an optional extra answer engine. */
+ *  Every other provider id is an optional extra answer engine (serpapi: the
+ *  optional SERP-data key the answer surfaces are read through). */
 const REQUIRED_PROVIDER_IDS = new Set(["openai", "anthropic"]);
 
 function providerRows(providers: ReadinessProviderInput[]): ReadinessRow[] {
@@ -230,7 +231,9 @@ function providerRows(providers: ReadinessProviderInput[]): ReadinessRow[] {
     const isRequiredSlot = REQUIRED_PROVIDER_IDS.has(p.id);
     const status: ReadinessStatus = isRequiredSlot && !hasRequired ? "error" : "warn";
     const detail = !isRequiredSlot
-      ? "Not set: optional answer engine."
+      ? p.id === "serpapi"
+        ? "Not set: optional. It unlocks the answer surfaces (Google AI Overviews, Google AI Mode, Microsoft Copilot)."
+        : "Not set: optional answer engine."
       : hasRequired
         ? "Not set. Fine, another required-family key already covers it."
         : "Not set. At least one of OPENAI_API_KEY / ANTHROPIC_API_KEY is required.";

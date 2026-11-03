@@ -15,13 +15,27 @@ import { HELP_OPTION } from "../help";
 const HELP = `saylent mcp
 
 Runs a Model Context Protocol server on stdio. Point an MCP client at it
-("claude mcp add saylent -- npx saylent mcp", or a claude_desktop_config.json
-/ Cursor mcp.json entry) and the agent gets four tools:
+(Claude Code: "claude mcp add --scope user saylent -- npx -y saylent mcp";
+Claude Desktop, Cursor, VS Code, Windsurf, Codex CLI, Gemini CLI: see
+https://yotambraun.github.io/saylent/docs/mcp#connect-a-client) and the agent
+gets ten tools:
 
   audit        run a full audit          spends your credits
   verify       re-run the frozen set     spends your credits (same as the audit)
   gate_check   AI bot access for a site  $0
   read_report  read an existing run.json $0
+  sources      citation share, share of voice and off-site
+               opportunities of a run.json, with receipts   $0
+  fixes        the drafted fixes of a run.json, with the
+               evidence behind each                         $0
+  history      compare runs of one brand: what moved, with
+               receipts                                     $0
+  export       a run's answers, citations, sources and
+               share of voice as documented tables          $0
+  crawlers     which AI crawlers visit, from an access log  $0
+  questions_import
+               preview real questions from a Search Console
+               export, a CSV or text lines                  $0
 
 A smoke audit costs ${SMOKE_COST_SENTENCE}.
 A full audit costs ${FULL_COST_SENTENCE}.

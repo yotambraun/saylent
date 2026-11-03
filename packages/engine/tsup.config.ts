@@ -13,7 +13,7 @@ import { defineConfig } from "tsup";
 export default defineConfig({
   entry: ["src/**/*.ts", "!src/**/*.test.ts"],
   format: ["esm"],
-  target: "node20",
+  target: "node22",
   platform: "node",
   bundle: false,
   dts: true,

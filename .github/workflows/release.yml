@@ -118,7 +118,7 @@ jobs:
       # does not exist. So every release re-points the floating major tag at the
       # commit just released. Force-moving a tag is the documented convention for
       # actions (actions/checkout@v4 works exactly this way); the immutable
-      # `v0.1.2` tag stays available for anyone who wants to pin exactly.
+      # `vX.Y.Z` tag stays available for anyone who wants to pin exactly.
       - name: Move the floating major tag
         run: |
           major="v${VERSION%%.*}"

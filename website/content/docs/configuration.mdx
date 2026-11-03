@@ -45,26 +45,26 @@ so strip the `//` lines below before saving as `.json`.)
 
   // ── Which model serves which role ────────────────────────────────────────
   // Any model id your key can call. Defaults are the shipped registry
-  // (packages/engine/src/models.ts); `saylent models` prints what resolves on
+  // (packages/engine/src/model-defaults.ts); `saylent models` prints what resolves on
   // your machine right now and where each choice came from.
   "models": {
     // The judge scores the answers. One entry per family, because the judge is
     // deliberately from the OTHER family than the engine that answered.
     "judge": {
-      "anthropic": "claude-haiku-4-5", // default claude-haiku-4-5
-      "openai": "gpt-5-mini"           // default gpt-5-mini
+      "anthropic": "claude-haiku-5-5", // default claude-haiku-5-5
+      "openai": "gpt-6-luna"           // default gpt-6-luna
     },
     // Reads your crawled pages and builds the brand model (category, ICP,
     // problems, rivals) the questions are generated from.
-    // Default claude-haiku-4-5, or gpt-5-mini on an OpenAI-only machine.
-    "brand": "claude-haiku-4-5",
+    // Default claude-haiku-5-5, or gpt-6-luna on an OpenAI-only machine.
+    "brand": "claude-haiku-5-5",
     // Writes the drafted fixes, and translates the question set when `locale`
-    // is set. Default claude-sonnet-4-6, or gpt-5.4 on an OpenAI-only machine.
-    "drafter": "claude-sonnet-4-6",
+    // is set. Default claude-sonnet-5-5, or gpt-6.1-sol on an OpenAI-only machine.
+    "drafter": "claude-sonnet-5-5",
     // The answer engines themselves - the models that get asked the questions.
     "engines": {
-      "chatgpt": "gpt-5.4",            // default gpt-5.4
-      "claude": "claude-sonnet-4-6",   // default claude-sonnet-4-6
+      "chatgpt": "gpt-6.1-sol",        // default gpt-6.1-sol
+      "claude": "claude-sonnet-5-5",   // default claude-sonnet-5-5
       "gemini": "gemini-3.6-flash",    // default gemini-3.6-flash
       "perplexity": "sonar"            // default sonar
     }
@@ -76,7 +76,33 @@ so strip the `//` lines below before saving as `.json`.)
   "competitors": ["beacon-uptime.example", "Statusly"],
 
   // The answer engines to ask. Default: every engine you have a key for.
+  // The answer surfaces google_ai_overview, google_ai_mode and copilot are
+  // opt-in: name them here (they need SERPAPI_API_KEY). See /docs/surfaces.
   "engines": ["chatgpt", "claude", "gemini", "perplexity"],
+
+  // ── Answer surfaces ──────────────────────────────────────────────────────
+  // Only read when `engines` (or --surfaces) includes a surface. Every field
+  // optional. `provider`: the SERP-data provider, "serpapi" (the only one).
+  // `country`: two letters, sent as SerpApi `gl`. `language`: BCP47, sent as
+  // `hl`; default: `locale` below. `location`: city level, up to 120
+  // characters. --country and --location win over these. Microsoft Copilot
+  // takes no locale. Default: the provider's own default location.
+  "surfaces": {
+    "provider": "serpapi",
+    "country": "us",
+    "language": "en",
+    "location": "Austin, Texas, United States"
+  },
+
+  // ── Sources & opportunities ──────────────────────────────────────────────
+  // Correct how a cited domain is classified. Host (or a parent domain, which
+  // covers its subdomains; the most specific entry wins) -> one of own_site,
+  // rival_site, review_site, forum, docs, news, marketplace, reference, video,
+  // social, editorial, other. The override always wins and shows as "your
+  // override". Default: no overrides. See /docs/sources.
+  "sources": {
+    "domainTypes": { "softwarereviews.example": "review_site" }
+  },
 
   // "smoke" (6 questions) or "full" (23). Default when nothing overrides it:
   // smoke on the CLI.
@@ -176,9 +202,12 @@ pages are per brand.
 | Drafter model | `--model drafter=<model>` | `MODEL_DRAFTER` / `_OPENAI` | `models.drafter` | Admin → Providers & models |
 | Engine models | `--model chatgpt=<model>`, also `claude` / `gemini` / `perplexity` | `MODEL_<ENGINE>_ANSWER` (four) | `models.engines.*` | Admin → Providers & models |
 | Which engines get asked | `--engines chatgpt,claude` | `AUDIT_ENGINES` (your keys decide the maximum) | `engines` | Questions and run options; Brand settings |
+| Answer surfaces | `--surfaces google_ai_overview,google_ai_mode,copilot` (or a surface id in `--engines`) | `AUDIT_ENGINES` | `engines` | Questions and run options (Answer surfaces) |
+| Where the surfaces read from | `--country <cc>`, `--location <city>`; language from `--locale` | - | `surfaces.country`, `surfaces.language`, `surfaces.location` | Questions and run options (Country, Language, Location) |
+| Source types | - | - | `sources.domainTypes` | Questions and run options (Source types) |
 | Profile (6 vs 23 questions) | `--profile smoke\|full` | `AUDIT_PROFILE` | `profile` | operator env var, not a user setting |
 | Skip a stage | `--skip drafts,corpus,gates` | `AUDIT_SKIP` | `skip.drafts`, `skip.corpus`, `skip.gates` | Questions and run options |
-| API keys | `saylent keys set <provider>`, `list`, `test`, `remove` | `<PROVIDER>_API_KEY` (four) | - (never in the config file) | Admin → Providers & models |
+| API keys | `saylent keys set <provider>`, `list`, `test`, `remove` | `<PROVIDER>_API_KEY` (four), plus `SERPAPI_API_KEY` for the surfaces | - (never in the config file) | Admin → Providers & models |
 | Spend cap | `--max-usd <n>`, per run | `DAILY_SPEND_CAP_USD` (20), per day | - | Admin → operator settings (daily spend cap) |
 | Crawler user agent | `--user-agent <string>` | `SAYLENT_USER_AGENT` | `userAgent` | the same env var on the deployment |
 | Language of the questions | `--locale <bcp47>` | - | `locale` | Questions and run options |
@@ -257,7 +286,9 @@ this is the file that reads each one:
 | `skip.*` | `packages/engine/src/profiles.ts` (`resolveSkip`) |
 | `userAgent`, `maxPages`, `allowPrivate` | `packages/cli/src/run.ts` (`buildCrawlerFetcher`, `buildCrawlerHooks`), default UA in `packages/engine/src/util.ts` |
 | `locale` | `packages/cli/src/commands/audit.ts` → `run.ts` `buildCrawlerHooks` |
-| `extraBots` | `packages/engine/src/domainChecks.ts` |
+| `extraBots` | `packages/engine/src/domainChecks.ts` (gate-check) and `packages/engine/src/ai-bots.ts` (`botRegistry`, read by `saylent crawlers`) |
+| `surfaces.*` | `packages/cli/src/surfaces.ts` (`resolveSurfaceLocale`), called by `commands/audit.ts` and the MCP `audit` tool |
+| `sources.domainTypes` | `packages/engine/src/sources.ts` (`makeDomainClassifier`), passed in by `commands/audit.ts`, `commands/verify.ts` and the MCP `audit` tool |
 | `thresholds.coverage` | `packages/engine/src/coverage.ts` |
 | `thresholds.fixWeights` | `packages/engine/src/fixes.ts` |
 | `branding.*` | schema only - the app reads `NEXT_PUBLIC_APP_NAME` / `NEXT_PUBLIC_CONTACT_EMAIL` |

@@ -4,7 +4,7 @@ description: Two commands install Saylent in Claude Code - a free crawler check,
 ---
 
 The plugin puts Saylent inside [Claude Code](https://code.claude.com/docs/en/plugins)
-as four skills and the [MCP server](/docs/mcp). Ask in plain words ("can AI
+as six skills and the [MCP server](/docs/mcp). Ask in plain words ("can AI
 crawlers read example.com?", "what do the assistants say about us?") or call a
 skill by name. It is the same pipeline as the CLI: your own keys, the same
 cost estimate before a run, the same reports on disk.
@@ -20,17 +20,19 @@ In a Claude Code session:
 
 Claude Code loads the plugin in your next session, or right away after
 `/reload-plugins`. The plugin starts the server with `npx -y saylent@0 mcp`,
-so it needs Node 20 or newer and nothing else installed. Fixes released on the
+so it needs Node 22 or newer and nothing else installed. Fixes released on the
 0.x line reach you without reinstalling.
 
-## The four skills
+## The six skills
 
 | Skill | What it does | Cost |
 |---|---|---|
+| `/saylent:ai-visibility-audit` | The whole loop: a free estimate, your yes, the audit, the sites to get onto, the drafted fixes with their evidence (and `saylent fixes apply` for the site ones), and a verify plan | Your own credits for the audit only, shown before you agree; every other step **$0** |
 | `/saylent:gate-check` | Which AI crawlers the site lets in: robots.txt per bot class, a live request as each AI user agent, JSON-LD and meta directives, with the fix for each problem | **$0**, no keys |
 | `/saylent:audit` | What ChatGPT, Claude, Gemini and Perplexity tell buyers: recommended or not, who is named instead, which pages are cited, and a fix plan. Writes `run.json`, `report.html` and `report.md` | Your own credits, shown before you agree |
 | `/saylent:verify` | Re-asks the same frozen questions after you ship fixes and shows what moved, in `movement.html` | Your own credits, about the same as the audit |
 | `/saylent:read-report` | Summarizes a run you already have, or answers a question about one section | **$0**, offline |
+| `/saylent:crawlers` | Which AI crawlers actually visit, from your own access log: bots, purposes, pages, blocks and errors with redacted log lines, and with a run, the cited pages no AI crawler fetched | **$0**, offline; the log stays on your machine |
 
 Each skill takes its input after the name, for example
 `/saylent:gate-check example.com` or
@@ -49,23 +51,24 @@ today's spend past the daily cap ($20 by default, set with
 `DAILY_SPEND_CAP_USD`), the server refuses before anything reaches a provider. `verify` states the cost of the original run and asks the same way.
 
 As a guide, with four engines a smoke audit (6 questions) costs about
-**$0.60 to $1.20** and a full audit (23 questions) about **$3.70 to $5.50**.
+**$0.80 to $1.20** and a full audit (23 questions) about **$5.10 to $7.10**.
 Fewer engines cost less. See [What it costs](/docs/costs).
 
 ## Keys
 
-`gate-check` and `read-report` need no keys. `audit` and `verify` need one of
+`gate-check`, `read-report` and `crawlers` need no keys. `audit` and `verify` need one of
 OpenAI or Anthropic (both give cross-family judging); Gemini and Perplexity add
-two more engines. Set them up once, in any of these ways:
+two more engines, and a SerpApi key adds the [answer surfaces](/docs/surfaces).
+Set them up once, in any of these ways:
 
 - **Recommended:** run `npx saylent keys set openai` (or `anthropic`, `gemini`,
-  `perplexity`) in your own terminal. The key is typed into a masked prompt
+  `perplexity`, `serpapi`) in your own terminal. The key is typed into a masked prompt
   and saved to `~/.saylent/config.json` with owner-only permissions, and the
   plugin finds it however Claude Code was started. `npx saylent keys test`
   checks each key with a free call.
-- Export `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY` or
-  `PERPLEXITY_API_KEY` in the shell you start Claude Code from. The plugin
-  passes exactly these four to the server.
+- Export `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`,
+  `PERPLEXITY_API_KEY` or `SERPAPI_API_KEY` in the shell you start Claude Code
+  from. The plugin passes exactly these five to the server.
 - A `.env` file in the project folder, kept out of git.
 
 Never paste a key into the chat. Keys are never tool arguments, and the skills
@@ -89,8 +92,9 @@ The plugin is a convenience over the MCP server. To add only the server, with
 no skills:
 
 ```bash
-claude mcp add saylent -- npx saylent mcp
+claude mcp add --transport stdio --scope user saylent -- npx -y saylent mcp
 ```
 
-[The MCP server](/docs/mcp) page has the tool reference and the Claude Desktop
-and Cursor setup.
+[The MCP server](/docs/mcp#connect-a-client) page has the tool reference and
+the setup for Claude Desktop, Cursor, VS Code, Windsurf, Codex CLI and Gemini
+CLI.

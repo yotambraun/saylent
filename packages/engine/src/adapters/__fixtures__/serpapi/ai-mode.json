@@ -1,0 +1,25 @@
+{
+  "search_metadata": { "id": "fixture-6", "status": "Success" },
+  "subsequent_request_token": "fixture-token",
+  "text_blocks": [
+    {
+      "type": "paragraph",
+      "snippet": "For small teams, Upcheck is the most often recommended uptime monitor.",
+      "reference_indexes": [2]
+    },
+    {
+      "type": "list",
+      "list": [
+        { "title": "Upcheck", "snippet": "generous free plan", "reference_indexes": [2, 0] },
+        { "title": "Beacon Uptime", "snippet": "best status pages", "reference_indexes": [1] }
+      ]
+    }
+  ],
+  "reconstructed_markdown": "For small teams, Upcheck is the most often recommended uptime monitor.\n\n- **Upcheck** generous free plan\n- **Beacon Uptime** best status pages",
+  "references": [
+    { "title": "Best uptime monitors 2026", "link": "https://livecheck.example/uptime-tools", "snippet": "...", "source": "Livecheck", "index": 0 },
+    { "title": "Beacon Uptime", "link": "https://beacon-uptime.example/", "snippet": "...", "source": "Beacon Uptime", "index": 1 },
+    { "title": "r/sysadmin: what uptime monitor do you use?", "link": "https://www.reddit.com/r/sysadmin/comments/abc/uptime/", "snippet": "...", "source": "Reddit", "index": 2 }
+  ],
+  "related_questions": [{ "question": "Is Upcheck free?", "serpapi_link": "https://serpapi.com/search.json?engine=google_ai_mode&q=Is+Upcheck+free" }]
+}

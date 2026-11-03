@@ -22,11 +22,16 @@ const DOCS_URL = "https://yotambraun.github.io/saylent/";
 /** Every command name, in the order --help lists them. Also the vocabulary the
  *  "did you mean" suggestion is measured against. */
 export const COMMANDS = [
+  "demo",
   "audit",
   "verify",
   "gate-check",
   "report",
   "history",
+  "sources",
+  "crawlers",
+  "export",
+  "fixes",
   "keys",
   "questions",
   "models",
@@ -34,7 +39,7 @@ export const COMMANDS = [
 ] as const;
 
 /** `check` is a documented alias for gate-check; it is suggestible but is not
- *  listed as a tenth command. */
+ *  listed as a command of its own. */
 const ALIASES = ["check"];
 
 function help(): string {
@@ -44,20 +49,26 @@ function help(): string {
   // you can paste.
   return `${cliDescription()}
 
-  npx saylent audit example.com
+  npx saylent demo                          see a full sample report, no key needed
+  npx saylent audit <your-domain> --dry-run price a real audit before any call
 
 saylent <command> [options]
 
 Commands:
+  demo                 Render the bundled sample report offline (no key, $0)
   audit <domain>       Run a full AI-answer audit and write a report
   verify <run.json>    Re-run the frozen questions and show movement
   gate-check <domain>  Check what AI bots can read on a site (alias: check)
   report <run.json>    Re-render report.html / report.md from a run
   history <dir>        List past runs in a brand's output directory
+  sources <run.json>   Citation share, share of voice, off-site opportunities ($0)
+  crawlers <logs>      Which AI crawlers visit your site, from your access logs ($0)
+  export <run.json>    Answers, citations, sources, share of voice as CSV/JSON ($0)
+  fixes <run.json>     List the drafted fixes; "fixes apply" writes them to a repo
   keys                 Manage provider API keys
   questions <domain>   Print + save the buyer questions an audit would ask
   models               Print the resolved model registry and its source
-  mcp                  Serve audit/verify/gate_check/read_report over MCP (stdio)
+  mcp                  Serve the ten saylent tools over MCP (saylent mcp --help)
 
 Run "saylent <command> --help" for command-specific options.
 
@@ -124,6 +135,8 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
   }
 
   switch (cmd) {
+    case "demo":
+      return (await import("./commands/demo")).run(rest);
     case "audit":
       return (await import("./commands/audit")).run(rest);
     case "verify":
@@ -135,6 +148,14 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
       return (await import("./commands/report")).run(rest);
     case "history":
       return (await import("./commands/history")).run(rest);
+    case "sources":
+      return (await import("./commands/sources")).run(rest);
+    case "crawlers":
+      return (await import("./commands/crawlers")).run(rest);
+    case "export":
+      return (await import("./commands/export")).run(rest);
+    case "fixes":
+      return (await import("./commands/fixes")).run(rest);
     case "keys":
       return (await import("./commands/keys")).run(rest);
     case "questions":

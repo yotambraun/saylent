@@ -8,8 +8,9 @@ import { notFound } from "next/navigation";
 import { Dossier } from "@saylent/report/components/dossier";
 import type { RunRow } from "@saylent/report/components/run-view";
 import { requireAdmin } from "@/lib/admin-auth";
-import { fetchDossierViaRpc } from "@/lib/dossier-data";
+import { fetchDossierViaRpc, fetchSourceOverrides } from "@/lib/dossier-data";
 import { MODELS } from "@saylent/engine/models";
+import { SURFACE_IDS, surfaceSourceId } from "@saylent/engine/surfaces";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const metadata = { title: "View-as (read-only) · Operator console · Saylent" };
@@ -20,6 +21,8 @@ const ENGINE_MODELS: Record<string, string> = {
   claude: MODELS.claudeAnswer,
   gemini: MODELS.geminiAnswer,
   perplexity: MODELS.perplexityAnswer,
+  // answer surfaces carry a provenance id, not a model ("serpapi:google_ai_mode")
+  ...Object.fromEntries(SURFACE_IDS.map((s) => [s, surfaceSourceId(s)])),
 };
 
 export default async function ViewAsPage({ params }: { params: Promise<{ runId: string }> }) {
@@ -47,6 +50,8 @@ export default async function ViewAsPage({ params }: { params: Promise<{ runId: 
     if (owner?.email) ownerEmail = owner.email;
   }
 
+  const sourceOverrides = await fetchSourceOverrides(admin, (d.run as { brand_id?: string }).brand_id);
+
   return (
     <div className="min-h-screen bg-paper">
       <div className="sticky top-0 z-20 border-b border-pill-dismissed/50 bg-pill-dismissed/10 px-4 py-2 text-center font-mono text-xs text-pill-dismissed">
@@ -68,6 +73,7 @@ export default async function ViewAsPage({ params }: { params: Promise<{ runId: 
           fixes={d.fixes as never}
           modelsUsed={MODELS_USED}
           engineModels={ENGINE_MODELS}
+          sourceOverrides={sourceOverrides}
           demo
         />
       </main>

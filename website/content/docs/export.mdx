@@ -1,0 +1,307 @@
+---
+title: Export and API
+description: Take your data out. Answers, citations, the engines' own searches, sources, off-site opportunities, share of voice, fixes and AI crawler counts as CSV or JSON, from the CLI, the MCP server, the app, or a read-only API.
+---
+
+Your runs are yours. Every surface exports the same tables, built by one
+function from the run bundle, so a column means the same thing wherever you
+download it:
+
+| Where | How |
+|---|---|
+| CLI | `npx saylent export <run.json>`: one CSV per table, or `--format json` |
+| MCP | the `export` tool (inline rows or files), see [the MCP server](/docs/mcp) |
+| App | **Export** on a run's report, and **Export history** on a brand's page |
+| API | `GET /api/v1/...` with a personal API token, [below](#read-only-api) |
+
+Everything is a count read from the runs or the crawler report. Nothing is
+estimated, scored or modelled on the way out.
+
+## From the CLI
+
+```bash
+npx saylent export ./acme.com/2026-11-02/run.json            # ./saylent-export/<table>.csv
+npx saylent export ./acme.com --format json --out ./exports  # every dated run, one export.json
+npx saylent export run.json --table opportunities --stdout   # one table to stdout
+npx saylent crawlers access.log --out ./crawlers
+npx saylent export run.json --crawlers ./crawlers/crawlers.json
+```
+
+A folder is read as one run when it holds a `run.json`, or as a brand's
+history when it holds `<YYYY-MM-DD>/run.json` folders (the layout `saylent
+audit` writes). Several runs export as one set of tables, with `run_id` and
+`run_date` on every row. It costs $0 and reads files only.
+
+| Flag | What it does |
+|---|---|
+| `--format <csv\|json>` | `csv` (default) writes one `<table>.csv` per table; `json` writes `export.json` |
+| `--out <dir>` | Where to write. Default `./saylent-export` |
+| `--table <name>` | Only this table |
+| `--crawlers <file>` | Add a `crawlers.json` from `saylent crawlers --out` |
+| `--stdout` | Print instead of writing. CSV needs `--table` |
+
+CSV follows RFC 4180 (CRLF line ends, quoted fields). A list cell, such as
+`citation_urls`, is joined with ` | `; in JSON it stays an array. An empty CSV
+cell is a null: not recorded, or not applicable.
+
+## The tables (`saylent.export/v1`)
+
+The format is versioned. A column added at the end of a table, or a table
+added at the end of the list, keeps the version; a renamed, removed or
+reordered column or table bumps it, and the JSON carries `export_format` and
+`schema_version` so a script can check.
+
+**Added within v1:**
+
+| Since | Change |
+|---|---|
+| 0.2.0 | `answers.search_queries` (the last column) and the [`search_queries`](#search_queries) table: the web searches each engine reported running |
+| 0.2.0 | The [`ai_referrals`](#ai_referrals) table: visits AI assistants sent, from a `crawlers.json` made by 0.2.0 or later |
+
+### `runs`
+
+One row per run.
+
+| Column | Meaning |
+|---|---|
+| `run_id` | The run's id |
+| `run_date` | When it finished (ISO 8601) |
+| `kind` | `audit` or `verify` |
+| `profile` | `smoke` or `full` |
+| `brand` | The brand name |
+| `domain` | The brand's domain |
+| `engines` | The engines and answer surfaces asked |
+| `models` | `role=model` per role the run recorded |
+| `judge_mode` | `cross-family` or `single-family` |
+| `questions` | Questions in the frozen set |
+| `answers` | Answer rows, every engine and question |
+| `scored_answers` | Answers that were judged and counted |
+| `recommended` | Scored answers that recommended the brand |
+| `mentioned` | Scored answers that mentioned it |
+| `est_cost_usd` | The run's recorded cost |
+| `baseline_run_id` | For a verify, the run it re-asked |
+
+### `answers`
+
+One row per question and engine.
+
+| Column | Meaning |
+|---|---|
+| `run_id`, `run_date` | The run |
+| `qid` | The question's id, the handle every receipt uses |
+| `qtype` | The question's type (category, comparison, branded, ...) |
+| `question` | The question as asked |
+| `engine` | Engine or surface id, such as `chatgpt` or `google_ai_overview` |
+| `engine_label` | Its display name |
+| `status` | `ok`, `not_shown` (a surface showed no AI answer) or `failed` |
+| `brand_present` | Whether the answer names the brand |
+| `mention_type` | `recommended`, `listed`, `compared`, `neutral`, `dismissed` or `absent` |
+| `prominence` | `first`, `early`, `buried` or `none` |
+| `sentiment` | `positive`, `neutral` or `negative` |
+| `rivals_named` | Rivals the answer named |
+| `citations` | How many pages it cited |
+| `citation_urls` | The cited URLs, in answer order |
+| `samples` | Draws recorded for this answer |
+| `excerpt` | The judge's quoted excerpt |
+| `answer_text` | The full answer text, verbatim |
+| `search_queries` | The web searches the engine ran for this answer, in order (the same draw as `answer_text`). An empty list: the engine reports its searches and ran none. Null (an empty CSV cell): the engine does not report them, or the run predates 0.2.0 |
+
+### `citations`
+
+One row per cited URL.
+
+| Column | Meaning |
+|---|---|
+| `run_id`, `run_date` | The run |
+| `qid`, `engine` | The answer that cited it |
+| `position` | Its position in the answer's citations, from 0 |
+| `url` | The URL as cited |
+| `host` | The source domain (archive and redirect wrappers unwrapped) |
+| `page_title` | The page's title, when the run read it |
+| `page_type` | The page's type, when read (listicle, review, docs, ...) |
+| `brand_on_page` | Whether the brand is on the page; empty when not read |
+| `rivals_on_page` | Rivals found on the page |
+
+### `sources`
+
+One row per cited domain, most cited first. The same numbers as
+[Sources & opportunities](/docs/sources).
+
+| Column | Meaning |
+|---|---|
+| `run_id`, `run_date` | The run |
+| `host` | The domain |
+| `type` | Its type, such as `review_site` or `editorial` |
+| `type_rule` | The rule that set the type |
+| `citations` | Citation rows for it |
+| `share` | Its share of every citation in the run, 0 to 1 |
+| `answers` | Distinct answers citing it |
+| `brand_named_answers` | Of those, answers that name the brand |
+| `rival_won_answers` | Of those, answers that name a rival and not the brand |
+| `engines` | Engines that cited it |
+
+### `opportunities`
+
+One row per off-site opportunity: a domain cited in answers that name a rival
+and not you, where you were not found on any page read.
+
+| Column | Meaning |
+|---|---|
+| `run_id`, `run_date` | The run |
+| `rank` | Its rank, 1 first |
+| `host`, `type` | The domain and its type |
+| `evidence` | Rival-won, non-branded answers citing it |
+| `engines` | Engines behind those answers |
+| `rivals` | Rivals those answers named, most often first |
+| `page_check` | `rivals_on_page`, `brand_missing` or `unread` |
+| `brand_named_answers` | Answers citing it that do name the brand (context) |
+| `top_page_url` | The most cited page on it, the one to pitch first |
+| `why` | The one-line reason, as the report prints it |
+| `receipts` | The answers behind it, as `qid:engine` |
+
+### `share_of_voice`
+
+Who the answers name. One row per name with `scope` `all`, then one per engine
+that named it. It counts answers, not market share.
+
+| Column | Meaning |
+|---|---|
+| `run_id`, `run_date` | The run |
+| `name` | The brand or rival |
+| `is_brand` | `true` for your brand |
+| `scope` | `all`, or an engine id |
+| `named` | Answers naming it in that scope |
+| `recommended` | Answers recommending it (your brand, scope `all` only) |
+| `receipts` | The answers, as `qid:engine` |
+
+### `fixes`
+
+One row per drafted fix, in the report's order. The drafted text itself is in
+the run bundle and in `saylent fixes <run.json> --fix <key>`.
+
+| Column | Meaning |
+|---|---|
+| `run_id`, `run_date` | The run |
+| `rank` | Its rank, 1 first |
+| `fix_key` | Its id, used by `saylent fixes apply --only` |
+| `title` | The fix |
+| `factor` | The diagnosis rule that raised it |
+| `weight` | Its evidence weight |
+| `effort` | `S`, `M` or `L` |
+| `engines` | Engines it concerns |
+| `evidence` | The evidence lines the diagnosis recorded |
+| `has_artifact` | Whether a paste-ready draft exists |
+
+### `crawlers`
+
+One row per bot, from a `crawlers.json` passed with `--crawlers`. Empty
+otherwise. The same numbers as [AI crawlers](/docs/crawlers).
+
+| Column | Meaning |
+|---|---|
+| `window_from`, `window_to` | The log window |
+| `bot_id`, `bot` | The bot's id and name |
+| `operator` | Who runs it |
+| `purpose` | `training`, `search`, `user` or another purpose |
+| `ai` | Whether it is an AI crawler |
+| `requests` | Requests in the window |
+| `pages` | Distinct pages fetched |
+| `blocked` | 401, 403, 429 and firewall blocks |
+| `server_errors` | 5xx responses |
+| `not_found` | 404 and 410 responses |
+| `verified`, `unverified` | IP-verified requests; empty without `--verify-ips` |
+| `first_seen`, `last_seen` | First and last request |
+
+### `search_queries`
+
+Query fan-out: one row per web search an engine ran before answering, per
+draw, verbatim from the provider's response. Only ChatGPT, Claude and Gemini
+report theirs; Perplexity's API and the SerpApi surfaces do not, so they add
+no rows. Runs recorded before 0.2.0 add none either. Reading these fields
+costs nothing extra: they are in the responses a run already pays for.
+
+| Column | Meaning |
+|---|---|
+| `run_id`, `run_date` | The run |
+| `qid` | The question |
+| `engine` | `chatgpt`, `claude` or `gemini` |
+| `sample` | The draw, 0 first; a question asked once is draw 0 |
+| `position` | The search's place in that draw, 1 first |
+| `query` | The query text, as the engine sent it |
+
+### `ai_referrals`
+
+Visits from people that AI assistants sent, from the same `crawlers.json` as
+`crawlers` (empty without one, and for a file made before 0.2.0). One row per
+assistant, from the list on [AI crawlers](/docs/crawlers#visits-from-ai-assistants).
+A floor, not a total: a visit with no Referer and no `utm_source` looks like
+direct traffic.
+
+| Column | Meaning |
+|---|---|
+| `window_from`, `window_to` | The log window |
+| `assistant_id`, `assistant` | The assistant's id and name, such as `chatgpt` and ChatGPT |
+| `operator` | Who runs it |
+| `visits` | Requests from a browser (no known bot user agent) that it sent |
+| `via_referrer` | Of those, matched by the Referer header's host |
+| `via_utm_source` | Matched by `utm_source` instead (no matching Referer) |
+| `top_pages` | Landing pages with their visits, most first (up to 10) |
+| `first_seen`, `last_seen` | First and last visit |
+
+## In the app
+
+A finished run's report has an **Export** menu: each table as CSV, everything
+as JSON, and the lossless run bundle (`run.json`) that `saylent report`,
+`saylent verify` and `saylent export` read. A brand's page has **Export
+history**: the same tables across its last 24 finished runs, plus `crawlers`
+and `ai_referrals` from its newest uploaded log. Every download
+runs as you, so you only ever get your own runs.
+
+## Read-only API
+
+The self-hosted app serves the same data over HTTP for your own scripts,
+dashboards and agents. It is read-only: nothing it does can start a run,
+spend credits or change a row.
+
+### Tokens
+
+Create a token under **Settings › API tokens**. It is shown once; Saylent
+keeps only its SHA-256 hash. A token reads exactly what its owner can read in
+the app, and revoking it takes effect on the next request. Requires migration
+`0048_api_tokens.sql`.
+
+```bash
+export SAYLENT_TOKEN=slt_...
+curl -H "Authorization: Bearer $SAYLENT_TOKEN" https://your-app.example/api/v1/brands
+```
+
+A signed-in browser session works too, so a link opened in the app downloads
+directly.
+
+### Endpoints
+
+| Method and path | Returns |
+|---|---|
+| `GET /api/v1/brands` | Your brands: `id`, `name`, `domain`, `created_at` |
+| `GET /api/v1/brands/{id}/runs` | The brand's finished runs, newest first, with their counts |
+| `GET /api/v1/runs/{id}` | One run as the `saylent.export/v1` document |
+| `GET /api/v1/runs/{id}?format=csv&table=answers` | One table of one run as CSV |
+| `GET /api/v1/runs/{id}?format=bundle` | The lossless run bundle (`run.json`) |
+| `GET /api/v1/brands/{id}/export` | The brand's last 24 finished runs as one export (`format=csv&table=` too) |
+| `GET /api/v1/openapi.json` | This API as an OpenAPI 3.1 document (no token needed) |
+
+The same OpenAPI document is published with these docs:
+[saylent-api-v1.json](https://yotambraun.github.io/saylent/openapi/saylent-api-v1.json),
+ready for an API client or an agent that reads OpenAPI.
+
+`/api/v1/runs/{id}` also takes `table=` with JSON, to return one table.
+
+### Limits and errors
+
+Each token owner gets 60 requests a minute, counted across tokens; the 61st
+gets `429` with a `Retry-After` header. Errors are JSON, `{"error": "..."}`:
+`401` for a missing, unknown or revoked token, `404` for a run or brand that
+is not yours or does not exist (the two look the same on purpose), `409` for a
+run that has not finished, `400` for an unknown `format` or `table`, and `503`
+when the deployment cannot check tokens (for example, no service-role key).
+Responses carry `Cache-Control: no-store`.

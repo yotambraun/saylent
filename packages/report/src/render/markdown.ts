@@ -11,18 +11,19 @@ import { buildBrief, type BriefBlock, type BriefScores } from "../brief";
 import { hostOf } from "../source-map";
 import { previewText, sliceCodePoints } from "../strip-md";
 import { runTotals, totalsLine, failuresLine } from "../totals";
+import { receiptLabel, sharePct, sourcesFor, sourcesLede, typeLabel } from "../sources-view";
+import { searchQueriesView } from "../search-queries-view";
+import { isNotShownRow } from "@saylent/engine/surfaces";
 import { gateTally, robotsVsLiveNote, type GateCheck } from "../gates-lede";
 import { artifactToMarkdown } from "../artifact";
 import { DOCS_URL, REPO_URL, RUN_COMMAND, PROJECT_TAGLINE } from "../components/report-outro";
 import type { ReportData } from "./types";
 import { formatDayUtc } from "../utils";
+import { ENGINE_IDS, SURFACES } from "@saylent/engine/surfaces";
 
-const ENGINE_LABEL: Record<string, string> = {
-  chatgpt: "ChatGPT",
-  claude: "Claude",
-  gemini: "Gemini",
-  perplexity: "Perplexity",
-};
+const ENGINE_LABEL: Record<string, string> = Object.fromEntries(
+  ENGINE_IDS.map((e) => [e, SURFACES[e].label]),
+);
 
 const engineName = (e: string) => ENGINE_LABEL[e] ?? e;
 
@@ -175,6 +176,7 @@ export function renderMarkdown(data: ReportData, opts: RenderMarkdownOptions = {
     kind: runRow.kind,
     runDate: day(runRow.finished_at ?? runRow.created_at ?? null),
     previous: null,
+    sourceOverrides: data.sourceOverrides ?? null,
   });
 
   const measuredOn = day(runRow.finished_at ?? runRow.created_at ?? null);
@@ -266,13 +268,40 @@ export function renderMarkdown(data: ReportData, opts: RenderMarkdownOptions = {
           .map((a) => [
             engineName(a.engine),
             day(a.created_at ?? runRow.finished_at ?? null),
-            a.ok === false ? "no answer" : a.verdict?.brand_present ? "yes" : "no",
-            a.ok === false ? "the call returned nothing" : (a.verdict?.mention_type ?? ""),
+            a.ok === false
+              ? isNotShownRow(a as { ok: boolean; error?: string | null })
+                ? "not shown"
+                : "no answer"
+              : a.verdict?.brand_present
+                ? "yes"
+                : "no",
+            a.ok === false
+              ? isNotShownRow(a as { ok: boolean; error?: string | null })
+                ? "the surface showed no AI answer for this question"
+                : "the call returned nothing"
+              : (a.verdict?.mention_type ?? ""),
             sliceCodePoints(previewText(a.verdict?.excerpt || a.raw_text || "", { tail: true }), 320),
           ]),
       ),
     );
+    // query fan-out: the searches each engine reported running for this question
+    const searched = rows
+      .slice()
+      .sort((a, b) => a.engine.localeCompare(b.engine))
+      .map((a) => ({ engine: a.engine, queries: searchQueriesView(a).queries }))
+      .filter((x) => x.queries.length > 0);
+    if (searched.length > 0) {
+      out.push("");
+      out.push("Searches the engines ran:");
+      out.push("");
+      for (const x of searched) {
+        out.push(`- ${engineName(x.engine)}: ${x.queries.map((q) => `\`${q.replace(/`/g, "'")}\``).join(", ")}`);
+      }
+    }
   }
+
+  /* ---------------- sources & opportunities ---------------- */
+  out.push(...sourcesMarkdown(data));
 
   /* ---------------- cited pages ---------------- */
   // corpus_pages stores citations as engine -> count; the battlefield row's
@@ -403,4 +432,88 @@ export function renderMarkdown(data: ReportData, opts: RenderMarkdownOptions = {
   out.push("");
 
   return out.join("\n");
+}
+
+/** "## Sources & opportunities" — the same computation the dossier section
+ *  renders (sources-view.ts → @saylent/engine/sources), as plain tables. */
+function sourcesMarkdown(data: ReportData): string[] {
+  const intel = sourcesFor({
+    brand: data.brand,
+    answers: data.answers,
+    corpus: data.corpus,
+    overrides: data.sourceOverrides ?? null,
+  });
+  const out: string[] = ["", "## Sources & opportunities", ""];
+  const lede = sourcesLede(intel);
+  if (!lede) {
+    out.push("The answers on this run cited no pages, so there is nothing to trace yet.");
+    return out;
+  }
+  out.push(lede);
+  out.push("");
+  out.push("### Off-site opportunities");
+  out.push("");
+  out.push(
+    "Domains the answers cite when they name a rival and not you (non-branded questions only), where we did not find you on any page we read. Ranked by how many of those answers cite them.",
+  );
+  out.push("");
+  if (intel.opportunities.length === 0) {
+    out.push(
+      intel.totals.rivalWonAnswers === 0
+        ? "No answer named a rival while leaving you out, so there is no off-site gap on this run."
+        : "Every domain cited in the answers that skip you is your own site, a rival's, or a page you already appear on.",
+    );
+  } else {
+    intel.opportunities.forEach((o, i) => {
+      const top = o.topPage ? ` Top page: ${o.topPage.title ? `${previewText(o.topPage.title)} ` : ""}<${o.topPage.url}>.` : "";
+      const receipts = o.receipts.map((r) => receiptLabel(r)).join(", ");
+      out.push(
+        `${i + 1}. **${o.host}** (${typeLabel(o.type)}: ${o.typeRule}). ${o.why}${top} Receipts: ${receipts}.`,
+      );
+    });
+  }
+  const engines = intel.engines.map((e) => e.engine);
+  out.push("");
+  out.push("### Citation share by domain");
+  out.push("");
+  out.push(
+    ...table(
+      ["Domain", "Type", "Citations", "Share", "Skip you", "Name you", ...engines.map(engineName)],
+      intel.domains.slice(0, 15).map((d) => [
+        d.host,
+        typeLabel(d.type),
+        String(d.citations),
+        sharePct(d.share),
+        String(d.rivalWonAnswers),
+        String(d.brandNamedAnswers),
+        ...engines.map((e) => String(d.byEngine[e] ?? 0)),
+      ]),
+    ),
+  );
+  if (intel.domains.length > 15) {
+    out.push("");
+    out.push(`${intel.domains.length - 15} more domains are cited; run.json carries all of them under \`sources\`.`);
+  }
+  out.push("");
+  out.push("### Who the answers name, by engine");
+  out.push("");
+  out.push(
+    ...table(
+      ["Brand", "Named in", "Recommended", ...engines.map(engineName)],
+      intel.voice
+        .filter((v) => v.named > 0 || v.isBrand)
+        .slice(0, 10)
+        .map((v) => [
+          v.isBrand ? `**${v.name}** (you)` : v.name,
+          String(v.named),
+          v.recommended === null ? "" : String(v.recommended),
+          ...engines.map((e) => String(v.byEngine[e] ?? 0)),
+        ]),
+    ),
+  );
+  out.push("");
+  out.push(
+    "Counted once per question and engine, over the answer this report shows. A domain's type comes from a short public rule list (the rule is named next to each opportunity); override it with `sources.domainTypes` in saylent.config.",
+  );
+  return out;
 }

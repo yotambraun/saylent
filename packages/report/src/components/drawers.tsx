@@ -18,6 +18,8 @@ import { answerCents, formatCents, hasRecordedUsage } from "@saylent/engine/answ
 import { pageOwner, type RivalOwnerFn } from "../report-intel";
 import { trimEdgeFragments } from "../strip-md";
 import { formatDayUtc } from "../utils";
+import { ENGINE_IDS, SURFACES } from "@saylent/engine/surfaces";
+import { searchQueriesView } from "../search-queries-view";
 
 /* ---------- row types (DB snake_case, RLS-fetched) ---------- */
 export interface AnswerRow {
@@ -45,6 +47,9 @@ export interface AnswerRow {
   // exact provider usage (answers.usage jsonb, migration 0011) — flows here via
   // get_dossier's to_jsonb(a); null on pre-0011 runs. Powers the drawer resources line.
   usage?: { input_tokens?: number; output_tokens?: number; searches?: number } | null;
+  // the web searches the engine ran (answers.search_queries, migration 0049);
+  // null when the engine does not report them or the run predates 0.2.0
+  search_queries?: string[] | null;
 }
 export interface CorpusRow {
   id: string;
@@ -62,12 +67,9 @@ export interface CorpusRow {
   thin?: boolean;
 }
 
-export const ENGINE_LABEL: Record<string, string> = {
-  chatgpt: "ChatGPT",
-  claude: "Claude",
-  gemini: "Gemini",
-  perplexity: "Perplexity",
-};
+export const ENGINE_LABEL: Record<string, string> = Object.fromEntries(
+  ENGINE_IDS.map((e) => [e, SURFACES[e].label]),
+);
 
 export const hostOf = (u: string | null) => {
   if (!u) return "";
@@ -310,6 +312,7 @@ export function AnswerDrawer({
                   </ul>
                 )}
               </div>
+              <AnswerSearches answer={answer} />
               {/* RESOURCES — per-answer cost explorer (answers.usage, migration
                   0011). Honest: measured tokens/searches + the est cost computed
                   with the SAME pricing the engine bills the run with
@@ -321,6 +324,30 @@ export function AnswerDrawer({
         )}
       </SheetContent>
     </Sheet>
+  );
+}
+
+/** Query fan-out as a receipt: the web searches the engine ran before this
+ *  answer, verbatim and in order, or one sentence on why there are none. */
+function AnswerSearches({ answer }: { answer: AnswerRow }) {
+  const view = searchQueriesView(answer);
+  return (
+    <div>
+      <h4 className="mb-1 font-mono text-xs uppercase text-wire tabular-nums">
+        Searches it ran{view.queries.length > 0 ? ` (${view.queries.length})` : ""}
+      </h4>
+      {view.queries.length > 0 ? (
+        <ol className="list-decimal pl-5 text-sm">
+          {view.queries.map((q, i) => (
+            <li key={i} className="break-words font-mono text-xs leading-6">
+              {q}
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <p className="text-sm text-wire">{view.note}</p>
+      )}
+    </div>
   );
 }
 

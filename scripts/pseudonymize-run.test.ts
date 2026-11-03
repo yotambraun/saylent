@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 import type { RunBundleV1 } from "@saylent/engine/bundle";
 import {
   auditOutputHosts,
+  isFileNameHost,
   isInfrastructureHost,
   buildHostPolicy,
   collectHosts,
@@ -273,6 +274,10 @@ describe("infrastructure keep-list", () => {
     expect(auditOutputHosts(out)).toEqual([]);
     expect(isInfrastructureHost("developers.cloudflare.com")).toBe(true);
     expect(isInfrastructureHost("cloudflare.com.evil.example")).toBe(false);
+    // a drafted "https:///robots.txt" parses with host "robots.txt": a file, not a site
+    expect(isFileNameHost("robots.txt")).toBe(true);
+    expect(isFileNameHost("sitemap.xml")).toBe(true);
+    expect(isFileNameHost("robots.example")).toBe(false);
   });
 });
 

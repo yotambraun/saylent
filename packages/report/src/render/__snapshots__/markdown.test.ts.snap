@@ -90,6 +90,20 @@ Where each engine drew its answers from, most-cited hosts first:
 
 82% of the pages behind these answers are best-of listicles. You appear on 0 of the 9 we could verify.
 
+### Which sites should I get onto?
+
+12 sites are cited in answers that skip you; amberharbour.example leads.
+
+12 domains are cited in answers that name a rival and not you (11 such answers). Getting onto these pages is the off-site move:
+
+| Measure | Value |
+| --- | --- |
+| amberharbour.example | 4 answers that skip you · names Upcheck, Beacon Uptime |
+| amberhollow.example | 3 answers that skip you · names Beacon Uptime, Upcheck |
+| brighthollow.example | 3 answers that skip you · names Beacon Uptime, Upcheck |
+
++9 more in Sources & opportunities, each with its receipts.
+
 ### What should I fix first, and what will it move?
 
 Your top 3 moves, ranked by the evidence behind each.
@@ -248,8 +262,8 @@ This is one run, a labelled snapshot, not a trend. Movement is only ever measure
 
 | Measure | Value |
 | --- | --- |
-| Sampled | every scored question re-asked; the number held |
-| Stable at | 0 of 9 |
+| Sampled | one answer per question and engine, asked once |
+| Counted at | 0 of 9 |
 | Calls made | 24 |
 | Calls that returned nothing | 6 of 24 |
 | Scored answers | 9 |
@@ -317,6 +331,66 @@ How to read the verdicts: **absent** = not in the answer at all · **mentioned /
 | Claude | 09 Sept 2026 | yes | recommended | It looks like "Kestrel Uptime" doesn't appear to be a specific standalone product or service. However, based on the search results, "uptime" is a concept associated with a couple of… |
 | Gemini | 09 Sept 2026 | yes | absent | "Kestrel Uptime" is likely a reference to one of a few common software, developer, or hardware technologies, as there isn't a single standalone software product by that… |
 | Perplexity | 09 Sept 2026 | no answer | the call returned nothing |  |
+
+## Sources & opportunities
+
+112 citations to 60 domains across 15 of the 18 answers. The most-cited domain type is rival's site: 46 of them (41%).
+
+### Off-site opportunities
+
+Domains the answers cite when they name a rival and not you (non-branded questions only), where we did not find you on any page we read. Ranked by how many of those answers cite them.
+
+1. **amberharbour.example** (Blog / editorial: 4 of 4 citations point to best-of listicles). Cited in 4 answers that name Upcheck, Beacon Uptime and 8 others and not you, across 3 engines and 2 questions. We read 1 page on it and you are not there. Top page: 10 Best Uptime Monitoring Tools 2026 (Free & Paid) | Amberharbour <https://amberharbour.example/en/blog/best-uptime-monitoring-tools/>. Receipts: q01 · Claude, q02 · Claude, q02 · Gemini, q01 · Perplexity.
+2. **amberhollow.example** (Blog / editorial: 4 of 4 citations point to best-of listicles). Cited in 3 answers that name Beacon Uptime, Upcheck and 6 others and not you, across 3 engines and 2 questions. We read 1 page on it and you are not there. Top page: Best Free Uptime Tools 2026: Limits | Amberhollow <https://amberhollow.example/blog/best-free-uptime-monitoring-tools-2026>. Receipts: q02 · Claude, q02 · Gemini, q01 · Perplexity.
+3. **brighthollow.example** (Blog / editorial: 3 of 3 citations point to best-of listicles). Cited in 3 answers that name Beacon Uptime, Upcheck and 6 others and not you, across 3 engines and 2 questions. We read 1 page on it and you are not there. Top page: The 11 Best Website Uptime Monitoring Tools Compared (2026) <https://brighthollow.example/blog/top-website-uptime-monitoring-tools>. Receipts: q02 · Claude, q02 · Gemini, q01 · Perplexity.
+4. **medium.com** (Blog / editorial: 3 of 3 citations point to best-of listicles). Cited in 3 answers that name Upcheck, Beacon Uptime and 11 others and not you, across 1 engine and 3 questions. We read 1 page on it and you are not there. Top page: Medium <https://medium.com/author-profile>. Receipts: q01 · Claude, q14 · Claude, q02 · Claude.
+5. **umberhollow.example** (Blog / editorial: 3 of 3 citations point to best-of listicles). Cited in 2 answers that name Beacon Uptime, Statusly and 6 others and not you, across 2 engines and 2 questions. We read 1 page on it and you are not there. Top page: The 7 Best Uptime Monitoring Tools in 2026: I Tested Each | Umberhollow <https://umberhollow.example/blog/best-uptime-monitoring-tools/>. Receipts: q02 · Claude, q09 · Gemini.
+6. **meadowgate.example** (Blog / editorial: 2 of 2 citations point to best-of listicles). Cited in 2 answers that name Beacon Uptime, Boardline and 4 others and not you, across 2 engines and 2 questions. Top page: 9 Best Project Management Software (2026): Ranked & Reviewed | Meadowgate App <https://meadowgate.example/best/project-management>. Receipts: q10 · Claude, q01 · Perplexity.
+7. **image-ppubs.rivervale.example** (Other: no rule matched). Cited in 1 answer that names Cloudmere, Fluxpay and 2 others and not you, across 1 engine and 1 question. Top page: Monitoring voltage levels on power lines and recloser operation <https://image-ppubs.rivervale.example/dirsearch-public/print/downloadPdf/10128664>. Receipts: q14 · Claude.
+8. **violetgate.example** (Blog / editorial: 2 of 2 citations point to best-of listicles). Cited in 1 answer that names Beacon Uptime, Nimbus Observe Synthetic Monitoring and 3 others and not you, across 1 engine and 1 question. Top page: The Best Uptime Monitoring Tools For 2026 | Violetgate <https://www.violetgate.example/software/best-uptime-monitoring-tools>. Receipts: q02 · Claude.
+9. **amberlanding.example** (Other: no rule matched). Cited in 1 answer that names Beacon Uptime, Fastbeacon and 2 others and not you, across 1 engine and 1 question. Top page: <https://amberlanding.example/blog/uptime-monitoring-tools>. Receipts: q01 · Perplexity.
+10. **amberpoint.example** (Blog / editorial: 1 of 1 citations point to best-of listicles). Cited in 1 answer that names Boardline and Trackflow and not you, across 1 engine and 1 question. Top page: Best project management tools and software: My 21 top picks for 2026 <https://www.amberpoint.example/project-management-guide/faq/what-are-project-management-tools/>. Receipts: q10 · Claude.
+11. **brightpoint.example** (Blog / editorial: 1 of 1 citations point to best-of listicles). Cited in 1 answer that names Beacon Uptime (Beacon Live), Hawkeye Monitor and 3 others and not you, across 1 engine and 1 question. Top page: Best Uptime Monitoring Tools for Small Teams in 2026 — Brightpoint <https://brightpoint.example/blog/best-uptime-monitoring-tools-for-small-teams/>. Receipts: q01 · Claude.
+12. **cobaltridge.example** (Blog / editorial: 1 of 1 citations point to best-of listicles). Cited in 1 answer that names Boardline and Trackflow and not you, across 1 engine and 1 question. Top page: Top 10 Cobaltridge Software I Tested & Recommend for 2026 <https://cobaltridge.example/top-10-project-management-software/>. Receipts: q10 · Claude.
+
+### Citation share by domain
+
+| Domain | Type | Citations | Share | Skip you | Name you | ChatGPT | Claude | Gemini | Perplexity |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| upcheck.example | Rival's site | 7 | 6% | 5 | 1 | 2 | 3 | 0 | 2 |
+| image-ppubs.rivervale.example | Other | 7 | 6% | 1 | 0 | 0 | 7 | 0 | 0 |
+| fastbeacon.example | Rival's site | 6 | 5% | 4 | 0 | 0 | 2 | 1 | 3 |
+| amberharbour.example | Blog / editorial | 4 | 4% | 4 | 0 | 0 | 2 | 1 | 1 |
+| livecheck.example | Rival's site | 4 | 4% | 4 | 0 | 0 | 2 | 1 | 1 |
+| amberhollow.example | Blog / editorial | 4 | 4% | 3 | 0 | 0 | 1 | 2 | 1 |
+| learn.quietlanding.example | Docs / help | 4 | 4% | 1 | 2 | 0 | 3 | 1 | 0 |
+| brighthollow.example | Blog / editorial | 3 | 3% | 3 | 0 | 0 | 1 | 1 | 1 |
+| medium.com | Blog / editorial | 3 | 3% | 3 | 0 | 0 | 3 | 0 | 0 |
+| meridian.example | Rival's site | 3 | 3% | 3 | 1 | 2 | 0 | 1 | 0 |
+| umberhollow.example | Blog / editorial | 3 | 3% | 3 | 2 | 0 | 1 | 2 | 0 |
+| en.wikipedia.org | Reference | 3 | 3% | 0 | 2 | 0 | 3 | 0 | 0 |
+| talonwing-instruments.example | Other | 3 | 3% | 1 | 2 | 0 | 2 | 1 | 0 |
+| beacon-uptime.example | Rival's site | 2 | 2% | 1 | 1 | 2 | 0 | 0 | 0 |
+| falconware.example | Rival's site | 2 | 2% | 2 | 2 | 0 | 0 | 2 | 0 |
+
+45 more domains are cited; run.json carries all of them under \`sources\`.
+
+### Who the answers name, by engine
+
+| Brand | Named in | Recommended | ChatGPT | Claude | Gemini | Perplexity |
+| --- | --- | --- | --- | --- | --- | --- |
+| Beacon Uptime | 9 |  | 3 | 3 | 2 | 1 |
+| Upcheck | 9 |  | 3 | 3 | 2 | 1 |
+| **Kestrel Uptime** (you) | 6 | 3 | 2 | 2 | 2 | 0 |
+| Pingwatch | 5 |  | 3 | 2 | 0 | 0 |
+| Hawkeye Monitor | 4 |  | 2 | 1 | 1 | 0 |
+| Statusly | 4 |  | 0 | 1 | 3 | 0 |
+| Boardline | 2 |  | 0 | 1 | 1 | 0 |
+| Cloudmere | 2 |  | 0 | 1 | 1 | 0 |
+| Escalytics | 2 |  | 1 | 0 | 1 | 0 |
+| Fastbeacon | 2 |  | 0 | 0 | 1 | 1 |
+
+Counted once per question and engine, over the answer this report shows. A domain's type comes from a short public rule list (the rule is named next to each opportunity); override it with \`sources.domainTypes\` in saylent.config.
 
 ## Cited pages
 

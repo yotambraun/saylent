@@ -10,8 +10,8 @@ own program.
 
 <Cards className="grid-cols-1">
   <Card title="The GitHub Action" href="/docs/action" description="Fail a deploy that blocks the AI crawlers. $0, no keys, no LLM call, and a badge committed into your repo." />
-  <Card title="The MCP server" href="/docs/mcp" description="Four tools on stdio, so Claude Code, Claude Desktop or Cursor can audit, verify, gate-check and read a report itself." />
-  <Card title="The Claude Code plugin" href="/docs/claude-code" description="Two commands to install: the MCP server plus four skills that check crawler access for free and show an audit's price before it spends." />
+  <Card title="The MCP server" href="/docs/mcp" description="Five tools on stdio, so Claude Code, Claude Desktop or Cursor can audit, verify, gate-check, read a report and query its sources itself." />
+  <Card title="The Claude Code plugin" href="/docs/claude-code" description="Two commands to install: the MCP server plus six skills that check crawler access and read your logs for free, show an audit's price before it spends, and walk the whole loop to fixes and a verify plan." />
   <Card title="Use it as a library" href="/docs/library" description="runAudit() from @saylent/engine and the renderers from @saylent/report - your own persistence, your own presentation." />
 </Cards>
 
@@ -21,7 +21,7 @@ own program.
 |---|---|---|
 | CI to fail when a search or user-fetch bot gets blocked | [the Action](/docs/action) | **$0** - it has no keys and calls no model |
 | Claude Code to run the checks for you, with a price shown before any spend | [the Claude Code plugin](/docs/claude-code) | **$0** for the crawler check and reading reports; your own credits for an audit, after you agree to the estimate |
-| An agent to run the audit and read the result back | [the MCP server](/docs/mcp) | Your own credits: about $0.60 to $1.20 for a smoke run with four engines, $3.70 to $5.50 for a full one, checked against `max_usd` before anything is sent |
+| An agent to run the audit and read the result back | [the MCP server](/docs/mcp) | Your own credits: about $0.80 to $1.20 for a smoke run with four engines, $5.10 to $7.10 for a full one, checked against `max_usd` before anything is sent |
 | The pipeline inside your own program, with your own database | [`@saylent/engine`](/docs/library) | Your own credits, at the same per-run cost |
 | Your own presentation of a run you already have | [`@saylent/report`](/docs/library#saylentreport---render-a-run-without-the-app) | **$0** - pure functions, no network |
 | A re-check on a schedule, with no app deployed | [a cron entry or a scheduled workflow](/docs/scheduled-checks) | Your own credits, at the same per-run cost, once a month |

@@ -1,6 +1,6 @@
-// Pins the per-answer cost math to the engine's billing (src/inngest/functions.ts
-// answerCents): rate table parity, the measured-usage formula, the !ok ⇒ 0 rule,
-// the missing-usage fallback, and the honest formatter. Pure; $0.
+// Pins the per-answer cost math to the one rate table (rates.ts): the derived
+// per-engine rates, the measured-usage formula, the !ok => 0 rule, the
+// missing-usage fallback, and the honest formatter. Pure; $0.
 import { describe, expect, it } from "vitest";
 import {
   answerCents,
@@ -9,16 +9,26 @@ import {
   hasRecordedUsage,
   RATES,
 } from "./answer-cost";
+import { MODEL_RATES, TYPICAL_ANSWER_USAGE, callCents } from "./rates";
 
-describe("answer-cost — parity with src/inngest/functions.ts RATES/COST_CENTS", () => {
-  it("keeps the verified provider rates", () => {
-    expect(RATES.chatgpt).toEqual({ inPerM: 125, outPerM: 1000, searchCents: 1 });
-    expect(RATES.claude).toEqual({ inPerM: 300, outPerM: 1500, searchCents: 1 });
-    expect(RATES.gemini).toEqual({ inPerM: 150, outPerM: 750, searchCents: 0 });
-    expect(RATES.perplexity).toEqual({ inPerM: 100, outPerM: 100, searchCents: 1 });
+describe("answer-cost reads rates.ts", () => {
+  it("each engine is priced at its default answer model plus its search fee", () => {
+    expect(RATES.chatgpt).toEqual({ inPerM: 200, outPerM: 1000, searchCents: 1 }); // gpt-6.1-sol
+    expect(RATES.claude).toEqual({ inPerM: 200, outPerM: 1000, searchCents: 1 }); // claude-sonnet-5-5
+    expect(RATES.gemini).toEqual({ inPerM: 150, outPerM: 750, searchCents: 0 }); // gemini-3.6-flash
+    expect(RATES.perplexity).toEqual({ inPerM: 100, outPerM: 100, searchCents: 1 }); // sonar
   });
-  it("keeps the fallback cost map", () => {
-    expect(COST_CENTS).toEqual({ chatgpt: 3, claude: 4, gemini: 1.3, perplexity: 1.5 });
+  it("the fallback per answer is a typical answer at that rate", () => {
+    for (const e of ["chatgpt", "claude", "gemini", "perplexity"] as const) {
+      expect(COST_CENTS[e]).toBeCloseTo(callCents(RATES[e], TYPICAL_ANSWER_USAGE[e], RATES[e].searchCents), 10);
+    }
+  });
+  it("prices measured usage at the model the run used when the table knows it", () => {
+    const a = { engine: "chatgpt", ok: true, usage: { input_tokens: 1_000_000, output_tokens: 0, searches: 0 } };
+    expect(answerCents(a)).toBeCloseTo(MODEL_RATES["gpt-6.1-sol"].inPerM, 10);
+    expect(answerCents(a, "gpt-5.4")).toBeCloseTo(MODEL_RATES["gpt-5.4"].inPerM, 10);
+    // an id the table does not know falls back to the engine's default rate, never 0
+    expect(answerCents(a, "some-future-model")).toBeCloseTo(MODEL_RATES["gpt-6.1-sol"].inPerM, 10);
   });
 });
 
@@ -43,8 +53,8 @@ describe("answerCents", () => {
       ok: true,
       usage: { input_tokens: 18254, output_tokens: 1010, searches: 1 },
     });
-    // 18254*300/1e6 + 1010*1500/1e6 + 1*1 = 5.4762 + 1.515 + 1 = 7.9912
-    expect(cents).toBeCloseTo(7.9912, 4);
+    // claude-sonnet-5-5: 18254*200/1e6 + 1010*1000/1e6 + 1*1 = 3.6508 + 1.01 + 1 = 5.6608
+    expect(cents).toBeCloseTo(5.6608, 4);
   });
   it("is 0 for a failed answer even with usage", () => {
     expect(
@@ -52,8 +62,8 @@ describe("answerCents", () => {
     ).toBe(0);
   });
   it("falls back to the flat cost map when usage is missing", () => {
-    expect(answerCents({ engine: "chatgpt", ok: true, usage: null })).toBe(3);
-    expect(answerCents({ engine: "perplexity", ok: true })).toBe(1.5);
+    expect(answerCents({ engine: "chatgpt", ok: true, usage: null })).toBe(COST_CENTS.chatgpt);
+    expect(answerCents({ engine: "perplexity", ok: true })).toBe(COST_CENTS.perplexity);
   });
   it("never invents a price for an unknown engine", () => {
     expect(answerCents({ engine: "mistral", ok: true, usage: { input_tokens: 100 } })).toBe(0);

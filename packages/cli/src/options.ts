@@ -31,7 +31,7 @@
 //      pipeline itself — see run.ts's TESTABILITY NOTE for why that logic
 //      stays there, not here.
 import { z } from "zod";
-import type { Engine } from "@saylent/engine";
+import type { Engine, SurfaceId } from "@saylent/engine";
 import type { ModelSelection } from "@saylent/engine/config";
 import type { SkipStages } from "@saylent/engine";
 import { MODEL_ROLES, type FamilyOfModel } from "./model-flags";
@@ -56,7 +56,14 @@ export const OPTION_DESCRIPTIONS = {
   brand: "Brand name (default: the domain)",
   competitors: "Competitor domains/names",
   profile: "smoke (default, 6 questions) or full (23 questions)",
-  engines: "Which answer engines to ask: chatgpt, claude, gemini, perplexity",
+  engines:
+    "Which answer sources to ask: chatgpt, claude, gemini, perplexity, and the answer surfaces google_ai_overview, google_ai_mode, copilot (surfaces need SERPAPI_API_KEY)",
+  surfaces:
+    "Answer surfaces to ADD to the engine set: google_ai_overview, google_ai_mode, copilot. Read through your SerpApi key (SERPAPI_API_KEY), billed per search by your SerpApi plan",
+  country:
+    'Country the answer surfaces are fetched for, two letters (e.g. "us", "de"). Surfaces only',
+  location:
+    'City-level location for the Google surfaces (e.g. "Austin, Texas, United States"). Surfaces only',
   questions_file:
     "Path to a run.json bundle, a questions.json (from `saylent questions`), or a text file with one question per line, to reuse instead of generating a new set",
   questions:
@@ -119,9 +126,21 @@ export const AuditOptionsSchema = z.object({
   competitors: z.array(z.string()).optional().describe(OPTION_DESCRIPTIONS.competitors),
   profile: z.enum(["smoke", "full"]).optional().describe(OPTION_DESCRIPTIONS.profile),
   engines: z
-    .array(z.enum(["chatgpt", "claude", "gemini", "perplexity"]))
+    .array(
+      z.enum(["chatgpt", "claude", "gemini", "perplexity", "google_ai_overview", "google_ai_mode", "copilot"]),
+    )
     .optional()
     .describe(OPTION_DESCRIPTIONS.engines),
+  surfaces: z
+    .array(z.enum(["google_ai_overview", "google_ai_mode", "copilot"]))
+    .optional()
+    .describe(OPTION_DESCRIPTIONS.surfaces),
+  country: z
+    .string()
+    .regex(/^[a-zA-Z]{2}$/, 'expected a two-letter country code, e.g. "us"')
+    .optional()
+    .describe(OPTION_DESCRIPTIONS.country),
+  location: z.string().min(1).max(120).optional().describe(OPTION_DESCRIPTIONS.location),
   questions_file: z.string().min(1).optional().describe(OPTION_DESCRIPTIONS.questions_file),
   questions: z.array(questionRowSchema).optional().describe(OPTION_DESCRIPTIONS.questions),
   samples: z.number().int().min(1).max(5).optional().describe(OPTION_DESCRIPTIONS.samples),
@@ -206,6 +225,9 @@ export const CLI_FIELD_META: Record<keyof AuditOptions, CliFieldMeta> = {
   competitors: { cliFlag: "competitors" },
   profile: { cliFlag: "profile" },
   engines: { cliFlag: "engines" },
+  surfaces: { cliFlag: "surfaces" },
+  country: { cliFlag: "country" },
+  location: { cliFlag: "location" },
   questions_file: { cliFlag: "questions" },
   questions: { cliFlag: "questions", generatesCliOption: false },
   samples: { cliFlag: "samples" },
@@ -241,6 +263,9 @@ export interface AuditCliValues {
   competitors?: string;
   profile?: string;
   engines?: string;
+  surfaces?: string;
+  country?: string;
+  location?: string;
   questions?: string;
   samples?: string;
   judge?: string;
@@ -317,6 +342,11 @@ export function describeOptions(keys: readonly (keyof AuditOptions)[] = Object.k
 export interface ResolvedRunOptions {
   competitors: string[];
   engines?: Engine[];
+  /** answer surfaces to add to the engine set (MCP `surfaces`, CLI --surfaces) */
+  surfaces?: SurfaceId[];
+  /** where surface answers are fetched from (country/location; language is
+   *  the run locale unless saylent.config surfaces.language says otherwise) */
+  surfaceLocale: { country?: string; location?: string };
   /** --judge/--judge-family/--model (or the MCP judge/judge_family/models
    *  fields), resolved to the same ModelSelection shape models.ts takes. */
   modelSelection: ModelSelection;
@@ -397,6 +427,9 @@ export function toRunOptions(
     AuditOptions,
     | "competitors"
     | "engines"
+    | "surfaces"
+    | "country"
+    | "location"
     | "judge"
     | "judge_family"
     | "models"
@@ -416,6 +449,11 @@ export function toRunOptions(
   return {
     competitors: opts.competitors ?? [],
     engines: opts.engines as Engine[] | undefined,
+    surfaces: opts.surfaces as SurfaceId[] | undefined,
+    surfaceLocale: {
+      ...(opts.country ? { country: opts.country.toLowerCase() } : {}),
+      ...(opts.location ? { location: opts.location } : {}),
+    },
     modelSelection: resolveModelSelection(opts, familyOf),
     crawler: {
       userAgent: opts.user_agent ?? null,

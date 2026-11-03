@@ -8,6 +8,7 @@
 // source-level `exports`), so a VALUE import through it resolves at test
 // runtime same as any other import (open-source split, 2026-09-09).
 import { unwrapArchiveUrl } from "@saylent/engine/util";
+import { ENGINE_IDS, SURFACES } from "@saylent/engine/surfaces";
 
 /** The minimal corpus shape this reads. Matches CorpusRow in dossier.tsx. */
 export interface SourceMapPage {
@@ -101,12 +102,9 @@ const SOURCE_NOUN: Record<string, string> = {
   other: "a scattered mix of sources",
 };
 
-export const ENGINE_LABEL: Record<string, string> = {
-  chatgpt: "ChatGPT",
-  claude: "Claude",
-  gemini: "Gemini",
-  perplexity: "Perplexity",
-};
+export const ENGINE_LABEL: Record<string, string> = Object.fromEntries(
+  ENGINE_IDS.map((e) => [e, SURFACES[e].label]),
+);
 const labelOf = (e: string) => ENGINE_LABEL[e] ?? e.charAt(0).toUpperCase() + e.slice(1);
 
 /** hostname without www; on a non-URL returns the FULL string (display width is a

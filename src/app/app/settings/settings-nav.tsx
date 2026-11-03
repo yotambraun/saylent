@@ -12,6 +12,7 @@ const SECTIONS = [
   { href: "/app/settings/notifications", label: "Notifications" },
   { href: "/app/settings/appearance", label: "Appearance" },
   { href: "/app/settings/brands", label: "Brands" },
+  { href: "/app/settings/api", label: "API tokens" },
   { href: "/app/settings/account", label: "Account" },
 ];
 

@@ -1,6 +1,6 @@
 {
   "name": "@saylent/report",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "private": false,
   "description": "Render a Saylent audit report - HTML or Markdown - from a run bundle, with no app and no model calls.",
   "license": "Apache-2.0",
@@ -23,10 +23,13 @@
     "gemini",
     "perplexity",
     "brand-monitoring",
-    "audit"
+    "audit",
+    "geo",
+    "aeo",
+    "answer-engine-optimization"
   ],
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "publishConfig": {
     "access": "public"
@@ -85,7 +88,7 @@
     "build": "tsup && tsc -p tsconfig.build.json && node ../../scripts/fix-esm-extensions.mjs dist"
   },
   "dependencies": {
-    "@saylent/engine": "^0.1.0",
+    "@saylent/engine": "^0.2.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.48.0",

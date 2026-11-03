@@ -18,10 +18,29 @@ export * from "./models";
 export * from "./llm";
 export * from "./rival-owner";
 export * from "./answer-cost";
+export {
+  MODEL_RATES,
+  SEARCH_CENTS,
+  DEFAULT_ANSWER_MODEL,
+  TYPICAL_ANSWER_USAGE,
+  ROLE_CALL_USAGE,
+  DEFAULT_ROLE_MODEL,
+  callCents,
+  rateFor,
+  roleCallCents,
+  SERP_REQUEST_CENTS,
+  SURFACE_REQUESTS,
+  surfaceRequestCents,
+} from "./rates";
+export type { TokenRate, CallUsage, CostRole } from "./rates";
+export { DEFAULT_MODELS } from "./model-defaults";
+export type { DefaultModelSlot } from "./model-defaults";
 export * from "./citation-host";
 export * from "./run-audit";
 export * from "./memory-writer";
 export * from "./bundle";
-export { ADAPTERS, ENGINES } from "./adapters";
+export * from "./surfaces";
+export * from "./sources";
+export { ADAPTERS, ENGINES, isNotShown } from "./adapters";
 export type { AdapterConfig, Ask, AskResult } from "./adapters";
 export { safeFetch, normUrl } from "./util";

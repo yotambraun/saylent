@@ -3,10 +3,18 @@
 // when answered=0)}; overall = sums; share_of_voice = other_brands counts
 // (top 12, trimmed). Verify additions: before/after + per-published-fix
 // watch notes computed against the baseline answers.
-import type { AnswerRow, Engine, Fix, QType, Scores, Verdict } from "./types";
+import type { AnswerRow, Engine, Fix, ModelEngine, QType, Scores, SurfaceId, Verdict } from "./types";
+import { SURFACE_IDS } from "./surfaces";
 import { normOtherBrands } from "./verdict-compat";
 
 const ENGINES: Engine[] = ["chatgpt", "claude", "gemini", "perplexity"];
+/** The four model APIs always get a per_engine row (byte-identical scores for
+ *  every run that never asked a surface); an answer surface gets one only
+ *  when the run actually asked it. */
+const enginesIn = (rows: { engine: Engine }[]): Engine[] => [
+  ...ENGINES,
+  ...SURFACE_IDS.filter((s) => rows.some((r) => r.engine === s)),
+];
 /** the spec (see METHODOLOGY.md) — the ONLY qtypes that count toward scores (and the ONLY qtypes
  *  adaptively sampled — see profiles.sampleCount / needsTiebreak). Exported so
  *  profiles/observe share one source of truth for "is this a scored question". */
@@ -110,6 +118,7 @@ export function voteAnswer(draws: Draw[]): VoteResult {
       citations: base.citations,
       ...(base.error ? { error: base.error } : {}),
       ...(usage ? { usage } : {}),
+      ...(base.search_queries ? { search_queries: base.search_queries } : {}),
     };
     return { canonical, representativeIdx: null };
   }
@@ -126,6 +135,8 @@ export function voteAnswer(draws: Draw[]): VoteResult {
     // voted fields guaranteed: pin mention_type to the vote (rep already matches).
     verdict: { ...(rep.verdict as Verdict), mention_type: voted },
     ...(usage ? { usage } : {}),
+    // the representative draw's searches, like its text and citations
+    ...(rep.search_queries ? { search_queries: rep.search_queries } : {}),
   };
   return { canonical, representativeIdx: rep.sampleIdx };
 }
@@ -152,7 +163,12 @@ export interface Band {
 }
 export interface RecommendedBand {
   overall: Band;
-  per_engine: Record<Engine, Band>;
+  per_engine: Record<ModelEngine, Band> & Partial<Record<SurfaceId, Band>>;
+  /** How many sample-sets the band was computed over: 1 = one draw per scored
+   *  question (smoke / old runs), so min==max is a plain count and NOT evidence
+   *  that the number held on a re-ask. 2 or 3 = the question was actually
+   *  re-asked. Readers must not call a 1-set point band "stable". */
+  sample_sets: number;
 }
 /** One scored draw's mention_type by (qid, engine, sampleIdx) — the input the
  *  confidence band reads to reconstruct each sample-set. */
@@ -181,8 +197,9 @@ export function recommendedBand(
   const sampleMap = new Map<string, MentionType | null>();
   for (const s of samples) sampleMap.set(key(s.qid, s.engine, s.sampleIdx), s.mention_type);
 
+  const engines = enginesIn(scoredCanonical);
   const perEngine = {} as Record<Engine, number[]>;
-  for (const e of ENGINES) perEngine[e] = new Array(nSets).fill(0);
+  for (const e of engines) perEngine[e] = new Array(nSets).fill(0);
   const overall = new Array(nSets).fill(0);
 
   for (let s = 0; s < nSets; s++) {
@@ -196,9 +213,9 @@ export function recommendedBand(
     }
   }
   const band = (counts: number[]): Band => ({ min: Math.min(...counts), max: Math.max(...counts) });
-  const per_engine = {} as Record<Engine, Band>;
-  for (const e of ENGINES) per_engine[e] = band(perEngine[e]);
-  return { overall: band(overall), per_engine };
+  const per_engine = {} as RecommendedBand["per_engine"];
+  for (const e of engines) per_engine[e] = band(perEngine[e]);
+  return { overall: band(overall), per_engine, sample_sets: nSets };
 }
 
 /** Scores plus the additive confidence band (stored in the scores jsonb; old
@@ -221,7 +238,8 @@ export function canonicalBrand(name: string): string {
 export function computeScores(answers: AnswerRow[], samples: SampleMention[] = []): ScoresWithBand {
   const scored = answers.filter((a) => isScored(a.qtype));
   const per = {} as Scores["per_engine"];
-  for (const engine of ENGINES) {
+  const engines = enginesIn(answers);
+  for (const engine of engines) {
     const rows = scored.filter((a) => a.engine === engine);
     const answered = rows.filter((a) => a.ok).length;
     const recommended = rows.filter((a) => a.verdict?.mention_type === "recommended").length;
@@ -235,7 +253,7 @@ export function computeScores(answers: AnswerRow[], samples: SampleMention[] = [
     };
   }
   const sum = (k: "answered" | "recommended" | "mentioned") =>
-    ENGINES.reduce((s, e) => s + per[e][k], 0);
+    engines.reduce((s, e) => s + (per[e]?.[k] ?? 0), 0);
   const answered = sum("answered");
   const overall = {
     answered,

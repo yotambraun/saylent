@@ -67,9 +67,10 @@ jobs:
 
   # The CLI must work unmodified on all three OSes a self-hoster or an
   # `npx saylent` user actually runs, on every Node version the README promises.
-  # README says "Node 20+", so 20 (the floor) and 22 (current LTS) are both
-  # exercised — testing only the newest would let a 20-incompatible API land and
-  # break the exact users the floor was written for. This job is independent of
+  # README says "Node 22+", so 22 (the floor, maintenance LTS) and 24 (active
+  # LTS) are both exercised — testing only the newest would let a
+  # 22-incompatible API land and break the exact users the floor was written
+  # for. Node 20 reached end of life in April 2026. This job is independent of
   # the `ci` job above (Next.js app build): it only touches packages/cli,
   # packages/engine and packages/report, and never spends against a real
   # provider (--dry-run).
@@ -78,7 +79,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        node: [20, 22]
+        node: [22, 24]
     runs-on: ${{ matrix.os }}
     name: cli (${{ matrix.os }}, node ${{ matrix.node }})
     defaults:

@@ -1,0 +1,14 @@
+{
+  "search_metadata": { "id": "fixture-7", "status": "Success" },
+  "search_information": {},
+  "header": "Here are some well-reviewed uptime monitoring tools:",
+  "text_blocks": [
+    { "type": "heading", "snippet": "Top picks", "level": 2 },
+    { "type": "paragraph", "snippet": "Upcheck is widely used for its free tier.", "reference_indexes": [1] },
+    { "type": "paragraph", "snippet": "Beacon Uptime is praised for status pages.", "reference_indexes": [0] }
+  ],
+  "references": [
+    { "index": 0, "title": "Beacon Uptime review", "link": "https://reviews.example/beacon-uptime", "snippet": "...", "source": "reviews.example" },
+    { "index": 1, "title": "Upcheck", "link": "https://upcheck.example/", "snippet": "...", "source": "upcheck.example" }
+  ]
+}

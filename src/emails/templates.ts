@@ -176,3 +176,41 @@ export function verifyReminderEmail(props: VerifyReminderProps): EmailContent {
     ),
   };
 }
+
+// ---- 5. Alert / weekly digest (opted in per brand, migration 0047) ----------
+// The saylent.alert/v1 payload as an email: the counts headline as the subject,
+// one line per event with its receipt link, and where to turn it off.
+
+export interface AlertEmailProps extends BaseProps {
+  headline: string;
+  brandId: string;
+  /** one plain sentence per event, with its receipt link when there is one */
+  events: { text: string; url: string | null }[];
+  moreEvents: number;
+  reportUrl: string | null;
+  comparable: boolean;
+  digest: boolean;
+}
+
+export function alertEmail(props: AlertEmailProps): EmailContent {
+  const settings = `${props.appUrl}/app/brand/${props.brandId}/alerts`;
+  const items = props.events
+    .map(
+      (e) =>
+        `<li style="margin:0 0 8px">${esc(e.text)}${e.url ? ` <a href="${esc(e.url)}" style="color:#2563eb">receipt</a>` : ""}</li>`,
+    )
+    .join("");
+  return {
+    subject: props.headline,
+    html: frame(
+      p(`<strong>${esc(props.headline)}</strong>`) +
+        (!props.comparable && !props.digest
+          ? p("The two runs did not ask the same questions, so recommendations were not compared.")
+          : "") +
+        (items ? `<ul style="margin:0 0 14px;padding-left:18px;font-size:15px">${items}</ul>` : p("Nothing moved.")) +
+        (props.moreEvents ? p(`+${props.moreEvents} more in the report.`) : "") +
+        (props.reportUrl ? `<div style="margin:20px 0 4px">${button(props.reportUrl, "Open the report")}</div>` : ""),
+      ` <a href="${esc(settings)}" style="color:#6b7280">Alert settings</a>`,
+    ),
+  };
+}

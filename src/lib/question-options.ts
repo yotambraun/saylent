@@ -16,8 +16,11 @@
 // drags the crawler in — the client form imports this module directly so the
 // estimate recomputes on every keystroke in the browser.
 import { COST_CENTS, type CostEngine } from "@saylent/engine/answer-cost";
-import { ALL_ENGINES, ENGINE_FLOOR, resolveEngines } from "@saylent/engine/engines";
+import { ROLE_COST_CENTS } from "@saylent/engine/rates";
+import { normalizeSelection, resolveEngines } from "@saylent/engine/engines";
 import { MAX_SAMPLES, MIN_SAMPLES, PROFILES, type ProfileName } from "@saylent/engine/profiles";
+import { DOMAIN_TYPE_LABEL, type DomainType, isDomainType } from "@saylent/engine/sources";
+import { normalizeSurfaceLocale, type SurfaceLocale } from "@saylent/engine/surfaces";
 import type { QType, Question, SkipStages } from "@saylent/engine/types";
 
 /** The shipped question types (engine types.ts QType). "custom" is what an
@@ -78,8 +81,68 @@ export interface RunOptions {
   engines?: string[];
   locale?: string;
   skip?: RunSkipOptions;
+  /** where the answer SURFACES (Google AI Overviews / AI Mode, Copilot) are
+   *  read from. Model APIs ignore it. An empty language falls back to `locale`
+   *  at run time (surfaceLocaleFor), so it is never stored as a copy. */
+  surfaceLocale?: SurfaceLocale;
+  /** the owner's corrections to how a cited domain is classified in "Sources
+   *  & opportunities" (engine sources.ts SourceOverrides). Not a run input:
+   *  it changes how stored answers are READ, never what a run asks, so editing
+   *  it never re-baselines. */
+  sourceOverrides?: { domainTypes: Record<string, DomainType> };
   updated_at?: string;
 }
+
+/** Most host overrides one brand may store: enough for every domain a report
+ *  lists, small enough that the blob stays a few KB. */
+export const MAX_SOURCE_OVERRIDES = 50;
+
+/** host-ish: labels of [a-z0-9-] joined by dots, a dotted TLD. Lowercased and
+ *  www-stripped before the test, so "WWW.G2.com" is stored as "g2.com". */
+const HOST_PATTERN = /^(?=.{3,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/;
+
+/** "https://www.G2.com/products/x" -> "g2.com"; a bare host passes through. */
+export function cleanOverrideHost(raw: string): string {
+  let h = raw.trim().toLowerCase();
+  h = h.replace(/^[a-z][a-z0-9+.-]*:\/\//, "").split(/[/?#]/)[0] ?? "";
+  h = h.replace(/:\d+$/, "").replace(/\.$/, "").replace(/^www\./, "");
+  return h;
+}
+
+/** Validate the host -> domain-type map the form posted. Empty -> null (store
+ *  nothing). A later row for the same host wins. */
+export function normalizeSourceOverrides(input: unknown): Result<RunOptions["sourceOverrides"] | null> {
+  if (input == null) return { ok: true, value: null };
+  const raw =
+    typeof input === "object" && !Array.isArray(input)
+      ? ((input as { domainTypes?: unknown }).domainTypes ?? input)
+      : input;
+  const pairs: [unknown, unknown][] = Array.isArray(raw)
+    ? raw.map((r) => [(r as { host?: unknown })?.host, (r as { type?: unknown })?.type])
+    : raw && typeof raw === "object"
+      ? Object.entries(raw as Record<string, unknown>)
+      : [];
+  const out: Record<string, DomainType> = {};
+  for (const [rawHost, type] of pairs) {
+    const host = typeof rawHost === "string" ? cleanOverrideHost(rawHost) : "";
+    if (!host && (type === "" || type == null)) continue; // a blank row the form left behind
+    if (!host || !HOST_PATTERN.test(host)) {
+      return { ok: false, error: `"${String(rawHost ?? "").slice(0, 60)}" is not a domain. Use something like g2.com.` };
+    }
+    if (!isDomainType(type)) {
+      return { ok: false, error: `Pick a source type for ${host}.` };
+    }
+    out[host] = type;
+  }
+  const n = Object.keys(out).length;
+  if (n > MAX_SOURCE_OVERRIDES) {
+    return { ok: false, error: `That is ${n} source types. A brand can keep at most ${MAX_SOURCE_OVERRIDES}.` };
+  }
+  return { ok: true, value: n ? { domainTypes: out } : null };
+}
+
+/** The domain types a user may pick, with their labels, for the override editor. */
+export const SOURCE_TYPE_OPTIONS = Object.entries(DOMAIN_TYPE_LABEL) as [DomainType, string][];
 
 export type Result<T> = { ok: true; value: T } | { ok: false; error: string };
 
@@ -193,6 +256,8 @@ export function normalizeRunOptions(input: {
   engines?: unknown;
   locale?: unknown;
   skip?: RunSkipOptions | null;
+  surfaceLocale?: { country?: unknown; language?: unknown; location?: unknown } | null;
+  sourceOverrides?: unknown;
   now?: string;
 }): Result<RunOptions> {
   const out: RunOptions = {};
@@ -212,16 +277,13 @@ export function normalizeRunOptions(input: {
   }
 
   if (input.engines != null) {
+    // The engine's own selection rule (engines.ts normalizeSelection): the four
+    // model APIs plus the answer surfaces, floored at ENGINE_FLOOR, and exactly
+    // the four model APIs is the default, so it stores nothing.
     const raw = Array.isArray(input.engines) ? input.engines.map(String) : [];
-    const valid = ALL_ENGINES.filter((e) => raw.includes(e));
-    if (valid.length > 0 && valid.length < ENGINE_FLOOR) {
-      return {
-        ok: false,
-        error: `Choose at least ${ENGINE_FLOOR} engines — a single engine can't cross-check the verdict.`,
-      };
-    }
-    // All four is the default: store nothing rather than a redundant array.
-    if (valid.length > 0 && valid.length < ALL_ENGINES.length) out.engines = [...valid];
+    const sel = normalizeSelection(raw);
+    if (!sel.ok) return sel;
+    if (sel.store) out.engines = sel.store;
   }
 
   if (input.locale != null && String(input.locale).trim() !== "") {
@@ -241,8 +303,34 @@ export function normalizeRunOptions(input: {
     };
   }
 
+  if (input.surfaceLocale != null) {
+    const loc = normalizeSurfaceLocale(input.surfaceLocale);
+    if (!loc.ok) return loc;
+    if (Object.keys(loc.value).length) out.surfaceLocale = loc.value;
+  }
+
+  if (input.sourceOverrides != null) {
+    const ov = normalizeSourceOverrides(input.sourceOverrides);
+    if (!ov.ok) return ov;
+    if (ov.value) out.sourceOverrides = ov.value;
+  }
+
   out.updated_at = input.now ?? new Date().toISOString();
   return { ok: true, value: out };
+}
+
+/** The locale an answer surface is fetched with for a run: the stored
+ *  surfaceLocale, with an empty language falling back to the run's `locale`.
+ *  null when nothing is set (the provider's own default location). */
+export function surfaceLocaleFor(opts: RunOptions | null | undefined): SurfaceLocale | null {
+  const loc = opts?.surfaceLocale ?? {};
+  const language = loc.language || opts?.locale || undefined;
+  const out: SurfaceLocale = {
+    ...(loc.country ? { country: loc.country } : {}),
+    ...(language ? { language } : {}),
+    ...(loc.location ? { location: loc.location } : {}),
+  };
+  return Object.keys(out).length ? out : null;
 }
 
 /** Draft rows → the engine's Question shape (qid/qtype), which is what a frozen
@@ -289,12 +377,11 @@ export function questionsChanged(
 // Cost estimate — the number shown before "Run audit"
 // ---------------------------------------------------------------------------
 
-/** The per-CALL rates for the non-answer roles. MIRRORS ROLE_COST_CENTS in
- *  @saylent/engine/run-audit, which cannot be imported here: run-audit pulls the
- *  crawler (cheerio, DNS-guarded fetch) into whatever imports it, and this
- *  estimate has to run in the browser on every keystroke. question-options.test.ts
- *  asserts these stay byte-identical to the engine's, so drift fails the suite. */
-export const ROLE_CENTS = { judge: 0.4, drafter: 2.5, brand: 2 } as const;
+/** The per-CALL rates for the non-answer roles, straight from the engine's one
+ *  rate table (@saylent/engine/rates, pure and browser-safe: unlike run-audit it
+ *  pulls in no crawler), so this estimate runs on every keystroke and can never
+ *  drift from what the engine bills. */
+export const ROLE_CENTS = ROLE_COST_CENTS;
 
 export interface CostEstimate {
   lowUsd: number;
@@ -441,6 +528,9 @@ export interface MappedRunInput {
   samples: number | null;
   locale: string | null;
   skip: RunSkipOptions | null;
+  /** where the answer surfaces are read from (surfaceLocaleFor). A verify takes
+   *  its BASELINE run's, so the comparison is like-for-like. */
+  surfaceLocale: SurfaceLocale | null;
   /** true when the edited draft is what this run will ask (so the caller knows it
    *  has to persist the frozen envelope itself — runAudit only calls
    *  hooks.onQuestionSet for a set it generated) */
@@ -457,7 +547,8 @@ export interface MappedRunInput {
  *    "no effect: --questions reuses a set verbatim"), so it is dropped as soon as
  *    the draft supplies questions;
  *  - a VERIFY ignores run options completely and reuses the frozen baseline, or
- *    it would be comparing two different runs.
+ *    it would be comparing two different runs; the one thing it takes from the
+ *    BASELINE run's options is where the answer surfaces were read from.
  */
 export function runInputFromOptions(p: {
   kind: "audit" | "verify";
@@ -465,6 +556,8 @@ export function runInputFromOptions(p: {
   brandEngines: string[] | null;
   brandQuestionSet: FrozenEnvelope | null;
   brandQuestionSetVersion: number;
+  /** verify only: the run_options of the audit it is compared against */
+  baselineRunOptions?: RunOptions | null;
 }): MappedRunInput {
   const version = p.brandQuestionSetVersion || 1;
   if (p.kind === "verify") {
@@ -475,6 +568,7 @@ export function runInputFromOptions(p: {
       samples: null,
       locale: null,
       skip: null,
+      surfaceLocale: surfaceLocaleFor(p.baselineRunOptions),
       suppliedQuestions: false,
     };
   }
@@ -491,6 +585,7 @@ export function runInputFromOptions(p: {
     samples: opts.samples ?? null,
     locale: edited ? null : (opts.locale ?? null),
     skip: opts.skip ?? null,
+    surfaceLocale: surfaceLocaleFor(opts),
     suppliedQuestions: !!edited,
   };
 }

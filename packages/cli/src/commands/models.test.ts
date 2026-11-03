@@ -64,7 +64,7 @@ describe("runModelsCommandWith", () => {
     const code = await runModelsCommandWith(engineMod, configMod, [], out);
     expect(code).toBe(0);
     const text = lines.join("");
-    expect(text).toContain("claude-haiku-4-5");
+    expect(text).toContain("claude-haiku-5-5");
     expect(text).toContain("default");
     expect(text).toContain("no saylent.config models block");
   });
@@ -122,7 +122,7 @@ describe("runModelsCommandWith", () => {
 
   it("shows which models would judge each engine, and flags self-judging when an override collides", async () => {
     process.env.OPENAI_API_KEY = "sk-test-openai"; // single-family: judge = the answer engine's own family
-    process.env.MODEL_JUDGE_OPENAI = "gpt-5.4"; // == the default chatgpt answer model
+    process.env.MODEL_JUDGE_OPENAI = "gpt-6.1-sol"; // == the default chatgpt answer model
     const { lines, out } = capture();
     await runModelsCommandWith(engineMod, configMod, [], out);
     const text = lines.join("");

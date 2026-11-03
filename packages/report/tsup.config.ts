@@ -13,7 +13,7 @@ import { defineConfig } from "tsup";
 export default defineConfig({
   entry: ["src/**/*.{ts,tsx}", "!src/**/*.test.ts"],
   format: ["esm"],
-  target: "node20",
+  target: "node22",
   platform: "node",
   bundle: false,
   // .d.ts files come from a separate `tsc -p tsconfig.build.json

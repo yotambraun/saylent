@@ -451,7 +451,7 @@ describe("--profile / --engines validation", () => {
     restore();
     expect(code).toBe(1);
     expect(chunks.join("")).toContain('unknown engine "claud"');
-    expect(chunks.join("")).toContain("Valid engines: chatgpt, claude, gemini, perplexity.");
+    expect(chunks.join("")).toContain("Valid engines: chatgpt, claude, gemini, perplexity, google_ai_overview, google_ai_mode, copilot.");
   });
 
   it("a PROVIDER name is corrected by name — the word `keys set` taught", async () => {

@@ -361,12 +361,17 @@ export class Progress {
     return [...this.engineCounts.entries()].map(([engine, { done, total }]) => `${engine} ${done}/${total}`).join("   ");
   }
 
-  private engineAnswerCounts(result: RunResult): Map<Engine, { ok: number; total: number; error?: string }> {
-    const byEngine = new Map<Engine, { ok: number; total: number; error?: string }>();
+  private engineAnswerCounts(
+    result: RunResult,
+  ): Map<Engine, { ok: number; total: number; notShown: number; error?: string }> {
+    const byEngine = new Map<Engine, { ok: number; total: number; notShown: number; error?: string }>();
     for (const a of result.answers) {
-      const row = byEngine.get(a.engine) ?? { ok: 0, total: 0 };
+      const row = byEngine.get(a.engine) ?? { ok: 0, total: 0, notShown: 0 };
       row.total += 1;
       if (a.ok) row.ok += 1;
+      // an answer surface that showed no AI answer is a recorded gap, not a
+      // failure: counted apart, never mapped to a provider error sentence
+      else if (a.error?.startsWith("no_answer:")) row.notShown += 1;
       else if (a.error && !row.error) row.error = a.error;
       byEngine.set(a.engine, row);
     }
@@ -386,6 +391,12 @@ export class Progress {
     for (const engine of result.engines) {
       const row = byEngine.get(engine);
       if (!row || row.total === 0 || row.ok === row.total) continue;
+      if (row.notShown > 0) {
+        this.write(
+          `  ${engine} ${row.ok}/${row.total} ${glyph("sep")} ${row.notShown} not shown (no AI answer on the page for that question; a gap, not an absence)`,
+        );
+        if (row.ok + row.notShown === row.total) continue;
+      }
       // F2 — the raw AnswerRow.error ("<kind>: <message>") mapped to ONE
       // plain sentence + ONE action for this provider, printed once per
       // failed engine (this loop runs once per engine already).
@@ -408,7 +419,13 @@ export class Progress {
    *  file: a line is printed only for a file that actually exists. */
   finish(
     result: RunResult,
-    opts: { reportPath: string | null; verifyPath: string | null; brandDomain: string },
+    opts: {
+      reportPath: string | null;
+      verifyPath: string | null;
+      brandDomain: string;
+      /** surfaces.ts sourcesSummaryLines: citation share + the first off-site opportunity */
+      sourcesLines?: string[];
+    },
   ): void {
     this.flushPending();
     this.reportEngineFailures(result);
@@ -430,6 +447,7 @@ export class Progress {
     } else {
       this.write("  Verdict   not scored (run did not complete)");
     }
+    for (const line of opts.sourcesLines ?? []) this.write(line);
     this.write("");
     if (opts.reportPath) this.write(`  Report    ${opts.reportPath}`);
     if (opts.verifyPath) {

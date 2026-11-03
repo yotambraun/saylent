@@ -7,7 +7,9 @@ import { describe, expect, it } from "vitest";
 import {
   auditReadyNotice,
   createDbWriter,
+  isMissingSearchQueriesColumn,
   redactRunError,
+  saveAnswerSamples,
   runFailedNotice,
   stampRunSnapshot,
   verifyReadyNotice,
@@ -189,5 +191,55 @@ describe("redactRunError — the Inngest failure path never persists a live key"
     expect(redactRunError(new Error("engine timed out"))).toBe("engine timed out");
     expect(redactRunError("boom")).toBe("unknown error");
     expect(redactRunError(new Error(""))).toBe("unknown error");
+  });
+});
+
+describe("search_queries (migration 0049) — written when the column exists, never fails a run when it does not", () => {
+  type AdminArg = Parameters<typeof createDbWriter>[0];
+  const MISSING = { code: "PGRST204", message: "Could not find the 'search_queries' column of 'answers' in the schema cache" };
+  function admin(firstError: unknown) {
+    const inserts: { table: string; rows: Record<string, unknown>[] }[] = [];
+    const a = {
+      from: (table: string) => ({
+        insert: (rows: Record<string, unknown> | Record<string, unknown>[]) => {
+          inserts.push({ table, rows: Array.isArray(rows) ? rows : [rows] });
+          return Promise.resolve({ error: inserts.length === 1 ? firstError : null });
+        },
+      }),
+    } as unknown as AdminArg;
+    return { a, inserts };
+  }
+  const row = {
+    runId: "r1", qid: "q01", qtype: "category" as never, question: "best cdn", engine: "chatgpt" as const,
+    ok: true, raw_text: "x", citations: [], search_queries: ["best cdn 2026"],
+  };
+
+  it("writes the queries with the answer", async () => {
+    const { a, inserts } = admin(null);
+    await createDbWriter(a, "u1").saveAnswer(row);
+    expect(inserts).toHaveLength(1);
+    expect(inserts[0].rows[0].search_queries).toEqual(["best cdn 2026"]);
+  });
+
+  it("retries without the column when 0049 is not applied, for answers and samples", async () => {
+    const first = admin(MISSING);
+    await expect(createDbWriter(first.a, "u1").saveAnswer(row)).resolves.toBeUndefined();
+    expect(first.inserts).toHaveLength(2);
+    expect("search_queries" in first.inserts[1].rows[0]).toBe(false);
+    expect(first.inserts[1].rows[0].raw_text).toBe("x");
+
+    const samples = admin({ ...MISSING, message: MISSING.message.replace("answers", "answer_samples") });
+    await saveAnswerSamples(samples.a, "u1", [
+      { runId: "r1", qid: "q01", engine: "chatgpt", sampleIdx: 0, raw_text: "x", citations: [], verdict: null, usage: null, search_queries: [] },
+    ]);
+    expect(samples.inserts).toHaveLength(2);
+    expect("search_queries" in samples.inserts[1].rows[0]).toBe(false);
+  });
+
+  it("does not hide any other insert error", async () => {
+    const { a, inserts } = admin({ code: "23505", message: "duplicate key" });
+    await expect(createDbWriter(a, "u1").saveAnswer(row)).rejects.toThrow("saveAnswer: duplicate key");
+    expect(inserts).toHaveLength(1);
+    expect(isMissingSearchQueriesColumn({ code: "PGRST204", message: "Could not find the 'other' column" })).toBe(false);
   });
 });

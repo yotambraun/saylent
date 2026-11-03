@@ -29,7 +29,7 @@ body:
     attributes:
       label: Model name
       description: The exact model string in use, from packages/engine/src/models.ts or a MODEL_* override.
-      placeholder: "e.g. gpt-5.4 / claude-sonnet-4-6 / gemini-3.6-flash / sonar"
+      placeholder: "e.g. gpt-6.1-sol / claude-sonnet-5-5 / gemini-3.6-flash / sonar (saylent models prints yours)"
     validations:
       required: true
 

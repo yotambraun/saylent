@@ -75,6 +75,8 @@ export async function loadEngine(): Promise<EngineModule> {
       import("@saylent/engine/crawl"),
       import("@saylent/engine/questions"),
       import("@saylent/engine/brandModel"),
+      import("@saylent/engine/surfaces"),
+      import("@saylent/engine/sources"),
     ]).then(
       (mods) =>
         Object.assign({}, ...mods) as EngineModule,

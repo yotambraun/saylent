@@ -7,6 +7,20 @@ description: Every command, every flag, the run bundle, and where config comes f
 estimate and asks to confirm before it spends (skip the prompt with `--yes`).
 Run any command with `--help` for this same reference in the terminal.
 
+## `saylent demo`
+
+Renders the bundled sample run (Kestrel Uptime, a fictional product we host,
+audited by a real smoke run on 2026-09-10) into `report.html`, `report.md` and
+`run.json`. No key, no network, no cost; it never reads a key.
+
+| Flag | What it does |
+|---|---|
+| `--out <dir>` | Output directory (default: `./saylent-demo`) |
+| `--open` | Open `report.html` in your default browser afterwards |
+
+The folder it writes is an ordinary run folder, so `saylent report` and
+`saylent history` work on it like on a real audit's output.
+
 ## `saylent audit <domain>`
 
 Runs a full audit and writes `run.json`, `report.html`, and `report.md`.
@@ -16,7 +30,10 @@ Runs a full audit and writes `run.json`, `report.html`, and `report.md`.
 | `--brand <name>` | Brand name (default: the domain) |
 | `--competitors <a,b>` | Comma-separated competitor domains or names |
 | `--profile <profile>` | `smoke` (default, 6 questions) or `full` (23 questions). Overrides `AUDIT_PROFILE` and `saylent.config` `profile` |
-| `--engines <a,b>` | Comma-separated: `chatgpt,claude,gemini,perplexity`. Overrides `AUDIT_ENGINES` and `saylent.config` `engines`. An unknown name is refused with a sentence, never silently dropped |
+| `--engines <a,b>` | Comma-separated: `chatgpt,claude,gemini,perplexity`, or an answer surface (`google_ai_overview,google_ai_mode,copilot`). Overrides `AUDIT_ENGINES` and `saylent.config` `engines`. An unknown name is refused with a sentence, never silently dropped |
+| `--surfaces <a,b>` | Answer surfaces to ADD to the engines: `google_ai_overview,google_ai_mode,copilot`. Read through your own SerpApi key (`SERPAPI_API_KEY`; `saylent keys set serpapi`), billed per search by your SerpApi plan. Google shows an AI Overview for some queries only; the rest are recorded "not shown". See [Answer surfaces](/docs/surfaces) |
+| `--country <cc>` | Two-letter country the surfaces answer for (e.g. `us`, `de`). Language follows `--locale`. Surfaces only |
+| `--location <city>` | City-level location for the Google surfaces, e.g. `"Austin, Texas, United States"`. Surfaces only |
 | `--questions <file>` | Reuse a frozen question set - a previous `run.json`, a `questions.json` from `saylent questions`, or a plain text file (one question per line) |
 | `--samples <n>` | How many times each scored question is asked (1-5, default from the profile). Overrides `AUDIT_SAMPLES` and `saylent.config` `sampling` |
 | `--skip <a,b>` | Skip costly stages: `drafts,corpus,gates`. `drafts` = no drafter LLM calls (fixes list without artifacts). `corpus` = no cited-page fetches (citation presence unverified). `gates` = no site checks (never reported as a pass). Overrides `AUDIT_SKIP` and `saylent.config` `skip` |
@@ -36,8 +53,19 @@ Runs a full audit and writes `run.json`, `report.html`, and `report.md`.
 
 **Exit codes:** `0` every engine answered, `1` the run failed outright or no
 engine has a usable key, `2` the run completed but at least one requested
-engine returned zero successful answers (the report says which, and scores
-from the remaining engines).
+engine had a failed answer (the report says which, and scores from the answers
+that came back). A surface question that was not shown is a recorded gap, not
+a failure, and does not change the exit code.
+
+A surface asked for without a SerpApi key is refused by name before anything
+is spent, and `--dry-run` says so on its `Surfaces` line. When the run asks a
+surface, the preflight prints that line with the provider, the locale and the
+price per search.
+
+The finish summary ends with two lines from
+[Sources & opportunities](/docs/sources): `Sources` (citations, domains and
+the most cited domain) and `Off-site` (how many off-site opportunities, and
+the first one).
 
 ## `saylent verify <run.json>`
 
@@ -53,6 +81,9 @@ same engines, and writes a movement report instead of a fresh one.
 | `--model <role>=<model>` | Repeatable. `role`: `brand`, `drafter`, `chatgpt`, `claude`, `gemini`, `perplexity` |
 | `--yes` | Skip the confirmation |
 | `--max-usd <n>` | Refuse to run if the estimate exceeds this |
+| `--notify <a,b>` | When the run finishes, send what changed vs the baseline to `slack`, `webhook` and/or `email` (targets from `SAYLENT_*` variables; see [Alerts](/docs/alerts)). Nothing changed, nothing sent |
+| `--notify-always` | Send even when nothing changed |
+| `--notify-allow-loopback` | Let the webhook or Slack URL point at this machine (`localhost`, `127.0.0.1`, `::1`; http allowed), for testing a local receiver. Off by default; other private addresses are always refused ([Alerts](/docs/alerts#where-alerts-can-be-sent)) |
 | `--user-agent`, `--max-pages`, `--allow-private`, `--locale` | Accepted for parity with `audit`, but have no effect here: verify re-asks the same frozen questions and never crawls, fetches your site's corpus, or generates a new question set |
 
 Writes a new `run.json` (`kind: "verify"`) and `movement.html` into a sibling
@@ -61,7 +92,8 @@ what it compares against. Exit codes match `audit`: `0` / `1` / `2`.
 
 Verify **refuses to run** when the question templates or the resolved sample
 count have changed since the baseline was frozen, rather than silently
-comparing two different question sets.
+comparing two different question sets. A baseline that asked an answer surface
+needs the SerpApi key again, and is read from the baseline's own locale.
 [Verify and history](/docs/verify-and-history) is the walkthrough: what it
 reuses, what makes it refuse, what the movement report says, and how to keep
 re-checking on a schedule.
@@ -91,8 +123,10 @@ answers directly - blocking either one fails the check. A page allowed by
 `robots.txt` that still returns 401/403/429 to the live probe means a CDN or
 WAF is overriding robots.txt, and the line says so.
 
-**Exit code:** `1` if anything failed, `0` on pass or warn only - wire it
-into CI to fail a deploy that regresses AI-bot access.
+**Exit codes:** `0` on pass or warn only, `1` if a check failed, `2` if the
+site could not be reached at all, so a typo'd domain can never sit in CI as a
+permanently green check. Wire it into CI to fail a deploy that regresses
+AI-bot access.
 
 ## `saylent report <run.json>`
 
@@ -105,22 +139,120 @@ newer `@saylent/report` version.
 | `--format <a,b>` | `md,html` (default: both) |
 | `--out <dir>` | Output directory (default: alongside the input file) |
 
+## `saylent sources <run.json> [more run.json...]`
+
+Where an audit's answers come from, with receipts: off-site opportunities,
+citation share by domain per engine and surface, and who the answers name. It
+reads the bundle only - no network, no model call, $0. Two or more bundles of
+the same brand print the history instead. The definitions are on
+[Sources & opportunities](/docs/sources).
+
+| Flag | What it does |
+|---|---|
+| `--view <name>` | `summary`, `opportunities`, `domains`, `voice` or `all` (default: `all`, as text) |
+| `--engine <id>` | Only rows cited by this engine or surface |
+| `--type <type>` | Only domains of this type: `own_site`, `rival_site`, `review_site`, `forum`, `docs`, `news`, `marketplace`, `reference`, `video`, `social`, `editorial`, `other` |
+| `--domain <host>` | One domain: its pages and every answer citing it |
+| `--limit <n>` | Rows per list (default 10, max 50) |
+| `--json` | Print the same JSON the MCP `sources` tool returns |
+
+## `saylent crawlers <logfile|dir|->`
+
+Which AI crawlers actually visit your site, from your own access log: requests
+per bot and purpose (training, search index, user-triggered fetch), the pages
+they fetched, and the requests that were blocked or failed, with redacted log
+lines as receipts. Reads nginx/Apache combined, Vercel log drains and
+Cloudflare Logpush; `.gz` and directories too. $0; the log never leaves your
+machine. [AI crawlers](/docs/crawlers) has the bot registry and every rule.
+
+| Flag | What it does |
+|---|---|
+| `--run <run.json>` | Join with an audit: the cited pages of your site no AI crawler fetched in the log window |
+| `--verify-ips` | Check IPs against the operators' published ranges (downloads those public lists, cached 24 hours) |
+| `--since <date>`, `--until <date>` | An ISO date window |
+| `--bot <id>` | One bot, e.g. `gptbot` |
+| `--show-ips` | Keep client IPs in the receipts (redacted by default) |
+| `--limit <n>` | Rows per list (default 10, max 50) |
+| `--out <dir>` | Write `crawlers.json` and `crawlers.md` |
+| `--json` | Print the full report |
+
+## `saylent export <run.json|dir> [more...]`
+
+Your data as CSV or JSON: `runs`, `answers`, `citations`, `sources`,
+`opportunities`, `share_of_voice`, `fixes`, `search_queries` and, with
+`--crawlers`, `crawlers`.
+The columns are versioned (`saylent.export/v1`) and every one is documented on
+[Export and API](/docs/export). $0; it reads files only. A folder is one run
+(it holds `run.json`) or a brand's history (`<YYYY-MM-DD>/run.json`).
+
+| Flag | What it does |
+|---|---|
+| `--format <csv\|json>` | `csv` (default): one `<table>.csv` per table. `json`: one `export.json` |
+| `--out <dir>` | Where to write (default `./saylent-export`) |
+| `--table <name>` | Only this table |
+| `--crawlers <file>` | Add a `crawlers.json` from `saylent crawlers --out` |
+| `--stdout` | Print instead of writing (CSV needs `--table`) |
+
+## `saylent fixes <run.json>`
+
+The fixes a run drafted, ranked, with the evidence behind each, $0.
+`--fix <key>` prints one fix with its full drafted artifact; `--json` prints
+the MCP `fixes` tool's payload.
+
+### `saylent fixes apply <run.json> --repo <path>`
+
+Writes the site-side fixes into your own site repository, on a new branch:
+
+- **robots.txt**: the drafted groups for the AI crawlers a run found refused.
+  A missing bot is appended; a group that names only that bot has its rules
+  replaced; a group shared with other bots is left alone and listed for review.
+  If robots.txt is generated (for example `app/robots.ts`), the rules go in a
+  file beside the snippets for you to move by hand.
+- **JSON-LD**: each drafted block becomes a snippet file under `saylent-fixes/jsonld/`,
+  with where it goes. Saylent never edits your templates.
+- **`saylent-fixes/PULL_REQUEST.md`**: the receipts behind each change, a
+  review checklist (every `TODO-VERIFY` value), the fixes not applied, and how
+  to verify after the deploy.
+
+It refuses a folder that is not the root of a git repository, a work tree with
+uncommitted changes, and any path that resolves outside the repository. It
+shows the diff and asks before writing, commits on the new branch with your
+own git identity, and never pushes: it prints the `git push` and
+`gh pr create` commands for you. Saylent drafts no llms.txt, so none is written.
+
+| Flag | What it does |
+|---|---|
+| `--repo <path>` | The site repository root (required) |
+| `--only <a,b>` | Only these fix keys (from `saylent fixes`) |
+| `--dir <name>` | Folder for the snippets and `PULL_REQUEST.md` (default `saylent-fixes`) |
+| `--branch <name>` | The branch to create (default `saylent/fixes-<date>`) |
+| `--dry-run` | Show the diff and stop |
+| `--yes` | Apply without the prompt (needed when stdin is not a terminal) |
+
 ## `saylent history <dir>`
 
 Lists past runs found in `<dir>/<YYYY-MM-DD>/run.json`:
 
 ```
-  2026-09-09  smoke  present 2/6  recommended 0   $0.51
-  2026-09-16  verify present 5/6  recommended 2   $0.44   ▲
+  2026-09-09  smoke  mentioned 2 of 6  ·  recommended 0 of 6   $0.51
+  2026-09-16  verify mentioned 5 of 6  ·  recommended 2 of 6   $0.44   ▲
 ```
+
+| Flag | What it does |
+|---|---|
+| `--digest` | The weekly digest: what changed between the newest run and the newest one at least `--days` older (recommendations gained or lost, new rivals, new off-site opportunities). $0 |
+| `--days <n>` | The digest window (default 7) |
+| `--notify <a,b>` | Send the digest to `slack`, `webhook` and/or `email` ([Alerts](/docs/alerts)) |
+| `--notify-allow-loopback` | As on `verify`: allow a webhook or Slack URL on this machine |
+| `--json` | Print the digest payload (`saylent.alert/v1`) |
 
 ## `saylent keys`
 
 | Subcommand | What it does |
 |---|---|
 | `saylent keys list` | List configured providers, masked, with the source each came from |
-| `saylent keys set <provider>` | Set one key interactively (`openai`, `anthropic`, `gemini`, or `perplexity`) |
-| `saylent keys test` | Verify every configured key with a free call |
+| `saylent keys set <provider>` | Set one key interactively (`openai`, `anthropic`, `gemini`, `perplexity`, or `serpapi`). `serpapi` unlocks the [answer surfaces](/docs/surfaces) |
+| `saylent keys test` | Verify every configured key with a free call. The SerpApi check uses its free Account API, which does not count against your searches |
 | `saylent keys remove <provider>` | Remove a stored key |
 
 Keys resolve in order - **environment variable → `.env` in the current
@@ -153,6 +285,28 @@ shape of the file it writes, how to add, remove and retag a row, what a
 per-row `samples` value does, and the three file shapes `--questions` accepts
 (a previous `run.json`, a `questions.json`, or one question per line in a text
 file).
+
+### `saylent questions import <file>`
+
+Real questions in: a Google Search Console Queries export, any CSV
+(`--column`) or text lines, into a `questions.json` that `audit --questions`
+asks verbatim. $0 and offline; every dropped row is counted by reason.
+[Import questions](/docs/import-questions) has every rule.
+
+| Flag | What it does |
+|---|---|
+| `--out <file>`, `--force` | Where to write (default `./questions.json`); `--force` overwrites |
+| `--format <f>` | `gsc`, `csv` or `text` (default: detected) |
+| `--column <name\|n>`, `--weight-column <c>` | CSV: the question column, and a numeric column to rank by |
+| `--min-impressions <n>` | Search Console: drop rarer queries |
+| `--exclude <regex>`, `--include <regex>` | Drop or keep matching rows (repeatable) |
+| `--questions-only` | Keep question-shaped rows |
+| `--cluster` | Merge near-identical queries |
+| `--max <n>` | How many to keep (default 20, max 50) |
+| `--type <type>` | The type every row gets (default `custom`) |
+| `--language <tag>`, `--country <cc>` | The set's locale: the answer surfaces' default |
+| `--rewrite`, `--yes` | Rewrite queries as natural questions with your drafter model, after the estimate |
+| `--preview`, `--json` | Print instead of writing |
 
 **Only `category` and `problem` rows are scored** and count toward the
 recommended band. Every other type - `custom` included - is asked, judged and
@@ -190,6 +344,12 @@ with.
 | `verify` | Re-asks an existing run's frozen questions and writes `movement.html` | Your own credits |
 | `gate_check` | AI-bot access for a site: robots.txt per bot class, a live per-user-agent probe, JSON-LD, meta directives | **$0** |
 | `read_report` | The summary blocks of a `run.json` already on disk, whole or one named section | **$0** |
+| `sources` | Citation share, share of voice and off-site opportunities of a `run.json`, with receipts | **$0** |
+| `fixes` | The drafted fixes of a `run.json`, with their evidence | **$0** |
+| `history` | Two or more runs of one brand: what moved, with receipts | **$0** |
+| `export` | The [export tables](/docs/export), inline or as files | **$0** |
+| `crawlers` | Which AI crawlers visit, from an access log | **$0** |
+| `questions_import` | Preview a question import; writes nothing | **$0** |
 
 `audit` and `verify` take the same arguments the flags above take, from one
 shared schema - so the two surfaces can never drift. Each tool states its own
@@ -216,9 +376,12 @@ Desktop and other MCP clients, and the argument table - is on
 `run.json` is the lossless format every command reads and writes -
 `BUNDLE_VERSION: 1`. Top-level keys: `version`, `run` (id, kind, profile,
 status, brand, the frozen engine set, the model used per role, judge mode,
-timings, cost, `skip` - which stages this run skipped, if any), `brand_model`, `questions` (the frozen set), `answers`
+timings, cost, `skip` - which stages this run skipped, if any - and `surfaces`,
+the SERP provider and locale when the run asked an answer surface), `brand_model`, `questions` (the frozen set), `answers`
 (every raw answer text and every sampled draw, not just the final verdict),
-`citations`, `corpus_pages`, `domain_checks`, `fixes`, `scores`, `health`.
+`citations`, `corpus_pages`, `domain_checks`, `fixes`, `scores`, `health`, and
+`sources` ([Sources & opportunities](/docs/sources#in-runjson), optional:
+a bundle without it is read unchanged).
 Nothing is summarized or dropped - this is also what a downloaded bundle
 from the full app looks like (`GET /api/runs/<id>/export?format=bundle`), so
 a CLI run and an app run produce the same artifact. Compatibility is
@@ -245,6 +408,7 @@ in the environment, in the config file and in the app.
 | `ANTHROPIC_API_KEY` | Required (one of the two) |
 | `GEMINI_API_KEY` | Optional, adds the Gemini engine |
 | `PERPLEXITY_API_KEY` | Optional, adds the Perplexity engine |
+| `SERPAPI_API_KEY` | Optional, unlocks the [answer surfaces](/docs/surfaces) (Google AI Overviews, Google AI Mode, Microsoft Copilot) |
 | `AUDIT_PROFILE` | Default `--profile` (`smoke`/`full`) when the flag isn't passed - overrides `saylent.config` `profile` |
 | `AUDIT_ENGINES` | Default `--engines` list when the flag isn't passed - overrides `saylent.config` `engines` |
 | `AUDIT_SAMPLES` | Default `--samples` value (1-5) when the flag isn't passed - overrides `saylent.config` `sampling` and the profile default |
@@ -253,7 +417,10 @@ in the environment, in the config file and in the app.
 | `SAYLENT_APP_DOMAIN` | Your domain, appended to the diagnostic UA the live per-bot probe sends |
 | `DAILY_SPEND_CAP_USD` | Local daily spend ceiling (default 20) |
 | `MODEL_*` | Model registry overrides - see `saylent models` above and [Configuration](/docs/configuration) |
+| `SAYLENT_SLACK_WEBHOOK_URL`, `SAYLENT_WEBHOOK_URL`, `SAYLENT_WEBHOOK_SECRET` | Targets for `--notify slack` / `webhook`; the secret signs webhook requests ([Alerts](/docs/alerts)) |
+| `SAYLENT_SMTP_URL`, `SAYLENT_ALERT_EMAIL_FROM`, `SAYLENT_ALERT_EMAIL_TO` | Target for `--notify email`: `smtps://user:pass@host:465` or `smtp://...:587` with STARTTLS |
 
-Every one of these is a DEFAULT: the matching flag always wins, and a bad
+Every one of these (except the alert targets, which are the only place those
+settings live) is a DEFAULT: the matching flag always wins, and a bad
 value is refused with the exact variable name and what was expected, never
 silently ignored.

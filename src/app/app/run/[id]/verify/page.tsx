@@ -7,16 +7,11 @@ import { diffAnswer } from "@saylent/report/answer-diff";
 import { flag } from "@/lib/flags";
 import { createClient } from "@/lib/supabase/server";
 import { PerEngineTable, type EngineChange } from "@saylent/report/components/per-engine-table";
+import { MODEL_ENGINE_IDS, SURFACE_IDS, engineLabel } from "@saylent/engine/surfaces";
 import { NextReportHost } from "../host";
 
 export const metadata = { title: "Verify re-run · Saylent" };
 
-const ENGINE_LABEL: Record<string, string> = {
-  chatgpt: "ChatGPT",
-  claude: "Claude",
-  gemini: "Gemini",
-  perplexity: "Perplexity",
-};
 
 interface EngineScore {
   answered: number;
@@ -41,7 +36,14 @@ interface AnswerRow {
   verdict: unknown;
 }
 
-const ENGINES = ["chatgpt", "claude", "gemini", "perplexity"];
+/** The four model APIs always; an answer surface when either side of the
+ *  comparison scored it (scores.per_engine lists a surface only when asked). */
+function enginesIn(...perEngine: (Record<string, unknown> | undefined)[]): string[] {
+  return [
+    ...MODEL_ENGINE_IDS,
+    ...SURFACE_IDS.filter((s) => perEngine.some((p) => p?.[s] != null)),
+  ];
+}
 
 export default async function VerifyPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -65,6 +67,7 @@ export default async function VerifyPage({ params }: { params: Promise<{ id: str
     : [brand?.name].filter((v): v is string => typeof v === "string");
   const scores = (run.scores ?? {}) as ScoresShape;
   const baseline = scores.verify?.baseline;
+  const ENGINES = enginesIn(scores.per_engine, baseline?.per_engine);
   const before = baseline?.overall?.recommended ?? 0;
   const after = scores.overall?.recommended ?? 0;
   const engineCount = Math.max(
@@ -160,7 +163,7 @@ export default async function VerifyPage({ params }: { params: Promise<{ id: str
     }
     const only = engines.size === 1 ? [...engines][0] : null;
     celebrationLine = only
-      ? `That fix worked. ${ENGINE_LABEL[only] ?? only} now cites you.`
+      ? `That fix worked. ${engineLabel(only)} now cites you.`
       : "That fix worked. The answers moved.";
   }
 

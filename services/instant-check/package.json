@@ -6,7 +6,7 @@
   "description": "The free instant AI-access check behind the docs site: GET /api/check?domain= returns the gate-check verdict as JSON. No LLM calls, $0 per use.",
   "license": "Apache-2.0",
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "scripts": {
     "build": "node scripts/build.mjs",

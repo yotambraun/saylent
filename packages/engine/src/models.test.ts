@@ -41,13 +41,13 @@ describe("resolveRoles", () => {
     expect(roles.judgeMode).toBe("cross-family");
     expect(roles.families).toEqual(["anthropic", "openai"]);
     expect(judgeFamilies(roles)).toEqual(CROSS_FAMILY_JUDGE);
-    expect(roles.roles.brand).toEqual({ family: "anthropic", model: "claude-haiku-4-5" });
-    expect(roles.roles.drafter).toEqual({ family: "anthropic", model: "claude-sonnet-4-6" });
+    expect(roles.roles.brand).toEqual({ family: "anthropic", model: "claude-haiku-5-5" });
+    expect(roles.roles.drafter).toEqual({ family: "anthropic", model: "claude-sonnet-5-5" });
     expect(roles.roles["judge:for-chatgpt"]).toEqual({
       family: "anthropic",
-      model: "claude-haiku-4-5",
+      model: "claude-haiku-5-5",
     });
-    expect(roles.roles["judge:for-claude"]).toEqual({ family: "openai", model: "gpt-5-mini" });
+    expect(roles.roles["judge:for-claude"]).toEqual({ family: "openai", model: "gpt-6-luna" });
     expect(roles.selfJudged).toEqual([]);
   });
 
@@ -60,11 +60,14 @@ describe("resolveRoles", () => {
       claude: "openai",
       gemini: "openai",
       perplexity: "openai",
+      google_ai_overview: "openai",
+      google_ai_mode: "openai",
+      copilot: "openai",
     });
-    expect(roles.roles.brand).toEqual({ family: "openai", model: "gpt-5-mini" });
-    expect(roles.roles.drafter).toEqual({ family: "openai", model: "gpt-5.4" });
-    // the chatgpt ANSWER model (gpt-5.4) is never the model that judges it
-    expect(roles.roles["judge:for-chatgpt"].model).toBe("gpt-5-mini");
+    expect(roles.roles.brand).toEqual({ family: "openai", model: "gpt-6-luna" });
+    expect(roles.roles.drafter).toEqual({ family: "openai", model: "gpt-6.1-sol" });
+    // the chatgpt ANSWER model (gpt-6.1-sol) is never the model that judges it
+    expect(roles.roles["judge:for-chatgpt"].model).toBe("gpt-6-luna");
     expect(roles.selfJudged).toEqual([]);
   });
 
@@ -77,11 +80,14 @@ describe("resolveRoles", () => {
       claude: "anthropic",
       gemini: "anthropic",
       perplexity: "anthropic",
+      google_ai_overview: "anthropic",
+      google_ai_mode: "anthropic",
+      copilot: "anthropic",
     });
     expect(roles.roles.brand.family).toBe("anthropic");
     expect(roles.roles.drafter.family).toBe("anthropic");
     // the claude ANSWER model (sonnet) is judged by the dedicated judge (haiku)
-    expect(roles.roles["judge:for-claude"].model).toBe("claude-haiku-4-5");
+    expect(roles.roles["judge:for-claude"].model).toBe("claude-haiku-5-5");
     expect(roles.selfJudged).toEqual([]);
   });
 
@@ -103,7 +109,7 @@ describe("resolveRoles", () => {
   });
 
   it("flags an engine whose judge model was overridden onto its own answer model", () => {
-    process.env.MODEL_JUDGE_OPENAI = "gpt-5.4"; // == the default chatgpt answer model
+    process.env.MODEL_JUDGE_OPENAI = "gpt-6.1-sol"; // == the default chatgpt answer model
     const roles = resolveRoles({ openai: true });
     expect(roles.selfJudged).toEqual(["chatgpt"]);
   });
@@ -130,13 +136,21 @@ describe("resolveRoles", () => {
     ]);
     expect(JSON.parse(JSON.stringify(flat))).toEqual(flat);
   });
+
+  it("rolesForBundle lists a surface's judge only when the run asked it", () => {
+    const roles = resolveRoles({ anthropic: true, openai: true });
+    const flat = rolesForBundle(roles, ["chatgpt", "claude", "google_ai_mode"]);
+    expect(flat["judge:for-google_ai_mode"]).toEqual({ family: "anthropic", model: roles.roles["judge:for-google_ai_mode"].model });
+    expect(flat["judge:for-google_ai_overview"]).toBeUndefined();
+    expect(flat["judge:for-perplexity"]).toBeDefined();
+  });
 });
 
 describe("familyOfModel", () => {
   it("recognizes anthropic and openai model ids, and region-prefixed ids", () => {
-    expect(familyOfModel("claude-sonnet-4-6")).toBe("anthropic");
-    expect(familyOfModel("us.anthropic.claude-haiku-4-5")).toBe("anthropic");
-    expect(familyOfModel("gpt-5.4")).toBe("openai");
+    expect(familyOfModel("claude-sonnet-5-5")).toBe("anthropic");
+    expect(familyOfModel("us.anthropic.claude-haiku-5-5")).toBe("anthropic");
+    expect(familyOfModel("gpt-6.1-sol")).toBe("openai");
     expect(familyOfModel("o3-mini")).toBe("openai");
     expect(familyOfModel("chatgpt-4o")).toBe("openai");
   });
@@ -151,7 +165,7 @@ describe("resolveModelTable precedence: flag > MODEL_* env > saylent.config mode
   it("no inputs ⇒ every slot resolves to its shipped default, source 'default'", () => {
     const table = resolveModelTable({ env: {} as NodeJS.ProcessEnv });
     expect(table.judgeAnthropic).toEqual({
-      model: "claude-haiku-4-5",
+      model: "claude-haiku-5-5",
       source: "default",
       envVar: "MODEL_JUDGE_ANTHROPIC",
       label: "judge (anthropic)",

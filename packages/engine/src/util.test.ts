@@ -3,14 +3,17 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { HostLookup } from "./util";
 import {
+  checkHostResolvesPublic,
   clearVettedHosts,
   contextExcerpt,
   isBlockedHost,
+  isLoopbackHost,
   isPrivateIp,
   makePinnedLookup,
   normUrl,
   parseJsonLoosely,
   safeFetch,
+  safePost,
   stripHtmlToText,
   unwrapArchiveUrl,
   wordPresent,
@@ -443,5 +446,175 @@ describe("stripHtmlToText", () => {
   it("respects the char limit", () => {
     const html = `<body><p>${"a".repeat(500)}</p></body>`;
     expect(stripHtmlToText(html, 100).length).toBe(100);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// safePost: the same guard as safeFetch, for one outbound POST (alert
+// webhooks and Slack). Redirects are never followed; loopback is reachable
+// only when the caller opts in, and nothing else private ever is.
+// ---------------------------------------------------------------------------
+describe("isLoopbackHost", () => {
+  it("names loopback literals and localhost only", () => {
+    for (const h of ["localhost", "LOCALHOST", "127.0.0.1", "127.8.9.10", "::1", "[::1]", "::ffff:127.0.0.1", "[::ffff:7f00:1]"]) {
+      expect(isLoopbackHost(h), h).toBe(true);
+    }
+    for (const h of ["10.0.0.1", "169.254.169.254", "0.0.0.0", "fd00::1", "example.com", "localhost.example.com", "2130706433", "0x7f000001", ""]) {
+      expect(isLoopbackHost(h), h).toBe(false);
+    }
+  });
+  it("treats every *.localhost name and a trailing-dot spelling as loopback (RFC 6761)", () => {
+    for (const h of ["localhost.", "LOCALHOST.", "app.localhost", "a.b.localhost.", "127.0.0.1."]) {
+      expect(isLoopbackHost(h), h).toBe(true);
+    }
+  });
+});
+
+describe("isBlockedHost: names reserved for loopback", () => {
+  it("blocks *.localhost and trailing-dot spellings", () => {
+    for (const h of ["localhost.", "app.localhost", "a.b.localhost.", "10.0.0.5.", "127.0.0.1."]) {
+      expect(isBlockedHost(h), h).toBe(true);
+    }
+    for (const h of ["example.com.", "localhost.example.com", "mylocalhost"]) {
+      expect(isBlockedHost(h), h).toBe(false);
+    }
+  });
+});
+
+describe("safePost", () => {
+  const publicLookup: HostLookup = async () => [{ address: "93.184.216.34" }];
+  afterEach(() => {
+    clearVettedHosts();
+    vi.restoreAllMocks();
+  });
+
+  it("POSTs the headers and body, never following a redirect, and returns status, text and headers", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response("ok", { status: 200, headers: { "retry-after": "2" } }));
+    const r = await safePost("https://hooks.example.com/x", {
+      headers: { "content-type": "application/json" },
+      body: '{"a":1}',
+      lookup: publicLookup,
+    });
+    expect(r).toMatchObject({ status: 200, text: "ok" });
+    expect(r.error).toBeUndefined();
+    expect(r.headers?.get("retry-after")).toBe("2");
+    const init = fetchSpy.mock.calls[0][1] as RequestInit;
+    expect(init.method).toBe("POST");
+    expect(init.body).toBe('{"a":1}');
+    expect(init.redirect).toBe("manual");
+    expect((init.headers as Record<string, string>)["content-type"]).toBe("application/json");
+  });
+
+  it("refuses private, loopback and link-local IPv4 literals without sending", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    for (const u of ["https://10.0.0.5/", "https://192.168.1.1/", "https://172.16.0.1/", "https://169.254.169.254/latest/meta-data/", "https://127.0.0.1/", "https://0.0.0.0/", "https://100.64.0.1/"]) {
+      const r = await safePost(u, { body: "{}", lookup: publicLookup });
+      expect(r.status, u).toBe(0);
+      expect(r.error, u).toMatch(/private, loopback or link-local/);
+    }
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("refuses private IPv6 literals, including v4-mapped and NAT64 forms", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    for (const u of ["https://[::1]/", "https://[fd00::1]/", "https://[fe80::1]/", "https://[::ffff:169.254.169.254]/", "https://[::ffff:a9fe:a9fe]/", "https://[64:ff9b::a9fe:a9fe]/"]) {
+      const r = await safePost(u, { body: "{}", lookup: publicLookup });
+      expect(r.status, u).toBe(0);
+    }
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("refuses decimal, octal and hex encodings of an internal IPv4 address", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    for (const u of ["https://2130706433/", "https://0x7f000001/", "https://0177.0.0.1/", "https://0xa9.0xfe.0xa9.0xfe/", "https://2852039166/", "https://0251.0376.0251.0376/"]) {
+      const r = await safePost(u, { body: "{}", lookup: publicLookup });
+      expect(r.status, u).toBe(0);
+    }
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("refuses a hostname that resolves to a private address (DNS rebinding)", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    for (const address of ["10.0.0.5", "169.254.169.254", "127.0.0.1", "fd00::5"]) {
+      const r = await safePost("https://hooks.evil.example/", { body: "{}", lookup: async () => [{ address: "93.184.216.34" }, { address }] });
+      expect(r.status, address).toBe(0);
+      expect(r.error, address).toMatch(/resolves to a private, loopback or link-local address/);
+    }
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when the host does not resolve", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    const r = await safePost("https://nowhere.example/", { body: "{}", lookup: async () => [] });
+    expect(r).toMatchObject({ status: 0, error: "the host did not resolve" });
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("does not follow a redirect toward an internal address: the 3xx is the result", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(null, { status: 307, headers: { location: "http://169.254.169.254/latest/meta-data/" } }));
+    const r = await safePost("https://hooks.example.com/x", { body: "{}", lookup: publicLookup });
+    expect(r.status).toBe(307);
+    expect(fetchSpy).toHaveBeenCalledOnce();
+  });
+
+  it("refuses a non-http(s) scheme", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    const r = await safePost("file:///etc/passwd", { body: "{}", lookup: publicLookup });
+    expect(r.status).toBe(0);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("allowLoopback opens loopback only: 127.0.0.1, [::1] and localhost, nothing else private", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async () => new Response("ok", { status: 200 }));
+    const loop: HostLookup = async (h) => (h === "localhost" ? [{ address: "127.0.0.1" }, { address: "::1" }] : [{ address: h }]);
+    for (const u of ["http://127.0.0.1:8787/hook", "http://[::1]:8787/hook", "http://localhost:8787/hook"]) {
+      const r = await safePost(u, { body: "{}", lookup: loop, allowLoopback: true });
+      expect(r.status, u).toBe(200);
+    }
+    expect(fetchSpy).toHaveBeenCalledTimes(3);
+    fetchSpy.mockClear();
+    for (const u of ["http://10.0.0.5/", "http://169.254.169.254/", "http://[fd00::1]/", "http://0xa9fea9fe/"]) {
+      const r = await safePost(u, { body: "{}", lookup: loop, allowLoopback: true });
+      expect(r.status, u).toBe(0);
+    }
+    const rebind = await safePost("http://hooks.evil.example/", { body: "{}", lookup: async () => [{ address: "10.0.0.5" }], allowLoopback: true });
+    expect(rebind.status).toBe(0);
+    expect(fetchSpy).not.toHaveBeenCalled();
+    // and without the opt-in, loopback stays refused
+    expect((await safePost("http://127.0.0.1:8787/hook", { body: "{}", lookup: loop })).status).toBe(0);
+  });
+
+  it("times out with a clear error, and caps the response body", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      (_u, init) =>
+        new Promise((_, reject) => {
+          (init as RequestInit).signal?.addEventListener("abort", () => reject((init as RequestInit).signal?.reason));
+        }),
+    );
+    const slow = await safePost("https://hooks.example.com/x", { body: "{}", lookup: publicLookup, timeoutMs: 30 });
+    expect(slow).toMatchObject({ status: 0, error: "timed out after 0.03s" });
+    vi.restoreAllMocks();
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("a".repeat(200_000), { status: 400 }));
+    const big = await safePost("https://hooks.example.com/x", { body: "{}", lookup: publicLookup });
+    expect(big.status).toBe(400);
+    expect(big.text.length).toBe(65_536);
+  });
+
+  it("reports a network error without the URL", async () => {
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(Object.assign(new TypeError("fetch failed"), { cause: { code: "ECONNREFUSED" } }));
+    const r = await safePost("https://hooks.example.com/secret-path", { body: "{}", lookup: publicLookup });
+    expect(r).toMatchObject({ status: 0, error: "fetch failed (ECONNREFUSED)" });
+  });
+
+  it("checkHostResolvesPublic: the save-time check uses the same judgement", async () => {
+    expect(await checkHostResolvesPublic("hooks.example.com", { lookup: publicLookup })).toBeNull();
+    expect(await checkHostResolvesPublic("x.example", { lookup: async () => [{ address: "10.1.2.3" }] })).toBe("private_address");
+    expect(await checkHostResolvesPublic("x.example", { lookup: async () => { throw new Error("ENOTFOUND"); } })).toBe("unresolved");
+    expect(await checkHostResolvesPublic("localhost", { lookup: async () => [{ address: "127.0.0.1" }], allowLoopback: true })).toBeNull();
+    expect(await checkHostResolvesPublic("localhost", { lookup: async () => [{ address: "127.0.0.1" }] })).toBe("private_address");
   });
 });

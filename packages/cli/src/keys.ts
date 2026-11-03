@@ -13,7 +13,13 @@ import type { Engine } from "@saylent/engine";
 import { maskKey, registerSecret } from "./redact";
 import { glyph } from "./glyphs";
 
-export type Provider = "openai" | "anthropic" | "gemini" | "perplexity";
+/** The four model-API providers: each one unlocks one answer engine, and two
+ *  of them (openai, anthropic) also serve the judgment roles. */
+export type ModelProvider = "openai" | "anthropic" | "gemini" | "perplexity";
+/** Every key the CLI stores: the model providers plus the BYO SERP-data
+ *  provider that unlocks the answer surfaces (Google AI Overviews, Google AI
+ *  Mode, Microsoft Copilot). */
+export type Provider = ModelProvider | "serpapi";
 export type KeySource = "env" | ".env" | "~/.saylent/config.json";
 
 export interface ProviderSpec {
@@ -26,7 +32,8 @@ export interface ProviderSpec {
   required: boolean;
 }
 
-export const PROVIDERS: ProviderSpec[] = [
+/** The model-API providers, in engine order. */
+export const PROVIDERS: (ProviderSpec & { id: ModelProvider })[] = [
   {
     id: "openai",
     envVar: "OPENAI_API_KEY",
@@ -57,7 +64,21 @@ export const PROVIDERS: ProviderSpec[] = [
   },
 ];
 
-export const PROVIDER_TO_ENGINE: Record<Provider, Engine> = {
+/** The SERP-data provider key(s): optional, only needed for answer surfaces. */
+export const SURFACE_KEY_PROVIDERS: ProviderSpec[] = [
+  {
+    id: "serpapi",
+    envVar: "SERPAPI_API_KEY",
+    label: "SerpApi",
+    hint: "from serpapi.com/manage-api-key, for Google AI Overviews / AI Mode / Copilot",
+    required: false,
+  },
+];
+
+/** Every key provider: what `saylent keys` lists, sets, tests and removes. */
+export const ALL_KEY_PROVIDERS: ProviderSpec[] = [...PROVIDERS, ...SURFACE_KEY_PROVIDERS];
+
+export const PROVIDER_TO_ENGINE: Record<ModelProvider, Engine> = {
   openai: "chatgpt",
   anthropic: "claude",
   gemini: "gemini",
@@ -161,7 +182,7 @@ export function resolveKeys(cwd: string = process.cwd()): ResolvedKeys {
   const configured = readConfigFile().keys ?? {};
   const keys: KeyMap = {};
   const sources: SourceMap = {};
-  for (const p of PROVIDERS) {
+  for (const p of ALL_KEY_PROVIDERS) {
     const fromEnv = process.env[p.envVar]?.trim();
     const fromDotEnv = dotEnv[p.envVar]?.trim();
     const fromConfig = configured[p.id]?.trim();
@@ -183,7 +204,7 @@ export function resolveKeys(cwd: string = process.cwd()): ResolvedKeys {
  *  key resolved from .env or ~/.saylent/config.json must still be applied to
  *  process.env before runAudit() is called. */
 export function applyKeysToEnv(keys: KeyMap): void {
-  for (const p of PROVIDERS) {
+  for (const p of ALL_KEY_PROVIDERS) {
     const value = keys[p.id];
     if (value) {
       process.env[p.envVar] = value;
@@ -206,7 +227,7 @@ export function hasCrossFamilyKeys(keys: KeyMap): boolean {
 }
 
 export function everyKeyValue(keys: KeyMap): string[] {
-  return PROVIDERS.map((p) => keys[p.id]).filter((v): v is string => Boolean(v));
+  return ALL_KEY_PROVIDERS.map((p) => keys[p.id]).filter((v): v is string => Boolean(v));
 }
 
 /** Where a key is minted, per judgment provider. Printed by the first-run
@@ -246,6 +267,8 @@ export function missingKeysError(): Error {
       "  to run; both give cross-family judging. Three ways to provide one:",
       "",
       ...keyHelpLines("    "),
+      "",
+      "  No key yet? `npx saylent demo` renders a full sample report offline, $0.",
     ].join("\n"),
   );
 }

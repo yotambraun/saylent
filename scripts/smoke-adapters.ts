@@ -19,7 +19,7 @@ async function main() {
   const results = await Promise.all(
     ENGINES.map(async (engine) => {
       const started = Date.now();
-      const r = await ADAPTERS[engine](QUESTION, CONFIG[engine]);
+      const r = await ADAPTERS[engine](QUESTION, CONFIG[engine as keyof typeof CONFIG]);
       return { engine, r, ms: Date.now() - started };
     }),
   );

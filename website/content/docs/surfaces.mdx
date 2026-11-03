@@ -1,0 +1,250 @@
+---
+title: Answer surfaces
+description: Google AI Overviews, Google AI Mode and Microsoft Copilot, read through your own SerpApi key and judged, scored and reported like any engine.
+---
+
+By default a run asks four model APIs: ChatGPT, Claude, Gemini and Perplexity.
+Many buyers never open those. They read the AI answer at the top of a Google
+results page, or the Copilot answer in Bing. Saylent calls these **answer
+surfaces**, and a run can add them to the engine set.
+
+None of them has an official API. Saylent reads them through a SERP-data
+provider that you bring your own key for. The first provider is
+[SerpApi](https://serpapi.com). Surfaces are opt-in: a run that asks no surface
+is the same run it was before, and costs the same.
+
+## The three surfaces
+
+| Surface | id | What it reads | SerpApi engine |
+|---|---|---|---|
+| Google AI Overviews | `google_ai_overview` | The AI Overview at the top of a Google results page | `google`, then `google_ai_overview` when Google hands back a page token |
+| Google AI Mode | `google_ai_mode` | Google's conversational AI Mode answer | `google_ai_mode` |
+| Microsoft Copilot | `copilot` | The Copilot answer in Bing search | `bing_copilot` |
+
+What each source returns, and which locale settings it honors:
+
+| Source | Answer text | Citations | Citations in answer order | Country | Language | City location | Can show no answer |
+|---|---|---|---|---|---|---|---|
+| The four model APIs | yes | yes | yes | no | no | no | no |
+| Google AI Overviews | yes | yes | yes | yes | yes | yes | yes |
+| Google AI Mode | yes | yes | yes | yes | yes | yes | yes |
+| Microsoft Copilot | yes | yes | yes | no | no | no | yes |
+
+## Set up the key
+
+```bash
+npx saylent keys set serpapi
+npx saylent keys test
+```
+
+Get a key from [serpapi.com/manage-api-key](https://serpapi.com/manage-api-key).
+The free plan has 250 searches a month. The key is `SERPAPI_API_KEY`, and it
+resolves like every other key: environment variable, then `.env` in the
+current folder, then `~/.saylent/config.json`. It is never a flag and never a
+tool argument.
+
+`saylent keys test` checks the key with SerpApi's
+[Account API](https://serpapi.com/account-api), which is free and does not
+count against your searches. It also prints how many searches your plan has
+left.
+
+A surface you ask for without a key is refused by name, before anything is
+spent:
+
+```
+Google AI Overviews needs a SerpApi key (SERPAPI_API_KEY). Set one with
+`saylent keys set serpapi` (free plan: 250 searches a month), or drop the
+surface from the run.
+```
+
+It is never silently dropped from the run. `--dry-run` prints the same
+sentence on its `Surfaces` line and spends nothing.
+
+## Ask a surface
+
+### CLI
+
+`--surfaces` adds surfaces to the engine set. `--engines` names the whole set
+and accepts surface ids too.
+
+```bash
+# the four model engines, plus two surfaces
+npx saylent audit example.com --surfaces google_ai_overview,google_ai_mode --dry-run
+
+# exactly these three sources
+npx saylent audit example.com --engines chatgpt,claude,copilot
+```
+
+`AUDIT_ENGINES` and `saylent.config` `engines` accept the surface ids as well.
+An unknown name is refused, never dropped. The preflight prints one
+`Surfaces` line with the provider, the locale and the price per search:
+
+```
+  Surfaces  Google AI Overviews, Google AI Mode via SerpApi · country us · language en · priced at 2.5c/search (SerpApi Starter plan rate)
+```
+
+### MCP
+
+The `audit` tool takes the same three arguments: `surfaces`, `country` and
+`location`, and `engines` accepts the surface ids. A `dry_run: true` call
+reports `keys_configured.serpapi` (presence only) and a `surfaces` block with
+the surfaces requested, the locale, the provider and the refusal sentence when
+the key is missing. See [The MCP server](/docs/mcp).
+
+### The app
+
+The brand's run options page (`/app/brand/<id>/questions`) has an
+**Answer surfaces** group of checkboxes. When the deployment has no SerpApi
+key, the group is disabled and says why. Below it, **Where the answer surfaces
+read from** takes a Country, a Language and a Location. The estimate gets an
+**Answer surfaces** line priced per search.
+
+The operator adds the key on [Providers and
+models](/docs/self-host/admin#providers-and-models) (`/admin/providers`), or
+as `SERPAPI_API_KEY` in the environment. The environment wins over a key saved
+in the console. Saving it from the console needs migration
+`0045_serpapi_provider.sql`. The Test button uses the same free Account API.
+
+The engine set is frozen like the question set, so adding or removing a
+surface for a brand starts a new baseline.
+
+### `saylent.config.json`
+
+```json
+{
+  "engines": ["chatgpt", "claude", "gemini", "perplexity", "google_ai_overview"],
+  "surfaces": {
+    "provider": "serpapi",
+    "country": "us",
+    "language": "en",
+    "location": "Austin, Texas, United States"
+  }
+}
+```
+
+Every `surfaces` field is optional. They are only read when the engine set
+includes a surface. See [Configuration](/docs/configuration).
+
+## Where the answer is read from
+
+| Setting | Where it comes from | SerpApi parameter |
+|---|---|---|
+| Country | `--country <cc>`, else `saylent.config` `surfaces.country` | `gl` |
+| Language | `saylent.config` `surfaces.language`, else `--locale` (or config `locale`) | `hl` |
+| City location | `--location "<city>"`, else `saylent.config` `surfaces.location` | `location` |
+
+Country is a two-letter code (`us`, `gb`, `de`). Language is a BCP47 tag
+(`en`, `pt-BR`), sent lowercased. A location is capped at 120 characters. With
+none of them set, SerpApi answers from its default location.
+
+`--locale` also translates the generated question set. To read the surfaces in
+one language without translating the questions, set `surfaces.language` in the
+config instead.
+
+**Microsoft Copilot takes no locale.** SerpApi documents no country or
+language parameter for `bing_copilot`, so it answers from SerpApi's default
+location whatever you set. The preflight says so on the `Surfaces` line.
+
+## What it costs
+
+SerpApi bills per successful search, by monthly plan
+([serpapi.com/pricing](https://serpapi.com/pricing), checked 2026-11-02):
+
+| Plan | Price | Searches a month | Per search |
+|---|---|---|---|
+| Free | $0 | 250 | - |
+| Starter | $25 | 1,000 | 2.5 cents |
+| Developer | $75 | 5,000 | 1.5 cents |
+| Production | $150 | 15,000 | 1.0 cent |
+
+Saylent prices every search at **2.5 cents**, the Starter rate. That is the
+highest per-search price of any paid plan, so on a bigger plan the estimate
+runs high, never low. SerpApi does not count cached or failed searches. Its
+"Ludicrous Speed" plans bill twice per search, and the estimate ignores that.
+
+Searches per answer:
+
+| Surface | Searches per answer | Why |
+|---|---|---|
+| Google AI Overviews | 1 or 2 (the estimate uses 2) | Google either puts the overview in the first results page, or hands back a page token that needs a second request to the `google_ai_overview` engine |
+| Google AI Mode | 1 | |
+| Microsoft Copilot | 1 | |
+
+A surface is sampled like any engine, so every draw is its own search. The
+judge call that reads each surface answer is billed like any other judge
+call. A question a surface did not answer (below) is still a search, so it is
+still billed, but it is never judged.
+
+The searches go on your SerpApi bill, not your model-provider bill. The
+preflight estimate, the `--max-usd` check and the run's recorded cost all
+include them. More on the model-provider side: [What it costs](/docs/costs).
+
+## Rate limits
+
+Each SerpApi plan has an hourly throughput cap: 50 searches an hour on the
+free plan, 200 on Starter, 1,000 on Developer. Over it, or out of monthly
+searches, SerpApi answers HTTP 429. Saylent retries twice with backoff, then
+records that answer as failed. A failed answer is an engine failure like any
+other: the report names the gap and the run exits `2`.
+
+## When there is no AI answer
+
+Google shows an AI Overview for some queries only. A surface can also come
+back with no answer blocks for a question. Saylent records that question, on
+that surface, as **not shown**:
+
+- it is a coverage gap, counted nowhere: not in the score, not in the band,
+  not in share of voice
+- it is never an absence verdict, because there was no answer to be absent
+  from
+- it is never an engine failure, and it does not change the exit code
+- the search was still made, so it is still billed
+
+The live progress line counts them per surface, and the report marks each
+one "not shown" next to the question.
+
+## How a surface answer is judged and scored
+
+Each surface answer becomes a normal answer row: the answer text, and its
+citations in the order the answer uses them. From there it goes through the
+same pipeline as an engine answer, so the judge, the score, the cited-page
+checks, [Sources & opportunities](/docs/sources) and every report section
+treat it the same way.
+
+The judge is the Anthropic family for all three surfaces. Google's two
+surfaces are Gemini-family answers and Copilot runs on OpenAI models, so
+Anthropic is the other family for each. With only one provider key, the run
+is single-family, as it is for any engine
+([Methodology](/docs/methodology#how-is-an-answer-judged)).
+
+Each surface asked gets its own per-engine band and counts in the overall
+score. The report labels it by name ("Google AI Overviews"), and the run
+records `serpapi:google_ai_overview` as the source that answered.
+
+When a surface is asked, `run.json` carries `run.surfaces`: the provider and
+the locale the answers were read from. The run's call-cap backstop scales with
+the sources asked, 50 draws per source (350 with all seven), never below the
+base cap.
+
+## Verify
+
+`saylent verify` asks the same engine set as the baseline, surfaces included,
+and reads them from the baseline's own locale (`run.surfaces.locale`), so the
+two runs are compared like for like. It needs the SerpApi key again. Without
+it, the verify is refused by name before anything is spent. The preflight
+prints the `Surfaces` line with "(the baseline's own locale)".
+
+## Add a provider
+
+SerpApi is the only provider today. A second one is a small addition:
+
+1. Implement `SerpProvider` in `packages/engine/src/adapters/serp.ts`: one
+   fetch per surface it serves, mapping its response into the shared answer
+   block shape.
+2. Register it in `SERP_PROVIDER_IMPLS` (`packages/engine/src/adapters/index.ts`).
+3. Add its metadata to `SERP_PROVIDERS` in `packages/engine/src/surfaces.ts`:
+   the env var, the surfaces it serves, its rate limit and its pricing page.
+4. Add its price per request to `SERP_REQUEST_CENTS` in
+   `packages/engine/src/rates.ts`, with the date you checked it.
+
+DataForSEO is a candidate. It is not implemented.

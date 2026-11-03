@@ -64,14 +64,17 @@ must never be pasted into this chat:
 If the user pastes a key into the chat anyway: do not repeat it, do not use it
 on a command line, and suggest they rotate it.
 
-Until a key exists, offer what is free: `gate-check`, and `read-report` on any
-existing run.
+Until a key exists, offer what is free: `gate-check`, `read-report` on any
+existing run, and `npx -y saylent@0 demo`, which renders a complete sample
+report offline (a recorded run against a fictional brand) so the user can see
+what an audit produces before paying for one.
 
 ## 4. Ask, then run
 
-Ask one clear question, for example: "This smoke audit of example.com asks 2
-engines and should cost about $0.21 to $0.27 of your OpenAI credits. Run it
-with a $0.50 ceiling?" Wait for a yes.
+Ask one clear question with the preview's own numbers, for example: "This
+smoke audit of example.com asks <engines_with_keys> and should cost about
+$<estimate_usd.low> to $<estimate_usd.high> of your own credits. Run it with a
+$<ceiling> ceiling?" Wait for a yes.
 
 Then call `audit` with the same options, without `dry_run`, and with `max_usd`
 set to the ceiling the user agreed to (default: the preview's high estimate,
@@ -104,5 +107,5 @@ or add claims the report does not make.
 ## Costs at a glance
 
 The dry run's estimate is the number to quote. As a guide, a smoke audit
-(6 questions) across four engines is about $0.60 to $1.20, and a full audit
-(23 questions) about $3.70 to $5.50. Fewer engines cost less.
+(6 questions) across four engines is about $0.80 to $1.20, and a full audit
+(23 questions) about $5.10 to $7.10. Fewer engines cost less.

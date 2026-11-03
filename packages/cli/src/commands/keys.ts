@@ -1,7 +1,7 @@
 // `saylent keys` — list|set <provider>|test|remove <provider>.
 import {
+  ALL_KEY_PROVIDERS,
   keyHelpLines,
-  PROVIDERS,
   readConfigFile,
   readMasked,
   resolveKeys,
@@ -15,7 +15,7 @@ import { maskKey } from "../redact";
 import { glyph } from "../glyphs";
 import { HELP_OPTION } from "../help";
 
-const PROVIDER_IDS = PROVIDERS.map((p) => p.id).join("|");
+const PROVIDER_IDS = ALL_KEY_PROVIDERS.map((p) => p.id).join("|");
 
 // The most likely reason anyone types `saylent keys` is that they have no key
 // yet, so the example that SETS one comes first — the old help opened with
@@ -29,6 +29,8 @@ Set your first key:
 Subcommands:
   list                 List configured providers (masked) and the judge mode
   set <provider>       Set a key interactively (${PROVIDER_IDS})
+                       serpapi unlocks the answer surfaces (Google AI
+                       Overviews, Google AI Mode, Microsoft Copilot)
   test                 Verify every configured key with a free call
   remove <provider>    Remove a stored key
 
@@ -46,7 +48,7 @@ function readLine(question: string): Promise<string> {
 }
 
 function isProvider(v: string | undefined): v is Provider {
-  return Boolean(v) && PROVIDERS.some((p) => p.id === v);
+  return Boolean(v) && ALL_KEY_PROVIDERS.some((p) => p.id === v);
 }
 
 export async function run(argv: string[]): Promise<number> {
@@ -59,7 +61,7 @@ export async function run(argv: string[]): Promise<number> {
   if (sub === "list") {
     const { keys, sources } = resolveKeys(process.cwd());
     process.stdout.write(`\nSaylent ${glyph("sep")} keys\n\n`);
-    for (const p of PROVIDERS) {
+    for (const p of ALL_KEY_PROVIDERS) {
       const value = keys[p.id];
       const line = value ? `${maskKey(value)}  (${sources[p.id]})` : "not set";
       process.stdout.write(`  ${p.label.padEnd(11)} ${line}\n`);
@@ -78,10 +80,10 @@ export async function run(argv: string[]): Promise<number> {
 
   if (sub === "set") {
     if (!isProvider(arg)) {
-      process.stderr.write(`Usage: saylent keys set <provider>  (openai|anthropic|gemini|perplexity)\n`);
+      process.stderr.write(`Usage: saylent keys set <provider>  (${PROVIDER_IDS})\n`);
       return 1;
     }
-    const spec = PROVIDERS.find((p) => p.id === arg)!;
+    const spec = ALL_KEY_PROVIDERS.find((p) => p.id === arg)!;
     const value = await readLine(`  ${spec.label} key (${spec.hint}): `);
     if (!value) {
       process.stderr.write("No key entered. Nothing saved.\n");
@@ -96,7 +98,7 @@ export async function run(argv: string[]): Promise<number> {
   if (sub === "test") {
     const { keys } = resolveKeys(process.cwd());
     let anyFailed = false;
-    for (const p of PROVIDERS) {
+    for (const p of ALL_KEY_PROVIDERS) {
       const value = keys[p.id];
       if (!value) {
         process.stdout.write(`  ${p.label.padEnd(11)} not set\n`);
@@ -112,7 +114,7 @@ export async function run(argv: string[]): Promise<number> {
 
   if (sub === "remove") {
     if (!isProvider(arg)) {
-      process.stderr.write(`Usage: saylent keys remove <provider>  (openai|anthropic|gemini|perplexity)\n`);
+      process.stderr.write(`Usage: saylent keys remove <provider>  (${PROVIDER_IDS})\n`);
       return 1;
     }
     const existing = readConfigFile();

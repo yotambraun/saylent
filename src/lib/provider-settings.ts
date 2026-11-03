@@ -31,19 +31,24 @@ import {
   type ModelSource,
   resolveModelTable,
 } from "@saylent/engine/models";
+import { SERP_PROVIDERS } from "@saylent/engine/surfaces";
 import { log } from "./log";
 import { createAdminClient } from "./supabase/admin";
 
 // ── providers ───────────────────────────────────────────────────────────────
-export type ProviderId = "openai" | "anthropic" | "gemini" | "perplexity";
+export type ProviderId = "openai" | "anthropic" | "gemini" | "perplexity" | "serpapi";
 
 /** The canonical provider list — id, env var and label in ONE place so
- *  provider-check.ts, the console and migration 0042's CHECK cannot drift. */
+ *  provider-check.ts, the console and the allow-list in the set/remove RPCs
+ *  (migration 0042, extended by 0045) cannot drift. `serpapi` is the SERP-data
+ *  provider the answer SURFACES are read through (engine surfaces.ts
+ *  SERP_PROVIDERS): optional, and never a judgment family. */
 export const PROVIDER_META: { id: ProviderId; envVar: string; label: string }[] = [
   { id: "openai", envVar: "OPENAI_API_KEY", label: "OpenAI" },
   { id: "anthropic", envVar: "ANTHROPIC_API_KEY", label: "Anthropic" },
   { id: "gemini", envVar: "GEMINI_API_KEY", label: "Gemini" },
   { id: "perplexity", envVar: "PERPLEXITY_API_KEY", label: "Perplexity" },
+  { id: "serpapi", envVar: SERP_PROVIDERS.serpapi.envVar, label: SERP_PROVIDERS.serpapi.label },
 ];
 
 export const PROVIDER_IDS: ProviderId[] = PROVIDER_META.map((p) => p.id);
@@ -161,6 +166,14 @@ export const getKeySources = cache(async (): Promise<KeySources> => {
   }
   return out;
 });
+
+/** True when this deployment can read the answer surfaces (a SerpApi key in the
+ *  env or the console). PRESENCE ONLY — the one fact a run-options form or an
+ *  engine picker needs to enable or explain the surface checkboxes; the key
+ *  itself never leaves this module toward a page. */
+export async function serpKeyAvailable(): Promise<boolean> {
+  return (await getKeySources()).serpapi !== "absent";
+}
 
 export interface MaskedProvider {
   provider: ProviderId;

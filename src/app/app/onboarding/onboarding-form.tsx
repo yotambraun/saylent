@@ -24,7 +24,14 @@ import type { Engine } from "@saylent/engine/types";
 import { splitSiteRoot, validateSiteRoot } from "@saylent/report/validation";
 import { createBrand, preflightDomain } from "./actions";
 
-export function OnboardingForm({ canPickEngines = false }: { canPickEngines?: boolean }) {
+export function OnboardingForm({
+  canPickEngines = false,
+  serpAvailable = false,
+}: {
+  canPickEngines?: boolean;
+  /** the deployment has a SerpApi key (presence only), for the answer surfaces */
+  serpAvailable?: boolean;
+}) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [domain, setDomain] = useState("");
@@ -261,7 +268,7 @@ export function OnboardingForm({ canPickEngines = false }: { canPickEngines?: bo
           {canPickEngines && (
             <div className="grid gap-1.5">
               <Label>Answer engines <span className="font-normal text-wire">(advanced)</span></Label>
-              <EnginePicker value={engines} onChange={setEngines} idPrefix="onb" />
+              <EnginePicker value={engines} onChange={setEngines} idPrefix="onb" serpAvailable={serpAvailable} />
             </div>
           )}
           {/* Consent attestation — required before any brand can be audited */}

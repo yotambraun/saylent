@@ -49,10 +49,19 @@ is runtime-only and never lands in an image layer.
    ```
 
    `docker-compose.yml` runs two services: `app` (this image, port 3000)
-   and `inngest` (the official `inngest/inngest` image, wired to the app at
-   `http://app:3000/api/inngest`). Inngest's own state is in-memory by
-   default - give it its own Postgres if you need durable queues across
-   restarts.
+   and `inngest` (the official `inngest/inngest` image, pinned to
+   `v1.49.0`, wired to the app at `http://app:3000/api/inngest`). Inngest
+   keeps its SQLite database on the `inngest-data` volume, so
+   `docker compose down` (without `-v`) and an image upgrade keep it. Its
+   queue and run state are held in an in-memory Redis and snapshotted to that
+   database periodically and before shutdown ([Inngest's self-hosting
+   docs](https://www.inngest.com/docs/self-hosting)). Those docs do not
+   promise what a restart restores, so treat queued and running audits as at
+   risk across a restart or crash. For durable queues, run your own Postgres
+   and Redis and set `INNGEST_POSTGRES_URI` and `INNGEST_REDIS_URI` on the
+   `inngest` service.
+   Upgrade the pinned tag deliberately, after reading Inngest's release
+   notes.
 
 3. Apply migrations, pointed at your Supabase project's **direct**
    connection (not the pooler - migrations need it):

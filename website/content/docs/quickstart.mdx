@@ -8,6 +8,18 @@ put in a ticket. No account, no database, no install - the command runs from
 npm and writes three files into a folder you choose. Everything it spends goes
 straight to your own provider account.
 
+## See a report first (no key, $0)
+
+```bash
+npx saylent demo
+```
+
+This renders the bundled sample run (Kestrel Uptime, a fictional product we
+host and audited for real) into `./saylent-demo/report.html`, `report.md` and
+`run.json`, offline: no key, no network, no cost. Add `--open` to open the
+report in your browser. It is the same report a real audit writes, so you can
+see what you are paying for before you pay for anything.
+
 ## Get two keys (two minutes)
 
 Saylent runs on your own provider keys. Nothing goes through us.
@@ -81,10 +93,10 @@ Saylent · audit · example.com
 
   Keys      OpenAI ✓   Anthropic ✓   Gemini –   Perplexity –
   Engines   chatgpt, claude   (add GEMINI_API_KEY / PERPLEXITY_API_KEY for 4 engines)
-  Judge     cross-family (OpenAI ↔ Anthropic)  ·  claude-haiku-4-5 / gpt-5-mini
-  Profile   smoke · 6 questions · 2 engines · est. $0.40–$0.60 of your credits
-  Output    example.com/2026-09-09/  (run.json · report.html · report.md)
-  Sampling  1x scored questions (profile default)
+  Judge     cross-family (OpenAI ↔ Anthropic)  ·  claude-haiku-5-5 / gpt-6-luna
+  Profile   smoke · 6 questions · 2 engines · est. $0.50–$1.02 of your credits
+  Output    example.com/2026-11-01/  (run.json · report.html · report.md)
+  Sampling  1x scored questions (smoke default)
 
   Run it? [Y/n]
 ```
@@ -179,9 +191,9 @@ Three files in the output directory:
 ## What it costs
 
 `smoke` (the default) asks 6 questions across your available engines: with all
-four, roughly **$0.60 to $1.20**, and our two recorded runs cost $0.93 and
+four, roughly **$0.80 to $1.20**, and our two recorded runs cost $0.93 and
 $1.11. `--profile full` asks 23 questions across up to 4 engines, roughly
-**$3.70 to $5.50** with four. Fewer engines cost less, and the CLI prints the
+**$5.10 to $7.10** with four. Fewer engines cost less, and the CLI prints the
 estimate for the engines you actually have, then requires you to confirm it,
 before it spends a cent.
 

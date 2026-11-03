@@ -26,20 +26,22 @@ import { randomUUID } from "node:crypto";
 import { existsSync, mkdtempSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import type { Engine, Fetcher, ProfileName, Question, RunResult, RunStage } from "@saylent/engine";
+import type { Engine, Fetcher, ProfileName, Question, RunResult, RunStage, SurfaceId } from "@saylent/engine";
 import type { RunBundleV1 } from "@saylent/engine/bundle";
 import type { Brief } from "@saylent/report/brief";
 import type { EngineConfigModule, EngineModule, GateCheckEngine } from "../engine-loader";
 import { runGateCheckWith } from "../commands/gate-check";
 import {
+  ALL_KEY_PROVIDERS,
   applyKeysToEnv,
   hasMinimumKeys,
   missingKeysError,
-  PROVIDER_TO_ENGINE,
-  PROVIDERS,
   resolveKeys,
   type Provider,
 } from "../keys";
+import { isSurfaceId } from "@saylent/engine/surfaces";
+import { missingSurfaceKeyMessage, planEngines, resolveSurfaceLocale } from "../surfaces";
+import { querySources, sourcesDigest, type SourcesQuery } from "./sources";
 import {
   type AuditOptions as SharedAuditOptions,
   type VerifyOptions as SharedVerifyOptions,
@@ -111,6 +113,9 @@ export interface RunToolResult {
   summary_blocks: Brief;
   report_paths: Record<string, string>;
   cost_usd: number;
+  /** audit only: citation share + the top off-site opportunities (counts);
+   *  the `sources` tool returns the full lists with receipts */
+  sources_summary?: ReturnType<typeof sourcesDigest>;
 }
 
 export interface GateCheckResult {
@@ -359,7 +364,17 @@ export async function auditTool(deps: McpToolDeps, args: AuditToolArgs): Promise
   });
 
   const loadedQuestionFile = loadQuestionsArg(args);
-  const requestedEngines: Engine[] = merged.engines ?? PROVIDERS.map((p) => PROVIDER_TO_ENGINE[p.id]);
+  // Answer surfaces: the same plan + locale resolution `saylent audit` uses
+  // (surfaces.ts), so an agent and a terminal ask the same sources.
+  const { keys: planKeys } = resolveKeys(cwd);
+  const plan = planEngines(merged.engines, args.surfaces as SurfaceId[] | undefined, planKeys);
+  const requestedEngines: Engine[] = plan.requested;
+  const surfaceLocale = resolveSurfaceLocale({
+    country: args.country,
+    location: args.location,
+    locale: args.locale ?? config.locale ?? null,
+    config: config.surfaces ?? null,
+  });
 
   if (args.dry_run) {
     // $0, no keys required, no network beyond none — same guarantee as
@@ -382,11 +397,8 @@ export async function auditTool(deps: McpToolDeps, args: AuditToolArgs): Promise
     // are set up and price the run the way the CLI preflight does: over the
     // engines that have a key. With no usable key yet it prices every
     // requested engine, so the user still sees what a set-up run would cost.
-    const { keys: dryKeys } = resolveKeys(cwd);
-    const enginesWithKeys = requestedEngines.filter((e) => {
-      const provider = PROVIDERS.find((p) => PROVIDER_TO_ENGINE[p.id] === e);
-      return provider ? Boolean(dryKeys[provider.id]) : false;
-    });
+    const dryKeys = planKeys;
+    const enginesWithKeys = plan.available;
     const pricedEngines =
       enginesWithKeys.length > 0
         ? enginesWithKeys
@@ -404,8 +416,21 @@ export async function auditTool(deps: McpToolDeps, args: AuditToolArgs): Promise
       brand: brandName,
       profile,
       engines: requestedEngines,
-      keys_configured: Object.fromEntries(PROVIDERS.map((p) => [p.id, Boolean(dryKeys[p.id])])) as Record<Provider, boolean>,
+      keys_configured: Object.fromEntries(ALL_KEY_PROVIDERS.map((p) => [p.id, Boolean(dryKeys[p.id])])) as Record<
+        Provider,
+        boolean
+      >,
       engines_with_keys: enginesWithKeys,
+      ...(requestedEngines.some(isSurfaceId)
+        ? {
+            surfaces: {
+              requested: requestedEngines.filter(isSurfaceId),
+              locale: surfaceLocale,
+              provider: config.surfaces?.provider ?? "serpapi",
+              missing_key: plan.surfacesWithoutKey.length > 0 ? missingSurfaceKeyMessage(plan.surfacesWithoutKey) : null,
+            },
+          }
+        : {}),
       judge: formatJudgeMode(dryKeys),
       ready_to_run: hasMinimumKeys(dryKeys) && enginesWithKeys.length > 0,
       estimate_basis: enginesWithKeys.length > 0 ? "engines with a key" : "all requested engines (no usable key found)",
@@ -430,10 +455,8 @@ export async function auditTool(deps: McpToolDeps, args: AuditToolArgs): Promise
   if (!hasMinimumKeys(keys)) throw missingKeysError();
   applyKeysToEnv(keys);
 
-  const engines = requestedEngines.filter((e) => {
-    const provider = PROVIDERS.find((p) => PROVIDER_TO_ENGINE[p.id] === e);
-    return provider ? Boolean(keys[provider.id]) : false;
-  });
+  if (plan.surfacesWithoutKey.length > 0) throw new Error(missingSurfaceKeyMessage(plan.surfacesWithoutKey));
+  const engines = plan.available;
   if (engines.length === 0) throw new Error("No engine has a usable key. Run `saylent keys` in a terminal to add one.");
 
   const modelSelection = resolveModelSelection(args, engineMod.familyOfModel);
@@ -494,6 +517,9 @@ export async function auditTool(deps: McpToolDeps, args: AuditToolArgs): Promise
       // `format` writes only the files the agent asked for, exactly as
       // `saylent audit --format` does.
       format: args.format,
+      surfaceLocale,
+      ...(config.surfaces?.provider ? { serpProvider: config.surfaces.provider } : {}),
+      ...(config.sources?.domainTypes ? { sourceOverrides: { domainTypes: config.sources.domainTypes } } : {}),
       deps: deps.pipeline,
       ...stageLogger(deps.log),
     },
@@ -509,6 +535,7 @@ export async function auditTool(deps: McpToolDeps, args: AuditToolArgs): Promise
     summary_blocks: briefFromBundle(bundle, reportDataFromBundle, buildBrief),
     report_paths: writtenPaths({ run_json: runJsonPath, report_html: reportHtmlPath, report_md: reportMdPath }),
     cost_usd: Math.round(result.costUsd * 100) / 100,
+    ...(bundle.sources ? { sources_summary: sourcesDigest(bundle.sources) } : {}),
   };
 }
 
@@ -666,6 +693,27 @@ export async function readReportTool(
     measured_at: bundle.run.finished_at ?? bundle.run.started_at ?? null,
     summary_blocks: blocks,
     sections,
+    cost_usd: 0,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// sources ($0)
+// ---------------------------------------------------------------------------
+
+export async function sourcesTool(
+  deps: McpToolDeps,
+  args: { bundle_path: string } & SourcesQuery,
+): Promise<Record<string, unknown>> {
+  const { readBundle } = await deps.bundle();
+  const bundlePath = resolveBundlePath(args.bundle_path);
+  const bundle: RunBundleV1 = loadBundleFileWith({ readBundle }, bundlePath);
+  return {
+    bundle_path: bundlePath,
+    brand: bundle.brand_model.brand,
+    domain: bundle.brand_model.domain,
+    measured_at: bundle.run.finished_at ?? bundle.run.started_at ?? null,
+    ...querySources(bundle, args),
     cost_usd: 0,
   };
 }

@@ -8,7 +8,13 @@
 // migration-0042 RPCs (encrypt on set, decrypt on get, presence without a secret),
 // so the precedence logic is tested without a database and without ever holding a
 // real key.
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+// The allow-list the set/remove RPCs enforce (0042, extended with serpapi by
+// 0045). The fake mirrors it, and a test below pins it to the migration file.
+const RPC_ALLOW_LIST = ["openai", "anthropic", "gemini", "perplexity", "serpapi"];
 
 // ── the fake DB (stands in for migration 0042) ──────────────────────────────
 const store = {
@@ -47,6 +53,10 @@ vi.mock("./supabase/admin", () => ({
             error: null,
           };
         }
+        if ((fn === "set_provider_key" || fn === "remove_provider_key") &&
+          !RPC_ALLOW_LIST.includes(String(args.p_provider))) {
+          throw new Error(`unknown provider ${String(args.p_provider)}`);
+        }
         if (fn === "set_provider_key") {
           store.keys.set(
             String(args.p_provider),
@@ -79,8 +89,10 @@ import {
   masked,
   maskedProviders,
   modelChoiceRows,
+  PROVIDER_IDS,
   removeProviderKey,
   saveModelOverrides,
+  serpKeyAvailable,
   setProviderKey,
 } from "./provider-settings";
 
@@ -91,6 +103,7 @@ const ENV_KEYS = [
   "ANTHROPIC_API_KEY",
   "GEMINI_API_KEY",
   "PERPLEXITY_API_KEY",
+  "SERPAPI_API_KEY",
   "MODEL_JUDGE_ANTHROPIC",
   "MODEL_DRAFTER",
 ] as const;
@@ -139,6 +152,51 @@ describe("provider keys — precedence", () => {
     await removeProviderKey("admin-1", "perplexity");
     expect((await getKeySources()).perplexity).toBe("absent");
     expect((await getEffectiveProviderKeys()).perplexity).toBeUndefined();
+  });
+});
+
+describe("the SerpApi key (answer surfaces)", () => {
+  it("is a console-manageable provider, resolved env > console > absent like the rest", async () => {
+    expect(PROVIDER_IDS).toContain("serpapi");
+    expect(await serpKeyAvailable()).toBe(false);
+    const res = await setProviderKey("admin-1", "serpapi", "serp-console-key");
+    expect(res.ok).toBe(true);
+    expect((await getKeySources()).serpapi).toBe("console");
+    expect(await serpKeyAvailable()).toBe(true);
+    expect((await getEffectiveProviderKeys()).serpapi).toBe("serp-console-key");
+    process.env.SERPAPI_API_KEY = "serp-env-key";
+    expect((await getEffectiveProviderKeys()).serpapi).toBe("serp-env-key");
+    expect((await getKeySources()).serpapi).toBe("env");
+    delete process.env.SERPAPI_API_KEY;
+    await removeProviderKey("admin-1", "serpapi");
+    expect((await getKeySources()).serpapi).toBe("absent");
+  });
+
+  it("the masked view lists it with its env var and never key material", async () => {
+    await setProviderKey("admin-1", "serpapi", "serp-secret-value");
+    const rows = await maskedProviders();
+    const serp = rows.find((r) => r.provider === "serpapi");
+    expect(serp).toMatchObject({ label: "SerpApi", envVar: "SERPAPI_API_KEY", display: "present (console)" });
+    expect(JSON.stringify(rows)).not.toContain("serp-secret-value");
+  });
+
+  it("the RPC allow-list in migration 0045 is exactly PROVIDER_META", () => {
+    const sql = readFileSync(
+      path.join(process.cwd(), "supabase", "migrations", "0045_serpapi_provider.sql"),
+      "utf8",
+    );
+    const lists = [...sql.matchAll(/p_provider not in \(([^)]*)\)/g)].map((m) =>
+      m[1].split(",").map((x) => x.trim().replace(/'/g, "")),
+    );
+    expect(lists).toHaveLength(2); // set_provider_key + remove_provider_key
+    for (const list of lists) expect([...list].sort()).toEqual([...PROVIDER_IDS].sort());
+    expect([...RPC_ALLOW_LIST].sort()).toEqual([...PROVIDER_IDS].sort());
+  });
+
+  it("the fake refuses a provider outside the allow-list, as the RPC does", async () => {
+    // isProviderId guards the actions; this pins the database's own refusal.
+    const res = await setProviderKey("admin-1", "bing" as never, "x");
+    expect(res.ok).toBe(false);
   });
 });
 
@@ -199,14 +257,14 @@ describe("masked view", () => {
 
   it("marks env-set and secret-less providers as not editable", () => {
     const rows = masked(
-      { openai: "env", anthropic: "console", gemini: "absent", perplexity: "absent" },
+      { openai: "env", anthropic: "console", gemini: "absent", perplexity: "absent", serpapi: "absent" },
       true,
     );
     expect(rows.find((r) => r.provider === "openai")?.editable).toBe(false);
     expect(rows.find((r) => r.provider === "anthropic")?.editable).toBe(true);
 
     const noSecret = masked(
-      { openai: "absent", anthropic: "absent", gemini: "absent", perplexity: "absent" },
+      { openai: "absent", anthropic: "absent", gemini: "absent", perplexity: "absent", serpapi: "absent" },
       false,
     );
     expect(noSecret.every((r) => !r.editable)).toBe(true);

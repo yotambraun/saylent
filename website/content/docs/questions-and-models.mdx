@@ -188,7 +188,7 @@ family and the run is stamped `judge_mode: single-family`.
 
 ```bash
 saylent models
-saylent models --judge claude-haiku-4-5 --model drafter=gpt-5-mini
+saylent models --judge claude-haiku-5-5 --model drafter=gpt-6-luna
 saylent models --judge my-fine-tune-v3 --judge-family anthropic
 ```
 
@@ -217,9 +217,9 @@ from, so a team runs the same audit without remembering flags:
     "trust": { "quota": 0 }
   },
   "models": {
-    "judge": { "anthropic": "claude-haiku-4-5", "openai": "gpt-5-mini" },
-    "brand": "claude-haiku-4-5",
-    "drafter": "claude-sonnet-4-6"
+    "judge": { "anthropic": "claude-haiku-5-5", "openai": "gpt-6-luna" },
+    "brand": "claude-haiku-5-5",
+    "drafter": "claude-sonnet-5-5"
   },
   "competitors": ["beacon-uptime.example", "Statusly"],
   "engines": ["chatgpt", "claude", "gemini", "perplexity"],

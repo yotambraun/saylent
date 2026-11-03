@@ -2,6 +2,7 @@
 // (verified current; web_search_preview is legacy — do not use). Output array
 // parsed BY TYPE, never by position (reasoning models insert extra items).
 import OpenAI from "openai";
+import { openaiSearchQueries } from "../search-queries";
 import type { Citation } from "../types";
 import { type Ask, MAX_OUTPUT_TOKENS, dedupeCitations, failed, keyMissing, withRetry } from "./shared";
 
@@ -59,6 +60,8 @@ export const askChatgpt: Ask = async (question, { model, apiKey }) => {
         output_tokens: res.usage?.output_tokens,
         searches,
       },
+      // the query strings of the same web_search_call items (no extra request)
+      search_queries: openaiSearchQueries(res.output ?? []),
     };
   } catch (e) {
     return failed(e);

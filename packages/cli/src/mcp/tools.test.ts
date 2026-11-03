@@ -305,7 +305,7 @@ describe("audit tool", () => {
 
   it("dry_run with no key says so, and prices every requested engine", async () => {
     const result = (await auditTool(deps({ cwd }), { domain: "acme.example", dry_run: true })) as DryRunResult;
-    expect(result.keys_configured).toEqual({ openai: false, anthropic: false, gemini: false, perplexity: false });
+    expect(result.keys_configured).toEqual({ openai: false, anthropic: false, gemini: false, perplexity: false, serpapi: false });
     expect(result.engines_with_keys).toEqual([]);
     expect(result.ready_to_run).toBe(false);
     expect(result.judge).toMatch(/^none/);
@@ -318,7 +318,7 @@ describe("audit tool", () => {
     process.env.OPENAI_API_KEY = value;
     process.env.ANTHROPIC_API_KEY = ""; // an empty mapping from the client counts as unset
     const result = (await auditTool(deps({ cwd }), { domain: "acme.example", dry_run: true })) as DryRunResult;
-    expect(result.keys_configured).toEqual({ openai: true, anthropic: false, gemini: false, perplexity: false });
+    expect(result.keys_configured).toEqual({ openai: true, anthropic: false, gemini: false, perplexity: false, serpapi: false });
     expect(result.engines_with_keys).toEqual(["chatgpt"]);
     expect(result.ready_to_run).toBe(true);
     expect(result.judge).toMatch(/^single-family \(OpenAI only/);

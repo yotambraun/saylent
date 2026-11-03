@@ -1,0 +1,15 @@
+{
+  "search_metadata": { "id": "fixture-3", "status": "Success" },
+  "ai_overview": {
+    "text_blocks": [
+      {
+        "type": "paragraph",
+        "snippet": "Kestrel Uptime and Upcheck both offer synthetic checks.",
+        "reference_indexes": [0]
+      }
+    ],
+    "references": [
+      { "title": "Synthetic monitoring compared", "link": "https://compare.example/synthetic", "source": "Compare", "index": 0 }
+    ]
+  }
+}

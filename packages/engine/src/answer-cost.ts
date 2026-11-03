@@ -1,12 +1,22 @@
-// Per-answer cost explorer (answers.usage) — pure, client-safe cost
-// math for ONE stored answer, reusing the SAME per-model pricing the engine bills
-// the run with. RATES + COST_CENTS + the per-answer formula are lifted verbatim
-// from src/inngest/functions.ts (see METHODOLOGY.md); numbers MUST stay identical there and here. That module
-// imports the Inngest client + service-role admin, so it can't be pulled into a
-// client component — hence this pure copy. DOCS NOTE (below) flags the follow-up
-// to make functions.ts import THIS module so there's one source of truth.
+// Per-answer cost explorer (answers.usage): pure, client-safe cost math for ONE
+// stored answer. Every price comes from rates.ts, the single rate table the
+// engine bills a run with (run-audit.ts), so the report's cost drawer, the CLI's
+// live progress line and the run total can never disagree.
+import {
+  type CostEngine,
+  DEFAULT_ANSWER_MODEL,
+  MODEL_RATES,
+  SEARCH_CENTS,
+  SURFACE_REQUESTS,
+  TYPICAL_ANSWER_USAGE,
+  callCents,
+  rateFor,
+  surfaceRequestCents,
+} from "./rates";
+import { SURFACE_IDS, isSurfaceId } from "./surfaces";
+import type { Engine } from "./types";
 
-export type CostEngine = "chatgpt" | "claude" | "gemini" | "perplexity";
+export type { CostEngine } from "./rates";
 
 /** exact provider usage as stored in answers.usage (migration 0011). */
 export interface AnswerUsage {
@@ -15,21 +25,23 @@ export interface AnswerUsage {
   searches?: number;
 }
 
-// the spec (see METHODOLOGY.md) cost map — fallback estimates (cents/answer) when usage is missing.
-export const COST_CENTS: Record<CostEngine, number> = {
-  chatgpt: 3,
-  claude: 4,
-  gemini: 1.3, // billed 2026-07-21 (gemini-3.6-flash; thinking bills as output) — keep identical to functions.ts
-  perplexity: 1.5,
-};
+const ENGINES: CostEngine[] = ["chatgpt", "claude", "gemini", "perplexity"];
 
-// real provider rates (verified 2026-07-03; per MILLION tokens + cents per search).
-export const RATES: Record<CostEngine, { inPerM: number; outPerM: number; searchCents: number }> = {
-  chatgpt: { inPerM: 125, outPerM: 1000, searchCents: 1 }, // gpt-5-class, $10/1K searches
-  claude: { inPerM: 300, outPerM: 1500, searchCents: 1 }, // sonnet-4-6, $10/1K searches
-  gemini: { inPerM: 150, outPerM: 750, searchCents: 0 }, // sourced ai.google.dev/gemini-api/docs/pricing 2026-07-21; search free <5k prompts/mo
-  perplexity: { inPerM: 100, outPerM: 100, searchCents: 1 }, // sonar + request fee
-};
+/** Each engine's rate at its DEFAULT answer model, plus its search fee. */
+export const RATES: Readonly<Record<CostEngine, { inPerM: number; outPerM: number; searchCents: number }>> =
+  Object.fromEntries(
+    ENGINES.map((e) => [e, { ...MODEL_RATES[DEFAULT_ANSWER_MODEL[e]], searchCents: SEARCH_CENTS[e] }]),
+  ) as Record<CostEngine, { inPerM: number; outPerM: number; searchCents: number }>;
+
+/** Fallback cents per answer when usage is missing: a typical answer
+ *  (rates.ts TYPICAL_ANSWER_USAGE) at the engine's default rate, or a surface's
+ *  typical provider requests (rates.ts SURFACE_REQUESTS). Unrounded on
+ *  purpose; display code formats it. Every estimator (the CLI preflight, the
+ *  app's run-cost preview) prices a draw from this one map. */
+export const COST_CENTS: Readonly<Record<Engine, number>> = Object.fromEntries([
+  ...ENGINES.map((e) => [e, callCents(RATES[e], TYPICAL_ANSWER_USAGE[e], RATES[e].searchCents)]),
+  ...SURFACE_IDS.map((s) => [s, surfaceRequestCents(SURFACE_REQUESTS[s].typical)]),
+]) as Record<Engine, number>;
 
 /** true when the row carries real token usage — the only case where we quote a
  * measured per-answer cost. Null usage (pre-0011 runs) or a usage blob with no
@@ -38,25 +50,38 @@ export function hasRecordedUsage(usage: AnswerUsage | null | undefined): usage i
   return !!usage && (!!usage.input_tokens || !!usage.output_tokens);
 }
 
-/** Cents for ONE answer — mirrors answerCents() in src/inngest/functions.ts
- * exactly: !ok ⇒ 0 (failed calls aren't billed into the run total); measured
- * tokens ⇒ rate math; otherwise the flat COST_CENTS fallback. */
-export function answerCents(a: {
-  engine: string;
-  ok: boolean;
-  usage?: AnswerUsage | null;
-}): number {
+/** Cents for ONE answer: !ok => 0 (failed calls aren't billed into the run
+ * total); measured tokens => rate math at `model`'s rate when the table knows
+ * it (the model the run actually used), else the engine's default rate;
+ * otherwise the flat COST_CENTS fallback. */
+export function answerCents(
+  a: {
+    engine: string;
+    ok: boolean;
+    usage?: AnswerUsage | null;
+  },
+  model?: string,
+): number {
+  // Surfaces bill per provider request, recorded as usage.searches. A "not
+  // shown" answer (no AI Overview for the query) is still a successful,
+  // billed search, so it is priced from its usage even though ok is false.
+  if (isSurfaceId(a.engine)) {
+    const requests = a.usage?.searches;
+    if (typeof requests === "number") return surfaceRequestCents(requests);
+    return a.ok ? COST_CENTS[a.engine] : 0;
+  }
   const engine = a.engine as CostEngine;
-  const r = RATES[engine];
+  const base = RATES[engine];
   const fallback = COST_CENTS[engine];
-  if (r === undefined || fallback === undefined) return 0; // unknown engine — never invent a price
+  if (base === undefined || fallback === undefined) return 0; // unknown engine — never invent a price
   if (!a.ok) return 0;
   const u = a.usage;
   if (!hasRecordedUsage(u)) return fallback;
-  return (
-    ((u.input_tokens ?? 0) * r.inPerM) / 1_000_000 +
-    ((u.output_tokens ?? 0) * r.outPerM) / 1_000_000 +
-    (u.searches ?? 0) * r.searchCents
+  const rate = rateFor(model) ?? base;
+  return callCents(
+    rate,
+    { input_tokens: u.input_tokens ?? 0, output_tokens: u.output_tokens ?? 0, searches: u.searches },
+    base.searchCents,
   );
 }
 

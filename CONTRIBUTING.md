@@ -5,8 +5,9 @@ a CLI and a self-hostable app. This doc gets you from clone to a passing PR.
 
 ## Dev setup, on the $0 fixture rig
 
-Node 22+ for the app (root workspace); the published `saylent` CLI and
-`@saylent/engine` / `@saylent/report` packages support Node 20+ on their own.
+Node 22+ for everything: the app (root workspace), the published `saylent` CLI
+and the `@saylent/engine` / `@saylent/report` packages. Node 20 reached end of
+life in April 2026.
 
 Nothing here spends money. Every command below runs against fixtures or a
 frozen sample run, not a live LLM call. The test suite needs no keys and no
@@ -45,7 +46,7 @@ a quick pass). Neither script calls a real provider.
 
 If you want to exercise a real, paid run end to end, that is your call and
 your API keys, never required for a contribution. `AUDIT_PROFILE=smoke`
-keeps a real run cheap (about $0.60 to $1.20 with four engines; our recorded
+keeps a real run cheap (about $0.80 to $1.20 with four engines; our recorded
 runs cost $0.93 and $1.11); `full` is explicit and costs more.
 
 ## Test rules
@@ -148,8 +149,10 @@ These are seeded, real gaps, not busywork:
 
 1. Full `robots.txt` parser (wildcards, `Allow`, longest-match precedence);
    the shipped parser only handles root-level `Disallow` blocks.
-2. A Google AI Mode adapter.
-3. A Copilot adapter.
+2. A second SERP-data provider for the answer surfaces (DataForSEO): one
+   `SerpProvider` in `packages/engine/src/adapters/serp.ts`, its metadata in
+   `surfaces.ts`, its price in `rates.ts`.
+3. Country/language support for Microsoft Copilot, once a provider documents it.
 4. Locale-aware question templates (the generator is English-only today).
 5. Live-probe tests for `domainChecks` against a wider bot registry.
 6. Merge tests for `corpus` (citation aggregation edge cases).

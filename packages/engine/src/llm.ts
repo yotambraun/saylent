@@ -1,6 +1,7 @@
 // Server-side LLM callers for the engine's judgment layer (brand model, judge,
 // drafter) — models from the registry ONLY (METHODOLOGY.md (model registry)). Returns null on any
-// failure (the engine degrades, never crashes).
+// failure (the engine degrades, never crashes) and writes the redacted reason
+// to stderr once (setLlmFailureLog).
 //
 // KEY SEAM: makeLlmCallers(keys, roles)
 // is the factory — it reads ONLY the keys it is handed, never process.env, so a
@@ -16,7 +17,9 @@
 // with two, nothing about today's behavior changes.
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
+import { classifyAdapterError, redactSecretsInText } from "./adapters/errors";
 import type { LlmCall } from "./brandModel";
+import { JUDGE_OUTPUT_SCHEMA } from "./judge-schema";
 import type { JudgeFamily } from "./judge";
 import {
   availableFamiliesFromKeys,
@@ -46,30 +49,72 @@ function textOf(res: Anthropic.Message): string {
     .join("");
 }
 
-function anthropicCall(model: string, key: string | undefined): LlmCall {
+// ---------------------------------------------------------------------------
+// Failure logging. Every caller still degrades to null (the engine never
+// crashes on a judgment-layer failure), but the reason is written to stderr so
+// a run whose judge 400s on every call says why instead of silently scoring
+// neutral. stderr, never stdout: the CLI's --json output and the MCP server's
+// JSON-RPC channel both live on stdout. Messages are redacted (no key can reach
+// the log) and deduplicated so a systematic failure prints once, not 200 times.
+// ---------------------------------------------------------------------------
+
+/** Where judgment-layer failures go. Injectable for tests and embedding hosts. */
+export type LlmFailureLog = (line: string) => void;
+
+const defaultLog: LlmFailureLog = (line) => {
+  process.stderr.write(`${line}\n`);
+};
+
+let failureLog: LlmFailureLog = defaultLog;
+const seenFailures = new Set<string>();
+
+/** Replace (or, with null, restore) the failure sink; also clears the dedupe set. */
+export function setLlmFailureLog(log: LlmFailureLog | null): void {
+  failureLog = log ?? defaultLog;
+  seenFailures.clear();
+}
+
+function logFailure(role: string, model: string, e: unknown): void {
+  const c = classifyAdapterError(e);
+  const line = redactSecretsInText(`[saylent] ${role} call to ${model} failed (${c.kind}): ${c.message}`).slice(0, 400);
+  if (seenFailures.has(line)) return;
+  if (seenFailures.size < 50) seenFailures.add(line);
+  failureLog(line);
+}
+
+/** Room for adaptive thinking on current Claude models: thinking tokens count
+ *  against max_tokens, so the caller's budget is for the visible reply and this
+ *  is added on top (the OpenAI callers' "+800" for reasoning tokens is the analog). */
+const ANTHROPIC_THINKING_HEADROOM = 1000;
+
+/** Plain-text Anthropic caller for the BRAND MODEL and the DRAFTER. No sampling
+ *  parameters and no prefill: current Claude models reject both with a 400.
+ *  Effort "low" mirrors the OpenAI path's reasoning:{effort:"low"}. */
+function anthropicCall(model: string, key: string | undefined, role: string): LlmCall {
   return async ({ system, user, maxTokens }) => {
     if (!key) return null;
     try {
       const client = new Anthropic({ apiKey: key });
       const res = await client.messages.create({
         model,
-        max_tokens: maxTokens,
+        max_tokens: maxTokens + ANTHROPIC_THINKING_HEADROOM,
         system,
         messages: [{ role: "user", content: user }],
+        output_config: { effort: "low" },
       });
       return textOf(res);
-    } catch {
+    } catch (e) {
+      logFailure(role, model, e);
       return null;
     }
   };
 }
 
-// JSON-constrained Anthropic caller for the JUDGE ONLY (METHODOLOGY.md (judge)). Forces a
-// JSON object by prefilling the assistant turn with "{" and prepending it back —
-// the documented, reliable JSON-mode for the model. Prefill is supported on the
-// registry's default judge (claude-haiku-4-5). If MODEL_JUDGE_ANTHROPIC is ever
-// pointed at a 4.6+/Fable model (prefill 400s there), this throws → judgeOne's
-// retry+fallback degrades gracefully (parsed:false); switch to tool_choice then.
+// JSON-constrained Anthropic caller for the JUDGE ONLY (METHODOLOGY.md (judge)).
+// Structured outputs (output_config.format, a JSON schema) make the reply a
+// schema-valid JSON object. This replaces the old "{" assistant prefill and
+// temperature 0, both of which current Claude models reject with a 400. The
+// rubric, not sampling settings, decides the label; the golden gate measures it.
 function anthropicJsonCall(model: string, key: string | undefined): LlmCall {
   return async ({ system, user, maxTokens }) => {
     if (!key) return null;
@@ -77,19 +122,21 @@ function anthropicJsonCall(model: string, key: string | undefined): LlmCall {
       const client = new Anthropic({ apiKey: key });
       const res = await client.messages.create({
         model,
-        max_tokens: maxTokens,
-        // temperature 0 — an LLM judge should be as deterministic as possible so
-        // the rubric decides the label, not sampling noise (supported on the
-        // registry's Haiku 4.5 judge; removed on 4.6+/Fable — see the note above).
-        temperature: 0,
+        max_tokens: maxTokens + ANTHROPIC_THINKING_HEADROOM,
         system,
-        messages: [
-          { role: "user", content: user },
-          { role: "assistant", content: "{" },
-        ],
+        messages: [{ role: "user", content: user }],
+        output_config: {
+          effort: "low",
+          format: { type: "json_schema", schema: JUDGE_OUTPUT_SCHEMA },
+        },
       });
-      return `{${textOf(res)}`;
-    } catch {
+      if (res.stop_reason === "refusal" || res.stop_reason === "max_tokens") {
+        logFailure("judge", model, new Error(`stop_reason ${res.stop_reason}`));
+        return null;
+      }
+      return textOf(res);
+    } catch (e) {
+      logFailure("judge", model, e);
       return null;
     }
   };
@@ -100,7 +147,7 @@ function anthropicJsonCall(model: string, key: string | undefined): LlmCall {
  *  prompt asks for a bare JSON object and parseJsonLoosely handles the rest,
  *  and the drafter wants prose. "low" reasoning + headroom so reasoning tokens
  *  can never crowd out the body. */
-function openaiTextCall(model: string, key: string | undefined): LlmCall {
+function openaiTextCall(model: string, key: string | undefined, role: string): LlmCall {
   return async ({ system, user, maxTokens }) => {
     if (!key) return null;
     try {
@@ -113,7 +160,8 @@ function openaiTextCall(model: string, key: string | undefined): LlmCall {
         max_output_tokens: maxTokens + 800,
       });
       return res.output_text ?? null;
-    } catch {
+    } catch (e) {
+      logFailure(role, model, e);
       return null;
     }
   };
@@ -130,16 +178,19 @@ function openaiCall(model: string, key: string | undefined): LlmCall {
         input: user,
         // JUDGE path (openaiCall is judge-only): "low" reasoning (up from minimal)
         // buys the rubric adherence the golden set needs on the claude+perplexity
-        // answers — the Anthropic judge gets temperature 0, this is its analog.
+        // answers; the Anthropic judge runs at effort "low" too.
         reasoning: { effort: "low" },
-        // Force a JSON-object response. json_object mode requires "JSON" in the
-        // prompt — the judge prompt says "Return a JSON object …". (METHODOLOGY.md (judge))
-        text: { format: { type: "json_object" } },
+        // Strict structured output against the same verdict schema the Anthropic
+        // judge uses (judge-schema.ts). OpenAI documents JSON mode (json_object)
+        // for GPT-5 models only and recommends Structured Outputs over it; the
+        // current judge default (gpt-6-luna) lists structured outputs.
+        text: { format: { type: "json_schema", name: "verdict", schema: JUDGE_OUTPUT_SCHEMA, strict: true } },
         // Extra headroom so low-reasoning tokens never crowd out the JSON body.
         max_output_tokens: maxTokens + 800,
       });
       return res.output_text ?? null;
-    } catch {
+    } catch (e) {
+      logFailure("judge", model, e);
       return null;
     }
   };
@@ -147,10 +198,10 @@ function openaiCall(model: string, key: string | undefined): LlmCall {
 
 /** Prose/JSON-free transport for a resolved role (brand, drafter), given the
  *  explicit keys to use. */
-function callFor(role: RoleAssignment, keys: LlmKeys): LlmCall {
+function callFor(role: RoleAssignment, keys: LlmKeys, name: string): LlmCall {
   return role.family === "anthropic"
-    ? anthropicCall(role.model, keys.anthropic)
-    : openaiTextCall(role.model, keys.openai);
+    ? anthropicCall(role.model, keys.anthropic, name)
+    : openaiTextCall(role.model, keys.openai, name);
 }
 
 /** THE factory: build brand/drafter/judge callers
@@ -161,8 +212,8 @@ function callFor(role: RoleAssignment, keys: LlmKeys): LlmCall {
  *  availableFamiliesFromKeys(). */
 export function makeLlmCallers(keys: LlmKeys, roles?: ResolvedRoles): LlmCallers {
   const resolved = roles ?? resolveRoles(availableFamiliesFromKeys(keys));
-  const brandModelCall: LlmCall = (args) => callFor(resolved.roles.brand, keys)(args);
-  const drafterCall: LlmCall = (args) => callFor(resolved.roles.drafter, keys)(args);
+  const brandModelCall: LlmCall = (args) => callFor(resolved.roles.brand, keys, "brand model")(args);
+  const drafterCall: LlmCall = (args) => callFor(resolved.roles.drafter, keys, "drafter")(args);
   const judgeCall = (family: JudgeFamily, args: Parameters<LlmCall>[0]) => {
     const model = judgeModelFor(family);
     return (family === "anthropic"

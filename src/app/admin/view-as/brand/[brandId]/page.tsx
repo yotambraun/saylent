@@ -35,10 +35,10 @@ import {
 } from "@saylent/report/trend";
 import { requireAdmin } from "@/lib/admin-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { MODEL_ENGINE_IDS, SURFACE_IDS, engineLabel } from "@saylent/engine/surfaces";
 
 export const metadata = { title: "View-as brand (read-only) · Operator console · Saylent" };
 
-const ENGINES = ["chatgpt", "claude", "gemini", "perplexity"] as const;
 
 export default async function ViewAsBrandPage({
   params,
@@ -77,6 +77,11 @@ export default async function ViewAsBrandPage({
     scores: { share_of_voice?: Record<string, number> } & TrendRun["scores"];
   })[];
   const doneRuns = runs.filter((r) => r.status === "done");
+  // the four model APIs always; an answer surface once a run scored it
+  const ENGINES: string[] = [
+    ...MODEL_ENGINE_IDS,
+    ...SURFACE_IDS.filter((s) => runs.some((r) => r.scores?.per_engine?.[s] != null)),
+  ];
 
   const series = trendSeries(runs);
   const { state } = deltaState(series);
@@ -264,7 +269,7 @@ export default async function ViewAsBrandPage({
                   {engineData.map(({ engine, points }) => (
                     <EnginePanel
                       key={engine}
-                      engine={engine}
+                      engine={engineLabel(engine)}
                       focus={points}
                       ghosts={engineData.filter((d) => d.engine !== engine).map((d) => d.points)}
                       yMax={panelYMax}

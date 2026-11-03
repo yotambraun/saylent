@@ -25,7 +25,10 @@ const createRunMock = vi.fn<(p: CreateRunArg) => Promise<CreateRunResult>>(async
   runId: "run_1",
 }));
 
+const serp = { available: false };
+
 vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
+vi.mock("@/lib/provider-settings", () => ({ serpKeyAvailable: async () => serp.available }));
 vi.mock("@/lib/runs", () => ({ createRun: (p: CreateRunArg) => createRunMock(p) }));
 vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => {
@@ -87,6 +90,7 @@ beforeEach(() => {
   state.user = { id: "u1" };
   state.brand = brandWithFrozenSet();
   state.updates = [];
+  serp.available = false;
   createRunMock.mockClear();
 });
 afterEach(() => vi.unstubAllEnvs());
@@ -202,5 +206,54 @@ describe("reset", () => {
     const res = await resetRunOptions("b1");
     expect(res).toEqual({ ok: true, rebaselined: false });
     expect(state.updates[0]).toEqual({ run_options: null });
+  });
+
+  it("keeps the source-type overrides, which are not run options", async () => {
+    const overrides = { domainTypes: { "g2.com": "review_site" } };
+    state.brand = { ...brandWithFrozenSet(), run_options: { samples: 3, sourceOverrides: overrides } };
+    await resetRunOptions("b1");
+    const ro = state.updates[0].run_options as Record<string, unknown>;
+    expect(ro.sourceOverrides).toEqual(overrides);
+    expect(ro.samples).toBeUndefined();
+  });
+});
+
+describe("answer surfaces", () => {
+  const withSurface = ["chatgpt", "claude", "gemini", "perplexity", "google_ai_mode"];
+
+  it("saves a surface selection, its locale and the source types", async () => {
+    const res = await saveRunOptions(
+      form({
+        engines: withSurface,
+        surfaceLocale: { country: "GB", language: "", location: "London, England" },
+        sourceOverrides: [{ host: "www.G2.com", type: "review_site" }],
+      }),
+    );
+    expect(res.ok).toBe(true);
+    const ro = state.updates[0].run_options as Record<string, unknown>;
+    expect(ro.engines).toEqual(withSurface);
+    expect(ro.surfaceLocale).toEqual({ country: "gb", location: "London, England" });
+    expect(ro.sourceOverrides).toEqual({ domainTypes: { "g2.com": "review_site" } });
+    // adding a surface changes what a verify would re-ask: a new baseline
+    expect(res).toEqual({ ok: true, rebaselined: true });
+  });
+
+  it("refuses to START a surface run when the deployment has no SerpApi key", async () => {
+    const res = await startRunWithOptions(form({ engines: withSurface }));
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.error).toContain("SERPAPI_API_KEY");
+    expect(createRunMock).not.toHaveBeenCalled();
+  });
+
+  it("starts it when the key is present", async () => {
+    serp.available = true;
+    const res = await startRunWithOptions(form({ engines: withSurface }));
+    expect(res).toEqual({ ok: true, runId: "run_1" });
+  });
+
+  it("refuses a malformed surface locale or source type", async () => {
+    expect((await saveRunOptions(form({ surfaceLocale: { country: "Britain", language: "", location: "" } }))).ok).toBe(false);
+    expect((await saveRunOptions(form({ sourceOverrides: [{ host: "g2.com", type: "nope" }] }))).ok).toBe(false);
+    expect(state.updates).toHaveLength(0);
   });
 });

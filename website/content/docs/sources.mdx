@@ -1,0 +1,248 @@
+---
+title: Sources & opportunities
+description: Where the answers come from, who they name, and which off-site pages are worth winning. Counts with receipts, built from the run's own data.
+---
+
+A run already stores every answer, its verdict, its citations and the cited
+pages it read. Sources & opportunities reads that data three ways:
+
+- **Citation share**: which domains and pages the answers cite, per engine and
+  answer surface
+- **Share of voice**: how many answers name you, and how many name each rival
+- **Off-site opportunities**: domains that are neither yours nor a rival's,
+  cited in answers that name a rival and not you
+
+It makes no model call and no fetch of its own, so it costs nothing. Every
+number is a count, and every count lists the exact answers behind it, by
+question and engine, so you can open each one.
+
+## What counts as an answer here
+
+- An answer is counted **once per question and engine**: the answer the
+  report shows, never the extra sampled draws. That is why every receipt
+  opens.
+- Only answered rows count. A surface question that was
+  [not shown](/docs/surfaces#when-there-is-no-ai-answer) is not an answer.
+- **Names you** means the judge's verdict says your brand is present.
+  **Recommends** means its mention type is "recommended". A rival is
+  **named** when the verdict lists it among the brands the answer prefers or
+  recommends.
+- **Names a rival and not you** means the answer was judged, your brand is
+  absent, and at least one rival is named.
+- **Branded questions** ("is your brand any good") are left out of the
+  opportunities. They are about you, not about the category.
+
+## Citation share
+
+For every cited domain:
+
+| Field | What it is |
+|---|---|
+| Citations | Citation rows on this domain, across the counted answers |
+| Share | Its citations divided by every citation in the run |
+| Per engine | Citations by each engine and surface |
+| Answers | Distinct answers citing it |
+| Name you | Answers citing it that name you |
+| Name a rival, not you | Answers citing it that name a rival and not you |
+| Top pages | Its most cited pages (up to five), and for each page we read, whether you and which rivals are on it |
+| Type | Its domain type, and the rule that set it ([below](#domain-types)) |
+
+The host is the real source: `www.` is stripped, Internet Archive snapshots
+count for the site they copy, and a Gemini grounding redirect link counts for
+the site its citation names. The run also gets a per-type total (citations and domains per
+type) and, per engine, its answers, citations, domains and top five domains.
+
+## Share of voice
+
+Counts, not percentages: the answers naming you, the answers naming each rival
+(up to twelve rivals), and how many answers recommend you, each split by
+engine and each with its receipts. A rival has no "recommended" count, because
+the verdict does not separate "recommends" from "prefers" for other brands.
+
+This counts mentions in the answers we drew. It is not market share.
+
+## Off-site opportunities
+
+An off-site opportunity is a domain that:
+
+1. is not your site and not a rival's site (by its [domain type](#domain-types))
+2. is cited by at least one answer that names a rival and not you
+3. on a question that is not branded
+4. where you were not found on any page we read on it
+
+They are ranked by **evidence**: the number of distinct such answers that
+cite the domain. Ties go to the domain cited by more engines, then the one with
+more citations, then by host name. There are no weights and no score.
+
+Each opportunity carries:
+
+- its type, and the rule that set it
+- the engines and questions behind it
+- the rivals named in those answers, most often first
+- what the pages we read on it show: rivals are there and you are not, you are
+  not there, or no page on it was read
+- the top cited page on it, the one to pitch first
+- one plain sentence saying why it is listed, the same sentence in every view
+- receipts: the question, the engine, the cited URLs on that domain, the
+  rivals the answer named with the reason it gave, and (in `saylent sources`
+  and the MCP tool) a short quote of the answer
+
+A run keeps up to twelve opportunities, with up to six receipts each.
+
+## Domain types
+
+| Type | Label |
+|---|---|
+| `own_site` | Your site |
+| `rival_site` | Rival's site |
+| `review_site` | Review site |
+| `forum` | Forum / community |
+| `docs` | Docs / help |
+| `news` | News |
+| `marketplace` | Marketplace |
+| `reference` | Reference |
+| `video` | Video |
+| `social` | Social |
+| `editorial` | Blog / editorial |
+| `other` | Other |
+
+A short list of rules decides each type. The first rule that matches wins, and
+every view shows the rule that fired.
+
+| # | Rule | Type | Shown as |
+|---|---|---|---|
+| 1 | Your override for this host or a parent domain | the type you set | "your override" |
+| 2 | Your domain, or a subdomain of it | `own_site` | "your domain" |
+| 3 | A known review site (`g2.com`, `capterra.com`, `trustpilot.com`, ...) | `review_site` | "known review site" |
+| 4 | A known community site (`reddit.com`, `stackoverflow.com`, ...) | `forum` | "known community site" |
+| 5 | A known reference site (`wikipedia.org`, `wikidata.org`, `britannica.com`) | `reference` | "known reference site" |
+| 6 | A known video site (`youtube.com`, `vimeo.com`, ...) | `video` | "known video site" |
+| 7 | A known marketplace or app store (`apps.apple.com`, `play.google.com`, any `amazon.*`, ...) | `marketplace` | "known marketplace" |
+| 8 | A known social network (`linkedin.com`, `x.com`, ...) | `social` | "known social network" |
+| 9 | The host is named after a rival: a configured competitor, or a rival the answers named, spelled out whole | `rival_site` | "named after" the rival |
+| 10 | The host contains a configured competitor's name, or a rival's domain redirects there | `rival_site` | the name it contains, or "a ... domain redirects here" |
+| 11 | A subdomain pattern: `docs.`, `help.`, `support.`, `api.` and similar; `community.`, `forum.`; `news.`, `press.`; `blog.`, `resources.`; `marketplace.`, `apps.`, `store.` | `docs`, `forum`, `news`, `editorial`, `marketplace` | "docs/help subdomain" and so on |
+| 12 | What its cited pages look like: when at least half its citations point to one kind of page (best-of listicles or comparisons, docs, news, review listings, community threads, reference entries, videos) | `editorial`, `docs`, `news`, `review_site`, `forum`, `reference`, `video` | for example "3 of 4 citations point to best-of listicles" |
+| 13 | Nothing matched | `other` | "no rule matched" |
+
+The host lists live in `packages/engine/src/classify.ts` and
+`packages/engine/src/sources.ts`.
+
+## Correct a type
+
+When a rule gets a domain wrong, override it. The override always wins.
+
+In `saylent.config.json`:
+
+```json
+{
+  "sources": {
+    "domainTypes": {
+      "softwarereviews.example": "review_site",
+      "blog.rival.example": "rival_site"
+    }
+  }
+}
+```
+
+A parent domain covers its subdomains, and the most specific entry wins. The
+value must be one of the twelve types above. `saylent audit` and
+`saylent verify` apply it, and the run stores the overrides it was computed
+with (`sources.overrides` in `run.json`), so a re-render reproduces it.
+
+In the app, the brand's run options page has a **Source types** editor. It
+changes how every report for that brand reads its stored answers, never what a
+run asks, so it never starts a new baseline.
+
+## Where it shows up
+
+| Where | What you get |
+|---|---|
+| `report.html` and the app's full report view | Section 04, **Sources & opportunities**. Every count opens the answers behind it. Site checks, fixes and method are now sections 05, 06 and 07 |
+| `report.md` | A `## Sources & opportunities` section |
+| `saylent audit` finish summary | A `Sources` line and an `Off-site` line |
+| `saylent sources` | The full view in the terminal, or JSON ([below](#saylent-sources)) |
+| The MCP server | The `sources` tool, and `sources_summary` in the `audit` result ([The MCP server](/docs/mcp)) |
+| The app's brand page | **Sources over time**, across the last six finished runs ([below](#history)) |
+
+The finish summary prints two lines, counts only:
+
+```
+  Sources   <n> citations · <n> domains · most cited: <host> (<n>, <type>)
+  Off-site  <n> opportunities · first: <host>, in <n> answers that name a rival and not you
+```
+
+## `saylent sources`
+
+```bash
+# everything for one run, as text
+npx saylent sources ./example.com/2026-11-02/run.json
+
+# only the opportunities that Google AI Overviews cited
+npx saylent sources ./example.com/2026-11-02/run.json --view opportunities --engine google_ai_overview
+
+# one domain: its pages and every answer citing it
+npx saylent sources ./example.com/2026-11-02/run.json --domain g2.com
+
+# the same JSON the MCP sources tool returns
+npx saylent sources ./example.com/2026-11-02/run.json --json
+```
+
+| Flag | What it does |
+|---|---|
+| `--view <name>` | `summary`, `opportunities`, `domains`, `voice` or `all` (default: `all`) |
+| `--engine <id>` | Only rows cited by this engine or surface |
+| `--type <type>` | Only domains of this type (one of the twelve above) |
+| `--domain <host>` | One domain: its pages and every answer citing it |
+| `--limit <n>` | Rows per list (default 10, max 50) |
+| `--json` | Print the same JSON the MCP `sources` tool returns |
+
+It reads the bundle and nothing else: no network, no model call, $0. A folder
+works in place of the `run.json` path.
+
+## History
+
+Pass two or more bundles of the same brand and `saylent sources` prints the
+history instead:
+
+```bash
+npx saylent sources ./example.com/2026-10-02/run.json ./example.com/2026-11-02/run.json
+```
+
+Per run: the citations and the number of off-site opportunities. Per domain:
+its citations in each run, and how many runs it was an off-site opportunity in.
+Per brand: the answers naming you and the top rivals in each run. Bundles of
+different brands are refused. With `--json` it prints the history as JSON.
+
+The app's brand page shows the same thing as **Sources over time**, over the
+last six finished runs: citations per domain per run, "opportunity in N of M
+runs", and named counts per run. The receipts live in each run's report.
+
+## In `run.json`
+
+`run.json` has an optional `sources` block with `schema_version: 1`:
+
+| Key | What it holds |
+|---|---|
+| `totals` | answers, answers with citations, citations, domains, and answers that name a rival and not you (non-branded) |
+| `engines` | Per engine: answers, citations, domains, top domains |
+| `domains` | Every cited domain, most cited first, with the fields in [Citation share](#citation-share) |
+| `byType` | Citations and domains per type |
+| `voice` | You and the rivals: named, recommended (you only), per engine, receipts |
+| `opportunities` | Ranked, with evidence, engines, rivals, page check, reason, top page and receipts |
+| `overrides` | The type overrides it was computed with |
+
+Older bundles have no `sources` block and still read unchanged: the report,
+`saylent sources` and the MCP tool compute it from the bundle's own rows with
+the same function. A block with a `schema_version` this build does not know is
+recomputed the same way. The MCP tool says which happened (`recomputed`).
+
+## What it does not claim
+
+- A citation shows where an answer pointed. It does not show that the page
+  caused the answer.
+- An opportunity is a place rivals are cited and you are not. Being there is
+  no promise that the answer changes.
+- Share of voice counts the answers we drew, not the market.
+- Domain types come from short rules, not a model. Each one shows its rule,
+  and you can override it.

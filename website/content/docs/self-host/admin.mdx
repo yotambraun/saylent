@@ -80,6 +80,9 @@ Three rules the page exists to make visible:
 
 You see which of the four provider keys this deployment has and where each one
 came from; a key set in the environment always wins and cannot be edited here.
+A fifth row, **SerpApi** (`SERPAPI_API_KEY`), unlocks the
+[answer surfaces](/docs/surfaces) and follows the same three states. Saving
+it from the console needs migration `0045_serpapi_provider.sql` applied.
 
 <ThemedImage
   light="/media/app-admin-providers-light.png"
@@ -149,6 +152,8 @@ Both run the same check as `saylent keys test`:
   endpoint. It lists models, generates no tokens, and costs nothing.
 - Perplexity: there is no free endpoint to call, so the key's format is
   checked instead and the result reads `no free check, key format validated`.
+- SerpApi: one request to its Account API, which is free and does not count
+  against the plan's searches.
 
 The result is a badge, either `valid` or the HTTP status that came back. The
 key itself never reaches the browser, and a network error is redacted before

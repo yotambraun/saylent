@@ -7,11 +7,13 @@
 // webhook, or a cron — every call site treats a false return as "not sent" and
 // moves on. All network work is fire-safe (caught, logged, swallowed).
 import {
+  type AlertEmailProps,
   type BaseProps,
   type DossierReadyProps,
   type EmailContent,
   type MovementProps,
   type VerifyReminderProps,
+  alertEmail,
   dossierReadyEmail,
   movementEmail,
   verifyReminderEmail,
@@ -26,7 +28,8 @@ export type EmailMessage =
   | { template: "welcome"; props: BaseProps }
   | { template: "dossier-ready"; props: DossierReadyProps }
   | { template: "movement"; props: MovementProps }
-  | { template: "verify-reminder"; props: VerifyReminderProps };
+  | { template: "verify-reminder"; props: VerifyReminderProps }
+  | { template: "alert"; props: AlertEmailProps };
 
 /** Pure render: message → {subject, html}. Exported for tests (no network). */
 export function renderEmail(msg: EmailMessage): EmailContent {
@@ -39,6 +42,8 @@ export function renderEmail(msg: EmailMessage): EmailContent {
       return movementEmail(msg.props);
     case "verify-reminder":
       return verifyReminderEmail(msg.props);
+    case "alert":
+      return alertEmail(msg.props);
     default: {
       // exhaustiveness guard — a new template without a case is a type error here
       const _never: never = msg;

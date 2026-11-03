@@ -1,6 +1,6 @@
 ---
 title: Share, export and track fixes
-description: Publish a read-only link, revoke it, export CSV, JSON or the run bundle, and work the fixes across every run.
+description: Publish a read-only link, revoke it, export every table as CSV or JSON or the run bundle, and work the fixes across every run.
 ---
 
 Three things the app does with a finished report that a folder on your laptop
@@ -35,7 +35,7 @@ on one click.
 The share page opens on the summary, with a switch to the full report
 (`?view=full`, so the choice stays in the URL you send). Readers get the
 section index and **Print / save as PDF**; the owner-only controls - the link
-back to the app, the share button itself, and the CSV and JSON exports - are
+back to the app, the share button itself, and the Export menu - are
 not rendered for them. The footer names the deployment's correction address if
 one is configured, and links to the project's issue tracker for bugs in the
 software itself.
@@ -58,21 +58,24 @@ On a read-only demo deployment every write is refused, sharing included.
 
 ## Export
 
-The same action row carries **CSV** and **JSON**, next to Share. Both are
-owner-only, need your session, and only work on a finished run.
+The same action row carries an **Export** menu, next to Share: every
+[export table](/docs/export) as CSV (answers, citations, sources,
+opportunities, share of voice, fixes), everything as one JSON document
+(`saylent.export/v1`), and the **run bundle**, the lossless `run.json` the CLI
+writes, with the frozen question set, every sampled draw and every citation
+row. The bundle is the export the CLI reads back: `saylent verify`, `saylent
+report` and `saylent export` all take it, so you can keep measuring a brand
+from the command line against a baseline the app produced.
 
-| Format | URL | What is in it |
-|---|---|---|
-| CSV | `/api/runs/<id>/export?format=csv` | One flat row per answer: `qid`, `question`, `engine`, `mention_type`, `prominence`, `sentiment`, `citation_urls`. The spreadsheet view |
-| JSON | `/api/runs/<id>/export?format=json` | A receipt document (`saylent.run-export/v1`): the run, the brand, the scores, every answer with its verdict, the fixes and the cited-page summary |
-| Run bundle | `/api/runs/<id>/export?format=bundle` | The lossless bundle - the same `run.json` the CLI writes, including the frozen question set, every sampled draw and every citation row |
+A brand's page has **Export history**: the same tables across its last 24
+finished runs, plus the AI-crawler counts of its latest uploaded log. Each
+run's row in the brand's run list keeps a quick CSV (answers) and JSON link.
 
-The run bundle has **no button in the app**. Paste the URL into the address
-bar of a browser where you are signed in and it downloads as
-`<brand>-<date>.run.json`. It is worth the detour, because it is the only
-export the CLI can read back: `saylent verify` and `saylent report` both take
-a bundle, so downloading one lets you keep measuring a brand from the command
-line against a baseline the app produced.
+Every export is owner-only, uses your session and works on finished runs
+only. The menu links into the [read-only API](/docs/export#read-only-api), so
+a script with a personal API token downloads the same bytes. The older
+per-run URLs, `/api/runs/<id>/export?format=csv|json|bundle`, still work
+unchanged.
 
 **Print / save as PDF** sits at the end of the same row, and on the report
 itself, for the version you send to someone who wants a document.

@@ -40,6 +40,22 @@ export async function testProviderKey(
       );
       return { provider, ok: res.ok, detail: res.ok ? "valid" : `HTTP ${res.status}` };
     }
+    if (provider === "serpapi") {
+      // The Account API is free and never counted against the monthly quota
+      // (https://serpapi.com/account-api), so it is a real check, and it says
+      // how many searches the plan has left.
+      const res = await fetchImpl(`https://serpapi.com/account.json?api_key=${encodeURIComponent(key)}`);
+      if (!res.ok) return { provider, ok: false, detail: `HTTP ${res.status}` };
+      let left = "";
+      try {
+        const body = (await res.json()) as { total_searches_left?: unknown; plan_searches_left?: unknown };
+        const n = typeof body.total_searches_left === "number" ? body.total_searches_left : body.plan_searches_left;
+        if (typeof n === "number") left = `, ${n} searches left`;
+      } catch {
+        /* a 200 without a JSON body still proves the key */
+      }
+      return { provider, ok: true, detail: `valid${left}` };
+    }
     // perplexity: no free endpoint — validate the key's known format instead.
     const looksValid = looksLikePerplexityKey(key);
     return {

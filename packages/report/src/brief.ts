@@ -57,6 +57,8 @@ import { makeRivalOwner } from "@saylent/engine/rival-owner";
 import { isScored } from "@saylent/engine/score";
 import { sovEntries, topRivalPick, topRivalSentence, type TopRivalPick } from "./sov";
 import { previewText } from "./strip-md";
+import { ENGINE_IDS, SURFACES } from "@saylent/engine/surfaces";
+import { buildSourceIntelligence, type SourceOverrides } from "@saylent/engine/sources";
 
 /* ============================ public API ================================== */
 
@@ -211,7 +213,13 @@ export interface BriefScores {
     }
   >;
   share_of_voice?: Record<string, number>;
-  recommended_band?: { overall?: BandLike; per_engine?: Record<string, BandLike> };
+  recommended_band?: {
+    overall?: BandLike;
+    per_engine?: Record<string, BandLike>;
+    /** sample-sets behind the band (1 = one draw per question). Absent on runs
+     *  written before the field existed — then we say nothing about re-asking. */
+    sample_sets?: number;
+  };
 }
 
 /** The prior done audit of this brand — the progress story. Mirrors the
@@ -248,16 +256,16 @@ export interface BriefInput {
   /** the run date, already formatted ("09 Sept 2026"). The gates lede used to
    *  say "just now" in a file people read for years. */
   runDate?: string | null;
+  /** the owner's domain-type corrections, so the opportunities card reads the
+   *  same list as the full report's Sources & opportunities section. */
+  sourceOverrides?: SourceOverrides | null;
 }
 
 /* ============================ small helpers =============================== */
 
-const ENGINE_LABEL: Record<string, string> = {
-  chatgpt: "ChatGPT",
-  claude: "Claude",
-  gemini: "Gemini",
-  perplexity: "Perplexity",
-};
+const ENGINE_LABEL: Record<string, string> = Object.fromEntries(
+  ENGINE_IDS.map((e) => [e, SURFACES[e].label]),
+);
 const engineLabel = (e: string): string =>
   ENGINE_LABEL[e] ?? e.charAt(0).toUpperCase() + e.slice(1);
 
@@ -383,6 +391,10 @@ interface Ctx {
   recDisplay: string; // "44–46" (band) or "1"
   recMid: number; // band midpoint (or point/plain recommended) — the story key
   bandKind: "range" | "point" | "none";
+  /** sample-sets behind the band; 0 = unknown (old run). Only >= 2 licenses the
+   *  word "re-asked": a smoke run draws once, and min==max is then arithmetic,
+   *  not stability. */
+  bandSets: number;
   answeredTotal: number; // all ok answers
   /** scored rows actually in hand; equals `answered` on a complete run */
   scoredHeld: number;
@@ -989,6 +1001,75 @@ function cardWhereFrom(ctx: Ctx): BriefCard | null {
   };
 }
 
+// "Where could I get cited?" The off-site opportunities from source
+// intelligence (@saylent/engine/sources, the same computation the full report's
+// Sources & opportunities section renders): domains cited in answers that name
+// a rival and not you. One concise line, the top three domains, each opening the
+// answer that cited it, and the section link for the rest. Self-hides when the
+// run has no opportunity.
+function cardGetCited(ctx: Ctx): BriefCard | null {
+  const intel = buildSourceIntelligence({
+    brand: {
+      name: ctx.brand,
+      domain: ctx.domain,
+      aliases: ctx.aliases,
+      competitors: ctx.competitors,
+    },
+    answers: ctx.input.answers.map((a) => ({
+      qid: a.qid,
+      engine: a.engine,
+      qtype: a.qtype ?? null,
+      question: a.question ?? null,
+      ok: a.ok !== false,
+      citations: (a as { citations?: { url: string; title?: string | null }[] | null }).citations ?? null,
+      verdict: (a.verdict ?? null) as never,
+    })),
+    corpus: ctx.input.corpus.map((p) => ({
+      url: p.url,
+      final_url: p.final_url ?? null,
+      title: (p as { title?: string | null }).title ?? null,
+      page_type: p.page_type ?? null,
+      brand_present: p.brand_present ?? null,
+      competitors_present: (p as { competitors_present?: string[] | null }).competitors_present ?? null,
+    })),
+    overrides: ctx.input.sourceOverrides ?? null,
+  });
+  const opps = intel.opportunities;
+  if (opps.length === 0) return null;
+  const n = opps.length;
+  const rivalWon = intel.totals.rivalWonAnswers;
+  const top = opps.slice(0, 3);
+  const rows: Extract<BriefBlock, { kind: "kv" }>["rows"] = top.map((o) => {
+    const rivals = o.rivals.slice(0, 2).map((r) => clean(r.name));
+    const r0 = o.receipts[0];
+    return {
+      k: clean(o.host),
+      v: `${o.evidence} answer${o.evidence === 1 ? "" : "s"} that skip you${rivals.length ? ` · names ${rivals.join(", ")}` : ""}`,
+      receipt: r0 ? answerReceipt(ctx, r0.qid, r0.engine) : undefined,
+    };
+  });
+  const blocks: BriefBlock[] = [
+    {
+      kind: "text",
+      text: `${n} domain${n === 1 ? " is" : "s are"} cited in answers that name a rival and not you (${rivalWon} such answer${rivalWon === 1 ? "" : "s"}). Getting onto these pages is the off-site move:`,
+    },
+    { kind: "kv", rows },
+  ];
+  if (n > top.length) {
+    blocks.push({ kind: "text", text: `+${n - top.length} more in Sources & opportunities, each with its receipts.` });
+  }
+  return {
+    id: "get-cited",
+    question: "Which sites should I get onto?",
+    teaser: finishTeaser(
+      `${n} site${n === 1 ? " is" : "s are"} cited in answers that skip you; ${clean(top[0].host)} leads.`,
+    ),
+    blocks,
+    followups: ["where-from", "do-first"],
+    anchor: "sources",
+  };
+}
+
 // --- price-claims (mergedPricingClaims) → the verdicts section ------------
 // Fixed upstream in report-intel.mergedPricingClaims, shared with the
 // dossier PricingStrip so both show the SAME distinct count): markdown-stripped
@@ -1328,9 +1409,14 @@ function cardTrustThis(ctx: Ctx): BriefCard | null {
   if (ctx.bandKind === "range") {
     kv.push({ k: "Sampled", v: "every scored question re-asked to measure the spread" });
     kv.push({ k: "Range we saw", v: `${ctx.recDisplay} of ${ctx.answered}` });
-  } else if (ctx.bandKind === "point") {
+  } else if (ctx.bandKind === "point" && ctx.bandSets >= 2) {
     kv.push({ k: "Sampled", v: "every scored question re-asked; the number held" });
     kv.push({ k: "Stable at", v: `${ctx.recDisplay} of ${ctx.answered}` });
+  } else if (ctx.bandKind === "point") {
+    // One draw per scored question (smoke, or a run written before the field
+    // existed). min==max is then arithmetic, not a measured re-ask.
+    kv.push({ k: "Sampled", v: "one answer per question and engine, asked once" });
+    kv.push({ k: "Counted at", v: `${ctx.recDisplay} of ${ctx.answered}` });
   }
   const ha = ctx.input.health?.answers;
   if (ha && typeof ha === "object") {
@@ -1397,6 +1483,7 @@ const DOMINANT_ORDER = [
   "price-claims",
   "deciding-pages",
   "where-from",
+  "get-cited",
   "how-described",
   "bots-read-site",
   "site-coverage",
@@ -1409,6 +1496,7 @@ const CHALLENGER_ORDER = [
   "who-wins-instead",
   "deciding-pages",
   "where-from",
+  "get-cited",
   "do-first",
   "sent-elsewhere",
   "price-claims",
@@ -1427,6 +1515,7 @@ const COMPOSERS: Record<string, Composer> = {
   "sent-elsewhere": cardSentElsewhere,
   "deciding-pages": cardDecidingPages,
   "where-from": cardWhereFrom,
+  "get-cited": cardGetCited,
   "price-claims": cardPriceClaims,
   "how-described": cardHowDescribed,
   "bots-read-site": cardBotsReadSite,
@@ -1474,6 +1563,10 @@ export function buildBrief(input: BriefInput): Brief {
     recDisplay,
     recMid,
     bandKind: band.kind,
+    bandSets:
+      typeof scores?.recommended_band?.sample_sets === "number"
+        ? scores.recommended_band.sample_sets
+        : 0,
     answeredTotal: input.answers.filter((a) => a.ok !== false).length,
     scoredHeld,
     stageSplitSafe: answered > 0 && scoredHeld === answered,

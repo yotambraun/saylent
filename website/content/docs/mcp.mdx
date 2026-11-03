@@ -1,22 +1,30 @@
 ---
 title: The MCP server
-description: Let an agent run the audit itself - four tools on stdio, the same pipeline, the same cost guard.
+description: Let an agent run the whole loop itself - ten tools on stdio, the same pipeline, the same cost guard.
 ---
 
 `saylent mcp` runs a [Model Context Protocol](https://modelcontextprotocol.io)
-server on stdio, so an agent can audit a brand, verify a fix, check bot access
-and read an existing report itself. It is the same pipeline the CLI runs: same
+server on stdio, so an agent can audit a brand, verify a fix, check bot access,
+read an existing report, ask where its answers came from, list the drafted
+fixes with their evidence, compare runs, export the data, read your access log
+for AI crawlers and preview a question import itself. It is the same pipeline the CLI runs: same
 key resolution, same cost estimate before the spend, same `max_usd` refusal,
 same summary blocks - handed to the agent as JSON instead of rendered to HTML.
 
-## The four tools
+## The ten tools
 
 | Tool | What it does | Cost |
 |---|---|---|
-| `audit` | Full audit of a domain. Writes `run.json`, `report.html`, `report.md`; returns the verdict, the recommended band, the summary blocks, the file paths and the real cost | Your own credits: about **$0.60 to $1.20 with four engines** (`smoke`; our recorded runs cost $0.93 and $1.11) or **$3.70 to $5.50** (`full`) |
+| `audit` | Full audit of a domain. Writes `run.json`, `report.html`, `report.md`; returns the verdict, the recommended band, the summary blocks, the file paths and the real cost | Your own credits: about **$0.80 to $1.20 with four engines** (`smoke`; our recorded runs cost $0.93 and $1.11) or **$5.10 to $7.10** (`full`) |
 | `verify` | Re-asks the frozen questions of an existing `run.json` and writes `movement.html` | Your own credits: about the same as the audit it re-runs |
 | `gate_check` | robots.txt per bot class, a live per-user-agent probe, JSON-LD, meta directives | **$0** - no keys, no model calls |
 | `read_report` | The summary blocks of a `run.json` already on disk, whole or one named section | **$0** - no network, no model calls |
+| `sources` | Citation share, share of voice and off-site opportunities of a `run.json` already on disk, with receipts | **$0** - no network, no model calls |
+| `fixes` | The drafted fixes of a `run.json`, ranked, each with its evidence lines, engines, effort and whether `saylent fixes apply` can write it into a repo; `fix` returns one fix's full drafted artifact | **$0** - no network, no model calls |
+| `history` | Two or more runs of one brand: counts per run and engine, and what moved between the oldest and the newest as events with receipts (the same rules as [Alerts](/docs/alerts)) | **$0** - no network, no model calls |
+| `export` | The documented [export tables](/docs/export) (answers, citations, sources, opportunities, share of voice, fixes, crawlers): one table inline, or files with `out_dir` | **$0** - no network, no model calls |
+| `crawlers` | Which AI crawlers visit, from an access log in the working directory: bots, purposes, pages, blocks and errors with redacted log lines; with `run_path`, the cited pages no AI crawler fetched | **$0** - no model calls; network only with `verify_ips` (the operators' public IP lists) |
+| `questions_import` | Preview turning a Search Console export, a CSV or text lines into audit questions: what would be kept and every drop reason. Writes nothing | **$0** - no network, no model calls |
 
 Every tool states its cost range in its own description, so the agent knows
 before it calls. `audit` and `verify` check the estimate against `max_usd` and
@@ -33,8 +41,15 @@ argument set. Only `domain` is required; everything else is optional. Pass
 question set it would ask, which providers have a key (`keys_configured`,
 presence only, never a value), the engines a real run would ask
 (`engines_with_keys`), the judge mode, whether the run would start
-(`ready_to_run`) and the cost estimate for those engines. Nothing is sent to
-any provider.
+(`ready_to_run`) and the cost estimate for those engines. When the run asks an
+[answer surface](/docs/surfaces), `keys_configured.serpapi` says whether a
+SerpApi key is set, and a `surfaces` block lists the surfaces requested, the
+locale, the provider and, when the key is missing, the sentence a real run
+would refuse with. Nothing is sent to any provider.
+
+A finished `audit` also returns `sources_summary`: the run's citation totals,
+its five most cited domains and its first three off-site opportunities. The
+`sources` tool below has the rest.
 
 | Argument | Tool(s) | CLI flag | Description |
 |---|---|---|---|
@@ -42,7 +57,10 @@ any provider.
 | `brand` | audit | `--brand` | Brand name (default: the domain) |
 | `competitors` | audit | `--competitors` | Competitor domains/names |
 | `profile` | audit | `--profile` | smoke (default, 6 questions) or full (23 questions) |
-| `engines` | audit | `--engines` | Which answer engines to ask: chatgpt, claude, gemini, perplexity |
+| `engines` | audit | `--engines` | Which answer sources to ask: chatgpt, claude, gemini, perplexity, and the answer surfaces google_ai_overview, google_ai_mode, copilot (surfaces need SERPAPI_API_KEY) |
+| `surfaces` | audit | `--surfaces` | Answer surfaces to ADD to the engine set: google_ai_overview, google_ai_mode, copilot. Read through your SerpApi key (SERPAPI_API_KEY), billed per search by your SerpApi plan |
+| `country` | audit | `--country` | Country the answer surfaces are fetched for, two letters (e.g. "us", "de"). Surfaces only |
+| `location` | audit | `--location` | City-level location for the Google surfaces (e.g. "Austin, Texas, United States"). Surfaces only |
 | `questions_file` | audit | `--questions` | Path to a run.json bundle, a questions.json (from `saylent questions`), or a text file with one question per line, to reuse instead of generating a new set |
 | `questions` | audit | *(none - MCP only)* | Inline question rows to ask instead of generating a set (`{id?, type?, text, samples?}`). The CLI takes a file path via the same `--questions` flag (`questions_file` above) |
 | `samples` | audit, verify | `--samples` | How many times each scored question is asked (1-5) |
@@ -69,32 +87,115 @@ checks gates, or generates a fresh question set.
 `read_report`'s `section` argument also accepts `"questions"`, returning the
 run's frozen question set alongside the Brief's `"hero"` and card sections.
 
+## `sources` arguments
+
+`sources` reads a `run.json` already on disk. It is free, read-only and makes
+no network call. The definitions behind every number are on
+[Sources & opportunities](/docs/sources).
+
+| Argument | Description |
+|---|---|
+| `bundle_path` | Path to a run.json (or the directory containing it). Required |
+| `view` | `"summary"` (default), `"opportunities"`, `"domains"`, `"voice"` or `"all"` |
+| `engine` | Keep only rows cited by this engine or answer surface id, for example `"google_ai_overview"` |
+| `type` | Keep only domains of this type, for example `"review_site"` |
+| `domain` | One domain's detail: its pages and every answer citing it |
+| `limit` | Rows per list (default 10, max 50) |
+
+It returns `totals`, the per-engine summaries (`engines`), `by_type`, and the
+lists the view asks for: `opportunities` with their receipts (`qid`, `engine`,
+`question`, `cited_urls`, `rivals_named` with the reason each answer gave, and
+an `answer_excerpt`), `domains`, and `voice`. `recomputed` says whether the
+numbers came from the bundle's stored `sources` block or were computed from
+its rows. `saylent sources <run.json> --json` prints the same payload.
+
+## `fixes`, `history` and `export` arguments
+
+`fixes` takes `bundle_path` (required) and `fix`, a `fix_key` from the list,
+for that fix's full drafted artifact. It returns every fix with `evidence` (the
+receipts the diagnosis recorded), `engines`, `effort`, `weight`, `applies_to`
+(`site` for robots.txt and JSON-LD changes, `other` for outreach and content)
+and `site_fixes`. It writes nothing; the user runs `saylent fixes apply` in a
+terminal to put the site fixes on a branch ([CLI](/docs/cli#saylent-fixes-runjson)).
+
+`history` takes `bundle_paths` (required): run.json files, run folders or a
+brand folder of `<YYYY-MM-DD>/run.json`, at least two runs of one brand. It
+returns `runs` (counts overall and per engine), `compared` (the change in
+recommended and mentioned answers, whether the questions and models were the
+same), `movement.events` (each with its question, engine and receipt) and the
+citation history per domain.
+
+`export` takes `bundle_paths` (required), `crawlers_path` (a `crawlers.json`
+inside the working directory), `table`, `format` (`json` or `csv`), `limit`
+(rows returned inline, default 100) and `out_dir` (write files instead,
+inside the working directory). The columns are on [Export and API](/docs/export).
+
+## `crawlers` and `questions_import` arguments
+
+`crawlers` takes `log_path` (a file or directory inside the server's working
+directory; required), `run_path` (a run.json to join with), `verify_ips`,
+`since`, `until` and `limit`. It returns the summary sentence, `totals`, one
+row per bot, the top `problems` with one redacted log line each, `spoofed`, and
+`join` when a run was given. Client IPs are always redacted. Details:
+[AI crawlers](/docs/crawlers).
+
+`questions_import` takes `file_path` (inside the working directory; required),
+`format`, `column`, `min_impressions`, `exclude`, `include`, `questions_only`,
+`cluster`, `max`, `language` and `country`, and returns the kept rows, the
+drop counts by reason and a one-line summary. It writes nothing: the user runs
+`saylent questions import` to keep the set. Details:
+[Import questions](/docs/import-questions).
+
 **Keys are never tool arguments.** There is no key parameter on any tool. The
 server resolves provider keys exactly like the CLI: environment variables, then
 a `.env` in its working directory, then `~/.saylent/config.json`. Put them in
 the server definition's `env` block, or run `saylent keys` once and leave the
 definition clean.
 
-## Claude Code
+## Connect a client
+
+Every client below starts the same local stdio server, `npx -y saylent mcp`
+(Node 22 or newer). Saylent measures and hands back the receipts; your agent
+does the reasoning over them.
+
+**Keys: save them once, keep them out of client configs.** Run
+`npx saylent keys set openai` (and `anthropic`, `gemini`, `perplexity` as you
+like) in your own terminal. The server reads `~/.saylent/config.json` itself,
+so every config below works with no `env` block and no key in any file a
+client syncs or a shell history keeps. `npx saylent keys set serpapi` adds the
+[answer surfaces](/docs/surfaces) the same way. The free tools (`gate_check`,
+`read_report`, `sources`, an `audit` with `dry_run: true`) need no key at all. If you
+would rather pass keys through the client, each section shows that client's
+own way to do it.
+
+### Claude Code
 
 The quickest route is [the Claude Code plugin](/docs/claude-code): two
 commands install this server plus skills that check crawler access for free
-and preview an audit's cost before spending. To add only the server:
+and preview an audit's cost before spending. To add only the server, for every
+project:
 
 ```bash
-claude mcp add saylent -- npx saylent mcp
+claude mcp add --transport stdio --scope user saylent -- npx -y saylent mcp
 ```
 
-The server inherits your shell environment, so `OPENAI_API_KEY` and
-`ANTHROPIC_API_KEY` exported in your profile (or already saved by
-`saylent keys`) are picked up automatically - no key ever needs to go on the
-command line, where your shell history would keep it. To pin keys to this
-server only, run `saylent keys set openai` / `saylent keys set anthropic`
-once so `~/.saylent/config.json` holds them, or add them to this server's own
-config entry as an `env` block, the same shape the Claude Desktop and Cursor
-examples below use.
+Everything after `--` is the command that starts the server. `--scope project`
+writes a shareable `.mcp.json` instead, where `${VAR}` expands from your
+environment, so a team can commit it without a key in it:
 
-## Claude Desktop
+```json
+{
+  "mcpServers": {
+    "saylent": {
+      "command": "npx",
+      "args": ["-y", "saylent", "mcp"],
+      "env": { "OPENAI_API_KEY": "${OPENAI_API_KEY:-}", "ANTHROPIC_API_KEY": "${ANTHROPIC_API_KEY:-}" }
+    }
+  }
+}
+```
+
+### Claude Desktop
 
 Edit `claude_desktop_config.json` (macOS:
 `~/Library/Application Support/Claude/claude_desktop_config.json`, Windows:
@@ -105,20 +206,107 @@ Edit `claude_desktop_config.json` (macOS:
   "mcpServers": {
     "saylent": {
       "command": "npx",
-      "args": ["-y", "saylent", "mcp"],
-      "env": {
-        "OPENAI_API_KEY": "sk-...",
-        "ANTHROPIC_API_KEY": "sk-ant-..."
-      }
+      "args": ["-y", "saylent", "mcp"]
     }
   }
 }
 ```
 
-## Cursor
+Claude Desktop does not expand variables in this file: a key you add under
+`env` is stored there as plain text, which is why `saylent keys` is the
+better place for it.
 
-Same shape, in `~/.cursor/mcp.json` (every project) or `.cursor/mcp.json` (this
-project only):
+### Cursor
+
+[Add to Cursor](cursor://anysphere.cursor-deeplink/mcp/install?name=saylent&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsInNheWxlbnQiLCJtY3AiXX0%3D)
+installs it in one click (the link carries `{"command":"npx","args":["-y","saylent","mcp"]}`,
+base64-encoded, the format Cursor documents). By hand, the same shape goes in
+`~/.cursor/mcp.json` (every project) or `.cursor/mcp.json` (this project
+only):
+
+```json
+{
+  "mcpServers": {
+    "saylent": {
+      "command": "npx",
+      "args": ["-y", "saylent", "mcp"]
+    }
+  }
+}
+```
+
+### VS Code (GitHub Copilot agent mode)
+
+[Install in VS Code](vscode:mcp/install?%7B%22name%22%3A%22saylent%22%2C%22type%22%3A%22stdio%22%2C%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22saylent%22%2C%22mcp%22%5D%7D),
+or from a terminal:
+
+```bash
+code --add-mcp '{"name":"saylent","type":"stdio","command":"npx","args":["-y","saylent","mcp"]}'
+```
+
+For one workspace, `.vscode/mcp.json` uses a top-level `servers` key. An
+`inputs` entry makes VS Code prompt for a key once and store it, instead of
+writing it into the file:
+
+```json
+{
+  "inputs": [
+    { "type": "promptString", "id": "openai-key", "description": "OpenAI API key", "password": true }
+  ],
+  "servers": {
+    "saylent": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "saylent", "mcp"],
+      "env": { "OPENAI_API_KEY": "${input:openai-key}" }
+    }
+  }
+}
+```
+
+### Windsurf (Devin Desktop)
+
+Windsurf became Devin Desktop in June 2026 and keeps its MCP config under
+`~/.codeium/`. Open the MCP settings from inside the app to edit the file it
+actually reads (classic Windsurf installs use
+`~/.codeium/windsurf/mcp_config.json`), and add:
+
+```json
+{
+  "mcpServers": {
+    "saylent": {
+      "command": "npx",
+      "args": ["-y", "saylent", "mcp"]
+    }
+  }
+}
+```
+
+### Codex CLI
+
+```bash
+codex mcp add saylent -- npx -y saylent mcp
+```
+
+or in `~/.codex/config.toml`. Codex passes only a short allow-list of
+environment variables to a server, so name the keys you want forwarded:
+
+```toml
+[mcp_servers.saylent]
+command = "npx"
+args = ["-y", "saylent", "mcp"]
+env_vars = ["OPENAI_API_KEY", "ANTHROPIC_API_KEY"]
+```
+
+### Gemini CLI
+
+```bash
+gemini mcp add -s user saylent npx -y saylent mcp
+```
+
+or in `~/.gemini/settings.json` (`.gemini/settings.json` for one project).
+Gemini CLI strips inherited variables whose name contains `KEY` before it
+starts a server, so a key has to be listed explicitly to get through:
 
 ```json
 {
@@ -126,16 +314,23 @@ project only):
     "saylent": {
       "command": "npx",
       "args": ["-y", "saylent", "mcp"],
-      "env": {
-        "OPENAI_API_KEY": "sk-...",
-        "ANTHROPIC_API_KEY": "sk-ant-..."
-      }
+      "env": { "OPENAI_API_KEY": "$OPENAI_API_KEY" }
     }
   }
 }
 ```
 
+Google replaced Gemini CLI with Antigravity CLI in June 2026. Antigravity
+takes the same `mcpServers` block in its own `mcp_config.json`, managed from
+its `/mcp` command.
+
 ## What you say to the agent
+
+With the [Claude Code plugin](/docs/claude-code), `/saylent:ai-visibility-audit
+example.com` walks the whole loop: a free estimate, your yes, the audit, the
+sites to get onto, the fixes with their evidence, and a verify plan. Any other
+client gets the same loop from a plain request, because each tool says what it
+costs and what it returns.
 
 Free, ask any time:
 
@@ -144,9 +339,15 @@ Free, ask any time:
 > Read the saylent report in ./example.com/2026-09-09/ and summarize the "who wins
 > instead" section.
 
-These two spend your own provider credits: about $0.60 to $1.20 with four
+> Use saylent sources on ./example.com/2026-09-09/run.json and list the off-site
+> opportunities with their receipts.
+
+> Use saylent crawlers on ./logs/access.log with run_path ./example.com/2026-09-09/run.json
+> and tell me which cited pages no AI crawler fetched.
+
+These two spend your own provider credits: about $0.80 to $1.20 with four
 engines for a smoke audit (our recorded runs cost $0.93 and $1.11) and about
-$3.70 to $5.50 for a full one. Say the profile you want and set a ceiling:
+$5.10 to $7.10 for a full one. Say the profile you want and set a ceiling:
 
 > Run a saylent smoke audit of example.com with max_usd 1, then tell me the verdict
 > and the top three fixes.

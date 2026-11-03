@@ -1,0 +1,184 @@
+---
+title: AI crawlers
+description: Which AI crawlers actually visit your site, from your own access logs. What they fetch, what they are refused, which cited pages none of them reached, and how many visitors AI assistants sent. $0, and the log never leaves your machine.
+---
+
+[The site check](/docs/check) tells you what AI bots are **allowed** to read.
+`saylent crawlers` tells you what actually **happens**: it reads your own
+access log and counts every request from an AI crawler, by bot and purpose,
+with the pages they fetched and the requests that were blocked or failed.
+
+```bash
+npx saylent crawlers /var/log/nginx/access.log
+npx saylent crawlers ./logs/ --run ./acme.com/2026-11-02/run.json --out ./crawlers
+zcat access.log.*.gz | npx saylent crawlers -
+```
+
+It costs nothing and makes no model call. The log is read on your machine and
+sent nowhere. The one optional network use is `--verify-ips`, which downloads
+the operators' public IP-range lists (below).
+
+## What it reads
+
+| Format | What we read | Docs (checked 2026-11-02) |
+|---|---|---|
+| nginx `combined` (the default) and Apache Combined Log Format | client IP, time, request line, status, user agent; extra trailing fields are fine | [nginx](https://nginx.org/en/docs/http/ngx_http_log_module.html), [Apache](https://httpd.apache.org/docs/2.4/logs.html) |
+| Apache Common | parsed and counted, but it has no user agent, so it names no bot | same |
+| Vercel log drains, NDJSON or a JSON array | `proxy.clientIp`, `proxy.path`, `proxy.userAgent`, `proxy.statusCode`, `proxy.wafAction`, `timestamp` | [Vercel](https://vercel.com/docs/drains/reference/logs) |
+| Cloudflare Logpush `http_requests`, NDJSON | `ClientIP`, `ClientRequestPath`/`URI`, `ClientRequestUserAgent`, `EdgeResponseStatus`, `EdgeStartTimestamp` (unix ns, s, ms or RFC 3339), `SecurityAction(s)` | [Cloudflare](https://developers.cloudflare.com/logs/logpush/logpush-job/datasets/zone/http_requests/) |
+
+`.gz` files are recognized by their bytes, a directory is read file by file,
+and `-` reads plain text from stdin. The format is detected per line, so a
+folder mixing exports still works. Vercel's dashboard "export logs" format is
+not documented; such a file is read only if it carries the drain fields.
+
+Files stream: a log of any size is read once with bounded memory. At most
+50,000 distinct paths are tracked; any more are counted and the report says so.
+
+## The bots
+
+Every entry links to its operator's own page. A token we could only find on
+third-party lists is marked as such wherever it is shown.
+
+| Bot | Operator | Purpose | IP list |
+|---|---|---|---|
+| GPTBot | OpenAI | Training | [gptbot.json](https://openai.com/gptbot.json) |
+| OAI-SearchBot | OpenAI | Search index (ChatGPT search) | [searchbot.json](https://openai.com/searchbot.json) |
+| ChatGPT-User | OpenAI | User-triggered fetch | [chatgpt-user.json](https://openai.com/chatgpt-user.json) |
+| ClaudeBot | Anthropic | Training | [bots.json](https://claude.com/crawling/bots.json) |
+| Claude-SearchBot | Anthropic | Search index | same file |
+| Claude-User | Anthropic | User-triggered fetch | same file |
+| PerplexityBot | Perplexity | Search index | [perplexitybot.json](https://www.perplexity.ai/perplexitybot.json) |
+| Perplexity-User | Perplexity | User-triggered fetch | [perplexity-user.json](https://www.perplexity.ai/perplexity-user.json) |
+| Google-Agent, Google-GeminiNotebook | Google | User-triggered fetch | Google's user-triggered lists |
+| Google-CloudVertexBot | Google | Crawls site owners request for Vertex AI | Google's crawler lists |
+| Googlebot | Google | Search index (not an AI crawler; AI Overviews answer from it) | [common-crawlers.json](https://developers.google.com/static/crawling/ipranges/common-crawlers.json) |
+| Bingbot | Microsoft | Search index (not an AI crawler; Copilot answers from it) | [bingbot.json](https://www.bing.com/toolbox/bingbot.json) |
+| Applebot | Apple | Search; Apple says it may also train its models | [applebot.json](https://search.developer.apple.com/applebot.json) |
+| CCBot | Common Crawl | Training corpus | [ccbot.json](https://index.commoncrawl.org/ccbot.json) |
+| Meta-ExternalAgent, Meta-WebIndexer, Meta-ExternalFetcher | Meta | Training, search, user-triggered | none published |
+| Amazonbot, Amzn-SearchBot, Amzn-User | Amazon | Training, search, user-triggered | published as web pages only |
+| DuckAssistBot | DuckDuckGo | User-triggered (AI answers) | [duckassistbot.json](https://duckduckgo.com/duckassistbot.json) |
+| MistralAI-User | Mistral | User-triggered fetch | [mistralai-user-ips.json](https://mistral.ai/mistralai-user-ips.json) |
+| YouBot | You.com | Search index | none |
+| Bytespider, cohere-ai | ByteDance, Cohere | Training | not on an official page: marked unverified |
+
+**Google-Extended** and **Applebot-Extended** are robots.txt tokens with no
+crawler of their own, so they never appear in a log. Blocking Google-Extended
+in robots.txt changes how Google uses your pages for Gemini; Googlebot still
+does the fetching. The report says this once rather than showing a zero.
+
+Add your own bots with `extraBots` in `saylent.config.json` (the same entries
+[gate-check](/docs/configuration) reads); they are counted as unverified.
+
+## Is it really that bot?
+
+A user agent is a claim. With `--verify-ips`, each request's IP is checked
+against its operator's published ranges:
+
+- **verified**: inside the operator's ranges
+- **spoofed**: the operator publishes ranges and the IP is outside them. These
+  requests are listed apart and not counted as the bot.
+- **unverified**: the operator publishes no list, or verification is off
+
+The lists are cached for 24 hours in `~/.saylent/cache/bot-ips`. Offline, the
+last cached copy is used and its date is printed; with no copy, everything
+stays unverified. A bot is only checked when every one of its lists loaded, so
+a partial list can never call a real crawler spoofed. Without `--verify-ips`,
+every request is unverified and the report says so.
+
+## What you get
+
+- **Per bot**: requests, distinct pages, 2xx, blocked (401, 403, 429 or a
+  firewall block or challenge), 5xx, 404, verified, first and last seen.
+- **Problems**: path, bot and kind, with up to three log lines each as
+  receipts, most requests first.
+- **Spoofed user agents**, with the redacted IP.
+- **Pages** the bots fetched most, and requests per day.
+- With `--run <run.json>`: the pages of **your own site** the audit's answers
+  cite, how many AI-crawler requests each got in the log window, whether a
+  crawler of the citing engine's operator fetched it (ChatGPT and OpenAI's
+  bots, Claude and Anthropic's, and so on), the cited pages **no AI crawler
+  fetched**, cited pages that gave a crawler an error or a block, and pages
+  the audit read that no AI crawler reached. This is a comparison within one
+  log window, not a cause: a page fetched before the window shows as not
+  fetched.
+
+`--out <dir>` writes `crawlers.json` (the full versioned report) and
+`crawlers.md`. `--json` prints the report.
+
+## Visits from AI assistants
+
+The same pass counts the people AI assistants sent to your site: requests
+whose user agent is not a known bot and whose `Referer` host, or failing
+that `utm_source`, names an assistant. Per assistant: visits, how many were
+matched by referrer and by `utm_source`, the top landing pages, first and
+last seen, and up to three redacted log lines as receipts.
+
+| Assistant | Matched hosts |
+|---|---|
+| ChatGPT | `chatgpt.com`, `chat.openai.com` |
+| Perplexity | `perplexity.ai` |
+| Claude | `claude.ai` |
+| Gemini | `gemini.google.com` |
+| Microsoft Copilot | `copilot.com`, `copilot.microsoft.com` |
+| DeepSeek | `chat.deepseek.com` |
+| Le Chat (Mistral AI) | `chat.mistral.ai` |
+| Grok | `grok.com` |
+| Meta AI | `meta.ai` |
+
+A host matches itself and its subdomains (`www.perplexity.ai`). A
+`utm_source` matches when its value is one of these hosts: ChatGPT adds
+`utm_source=chatgpt.com` to the links it shows, according to OpenAI's
+publishers FAQ. The list lives in one file,
+`packages/engine/src/ai-referrers.ts` (the assistants' public addresses as of
+2026-11-02, with older ones that now redirect kept, such as
+`copilot.microsoft.com`); add an assistant there and every surface counts it.
+
+**It is a floor, not a total.** Many visits from an assistant carry no
+`Referer` (its mobile or desktop app, a browser's privacy settings, a link
+copied into a new tab) and no `utm_source`, so they look like direct traffic
+in any log. The `common` log format has no `Referer` at all, so only
+`utm_source` can match there. Log-based only: no analytics script, no
+cookies, nothing sent anywhere.
+
+| Option | What it does |
+|---|---|
+| `--run <run.json>` | join with an audit's citations |
+| `--verify-ips` | check IPs against published ranges |
+| `--since`, `--until` | an ISO date window (a bare `--until` date is inclusive) |
+| `--bot <id>` | one bot, e.g. `gptbot` |
+| `--show-ips` | keep client IPs in the receipts |
+| `--limit <n>` | rows per list (1-50) |
+| `--out <dir>`, `--json` | files or JSON |
+
+## Privacy
+
+- The log is read where it lives: your machine for the CLI, your own
+  deployment for the app. Nothing is uploaded to us or anyone else.
+- Receipts show the client IP redacted (`203.0.x.x`, `2001:db8::x`) unless you
+  pass `--show-ips`, and query strings are cut, since they can carry tokens.
+- For referral counts, only the `Referer` header's host is kept (never its
+  path or query) and only the value of `utm_source` is read from a query
+  string.
+- IPs are grouped by a keyed hash whose key exists only while the report is
+  built.
+
+## In the app
+
+On a brand's page, **AI crawlers** takes an upload of the same formats (`.gz`
+too). The file streams through the same code on your deployment's server and
+is not stored; only the report's aggregates are (counts, the top pages and a
+few redacted log lines), and the newest 12 per brand are kept. The section
+shows the visits AI assistants sent next to the crawlers; a log uploaded
+before 0.2.0 has no such count, and says so. Delete any of
+them from the same section. The latest audit is joined automatically. On
+Vercel a request body is capped at 4.5 MB, so upload a gzipped recent slice or
+use the CLI; a Docker or local deployment accepts up to `CRAWLER_UPLOAD_MAX_MB`
+(default 200). Needs migration `0046_crawler_reports.sql`.
+
+## From an agent
+
+The MCP `crawlers` tool returns the same summary for a log inside the
+server's working directory, IPs always redacted, with the assistant visits as
+`ai_referrals`. See [the MCP server](/docs/mcp).

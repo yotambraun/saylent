@@ -99,15 +99,14 @@ export async function cancelRun(runId: string): Promise<{ ok: boolean; error?: s
   if (demo) return demo;
 
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("runs")
-    .update({ status: "failed", error: "cancelled by you", finished_at: new Date().toISOString() })
-    .eq("id", runId)
-    .in("status", ["queued", "running"])
-    .select("id")
-    .maybeSingle();
+  // The write goes through cancel_run (migration 0044), not a direct update:
+  // status/error/finished_at stay revoked from `authenticated` so an owner can
+  // never restate what a run resulted in. The function owns the ownership check,
+  // the queued/running guard and the note's wording; it returns false for a run
+  // that is not yours or already finished, which read the same to the caller.
+  const { data, error } = await supabase.rpc("cancel_run", { p_run_id: runId });
   if (error) return { ok: false, error: error.message };
-  if (!data) return { ok: false, error: "This run already finished. Nothing to cancel." };
+  if (data !== true) return { ok: false, error: "This run already finished. Nothing to cancel." };
   await revalidateRunSurfaces(supabase, runId);
   return { ok: true };
 }

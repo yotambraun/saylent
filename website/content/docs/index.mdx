@@ -10,6 +10,13 @@ absent, which rival was named instead, which pages the assistants cited, and
 what to fix. It runs on your own provider keys, on your own machine or your
 own infrastructure. Nothing is sent through us and nothing is stored by us.
 
+To see a full report before you set up anything, run `npx saylent demo`: it
+renders the bundled sample run offline, with no key and no cost.
+
+<Callout title="Which tool?">
+[promptbeacon](https://github.com/yotambraun/promptbeacon) is for developers and open-source maintainers: does AI recommend your library or dev product — a number in CI and a README badge. Saylent is for brand and website teams: an audit of what AI assistants say about your site, with the answers and cited pages as receipts, plus fixes for your site.
+</Callout>
+
 These docs are one story in six parts, in the order people actually need them.
 
 <Cards>
@@ -23,8 +30,14 @@ These docs are one story in six parts, in the order people actually need them.
 
 | What you need | Where it lives | What it costs |
 |---|---|---|
-| One report on one domain, today | [The CLI](/docs/quickstart): `npx saylent audit example.com` | about $0.60 to $1.20 with four engines |
+| To see what a report looks like first | [The CLI](/docs/quickstart): `npx saylent demo` | $0, no keys, offline |
+| One report on one domain, today | [The CLI](/docs/quickstart): `npx saylent audit example.com` | about $0.80 to $1.20 with four engines |
 | To know which AI crawlers your site lets in | [The site check](/docs/check): `npx saylent gate-check example.com` | $0, no keys |
+| To know which AI crawlers actually visit | [AI crawlers](/docs/crawlers): `npx saylent crawlers access.log` | $0, no keys, the log stays on your machine |
+| To ask what your buyers really search | [Import questions](/docs/import-questions): `npx saylent questions import Queries.csv` | $0, no keys |
+| To be told when the answers move | [Alerts](/docs/alerts): `saylent verify --notify slack`, or per brand in the app | $0 beyond the run itself |
+| Your data in a spreadsheet, a dashboard or a script | [Export and API](/docs/export): `npx saylent export run.json`, the app's Export menu, or the read-only API | $0 |
+| The drafted fixes on a branch of your site repo | [`saylent fixes apply`](/docs/cli#saylent-fixes-apply-runjson---repo-path) | $0; it commits locally and never pushes |
 | History, a fix tracker and more than one account | [Deploy the app](/docs/self-host) | the same per run, on your own keys |
 | A gate that fails a push when a bot is blocked | [The GitHub Action](/docs/action) | $0, no keys |
 | Claude Code to do it for you | [The Claude Code plugin](/docs/claude-code) | $0 for the site check; the same per run for an audit, after you agree to the estimate |

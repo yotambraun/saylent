@@ -47,6 +47,8 @@ import type {
   SkipStages,
 } from "@saylent/engine";
 import type { ConfigThresholds, ExtraBot, QuestionTemplateConfig, SamplingConfig } from "@saylent/engine/config";
+import type { SourceOverrides } from "@saylent/engine/sources";
+import type { SerpProviderId, SurfaceLocale } from "@saylent/engine/surfaces";
 import type { LlmCall } from "@saylent/engine/brandModel";
 import type { ReportData, ReportMeta } from "@saylent/report/render/types";
 import { loadAdapters, loadEngine, loadReportFromBundle, loadReportRender, type EngineModule } from "./engine-loader";
@@ -260,6 +262,12 @@ export interface AuditOptions {
   /** first-line banner for a report rendered from a published SAMPLE bundle
    *  (see renderReportFilesWith). */
   sampleNotice?: string;
+  /** answer surfaces only: where surface answers are fetched from */
+  surfaceLocale?: SurfaceLocale | null;
+  /** answer surfaces only: the SERP-data provider (default serpapi) */
+  serpProvider?: SerpProviderId;
+  /** saylent.config sources.domainTypes: the Sources section's overrides */
+  sourceOverrides?: SourceOverrides | null;
 }
 
 export interface AuditRun {
@@ -280,20 +288,29 @@ export async function buildAskFn(
   profile: ProfileName,
   /** the resolved registry; defaults to the env/registry snapshot */
   registry?: ModelRegistry,
+  /** answer surfaces: locale + SERP provider (ignored by the model engines) */
+  surfaces?: { locale?: SurfaceLocale | null; provider?: SerpProviderId },
 ): Promise<AskFn> {
   const { ADAPTERS } = await loadAdapters();
   const MODELS = registry ?? engineMod.MODELS;
+  const provider = surfaces?.provider ?? "serpapi";
   const ANSWER_MODEL: Record<Engine, string> = {
     chatgpt: MODELS.chatgptAnswer,
     claude: MODELS.claudeAnswer,
     gemini: MODELS.geminiAnswer,
     perplexity: MODELS.perplexityAnswer,
+    google_ai_overview: `${provider}:google_ai_overview`,
+    google_ai_mode: `${provider}:google_ai_mode`,
+    copilot: `${provider}:copilot`,
   };
   const apiKeyFor: Record<Engine, string | undefined> = {
     chatgpt: keys.openai,
     claude: keys.anthropic,
     gemini: keys.gemini,
     perplexity: keys.perplexity,
+    google_ai_overview: keys.serpapi,
+    google_ai_mode: keys.serpapi,
+    copilot: keys.serpapi,
   };
   const caps = engineMod.PROFILES[profile];
   return async (engine, question) =>
@@ -301,15 +318,34 @@ export async function buildAskFn(
       model: ANSWER_MODEL[engine],
       apiKey: apiKeyFor[engine],
       ...(engine === "claude" ? { maxSearches: caps.claudeMaxSearches } : {}),
+      ...(engine in SURFACE_SET ? { locale: surfaces?.locale ?? undefined, serpProvider: provider } : {}),
     });
+}
+
+const SURFACE_SET: Record<string, true> = { google_ai_overview: true, google_ai_mode: true, copilot: true };
+
+/** run.json's run.surfaces stamp: present only when the run asked a surface. */
+export function surfacesMeta(
+  engines: readonly Engine[],
+  locale: SurfaceLocale | null | undefined,
+  provider: SerpProviderId = "serpapi",
+): { provider: SerpProviderId; locale: SurfaceLocale } | null {
+  return engines.some((e) => e in SURFACE_SET) ? { provider, locale: { ...(locale ?? {}) } } : null;
 }
 
 /** exit code: 2 on ANY provider failure among the requested
  *  engines, not only an engine that failed every draw — a partial failure
  *  (some draws 429/503'd, most succeeded) is still worth a non-zero signal so
  *  a script chain can tell "clean" apart from "ran with gaps". */
-export function hasEngineFailures(engines: Engine[], answers: { engine: Engine; ok: boolean }[]): boolean {
-  return engines.some((e) => answers.some((a) => a.engine === e && !a.ok));
+export function hasEngineFailures(
+  engines: Engine[],
+  answers: { engine: Engine; ok: boolean; error?: string | null }[],
+): boolean {
+  // a surface that showed no AI answer for a question ("no_answer:") is a
+  // recorded gap, not a provider failure, so it never flips the exit code
+  return engines.some((e) =>
+    answers.some((a) => a.engine === e && !a.ok && !(typeof a.error === "string" && a.error.startsWith("no_answer:"))),
+  );
 }
 
 export function defaultOutDir(domain: string, now: Date = new Date()): string {
@@ -353,7 +389,12 @@ export async function runAuditToFilesWith(
 
   const db = new MemoryDbWriter();
   if (opts.onLiveLabel) wrapSetStage(db, opts.onLiveLabel);
-  const ask = opts.deps?.ask ?? (await buildAskFn(engineMod, opts.keys, opts.profile, opts.models));
+  const ask =
+    opts.deps?.ask ??
+    (await buildAskFn(engineMod, opts.keys, opts.profile, opts.models, {
+      locale: opts.surfaceLocale,
+      provider: opts.serpProvider,
+    }));
   const llm = opts.deps?.llm ?? {
     brandModel: engineMod.brandModelCall,
     drafter: engineMod.drafterCall,
@@ -409,16 +450,19 @@ export async function runAuditToFilesWith(
       sampling: result.sampling,
       skip: result.skip,
       judge_mode: result.judgeMode,
-      roles: engineMod.runRoles(result.roles),
+      roles: engineMod.runRoles(result.roles, result.engines),
       started_at: result.startedAt,
       finished_at: result.finishedAt,
       est_cost_usd: result.costUsd,
       failure: result.failure ?? null,
+      surfaces: surfacesMeta(result.engines, opts.surfaceLocale, opts.serpProvider),
     },
     brand_model: result.brandModel,
     questions: result.frozenQuestions,
   };
-  const bundle = toBundle(db, meta);
+  // run.json carries its source intelligence (schema-versioned) so a reader,
+  // the MCP `sources` tool and `saylent sources` need not recompute it.
+  const bundle = engineMod.withSources(toBundle(db, meta), opts.sourceOverrides ?? null);
 
   mkdirSync(outDir, { recursive: true });
   // LAST gate before a provider key can reach disk. The adapter boundary
@@ -573,6 +617,8 @@ export interface VerifyOptions {
   sampling?: SamplingOptions;
   /** --format / the MCP `format` argument. Undefined = run.json + movement.html. */
   format?: readonly ReportFormat[];
+  /** saylent.config sources.domainTypes (default: the baseline's own) */
+  sourceOverrides?: SourceOverrides | null;
 }
 
 export function loadBundleFileWith(engineMod: Pick<EngineModule, "readBundle">, file: string): RunBundleV1 {
@@ -603,7 +649,15 @@ export async function runVerifyToFilesWith(
 
   const db = new MemoryDbWriter();
   if (opts.onLiveLabel) wrapSetStage(db, opts.onLiveLabel);
-  const ask = opts.deps?.ask ?? (await buildAskFn(engineMod, opts.keys, baseline.run.profile, opts.models));
+  // A verify asks every surface exactly where the baseline asked it: the
+  // locale and provider are reused from the baseline's run.surfaces stamp.
+  const baseSurfaces = baseline.run.surfaces ?? null;
+  const ask =
+    opts.deps?.ask ??
+    (await buildAskFn(engineMod, opts.keys, baseline.run.profile, opts.models, {
+      locale: baseSurfaces?.locale ?? null,
+      provider: (baseSurfaces?.provider as SerpProviderId | undefined) ?? "serpapi",
+    }));
   const llm = opts.deps?.llm ?? {
     brandModel: engineMod.brandModelCall,
     drafter: engineMod.drafterCall,
@@ -668,17 +722,25 @@ export async function runVerifyToFilesWith(
       question_set_version: result.questionSetVersion,
       sampling: result.sampling,
       judge_mode: result.judgeMode,
-      roles: engineMod.runRoles(result.roles),
+      roles: engineMod.runRoles(result.roles, result.engines),
       started_at: result.startedAt,
       finished_at: result.finishedAt,
       est_cost_usd: result.costUsd,
       baseline_run_id: baseline.run.id,
       failure: result.failure ?? null,
+      surfaces: surfacesMeta(
+        result.engines,
+        baseSurfaces?.locale ?? null,
+        (baseSurfaces?.provider as SerpProviderId | undefined) ?? "serpapi",
+      ),
     },
     brand_model: result.brandModel,
     questions: result.frozenQuestions,
   };
-  const current = toBundle(db, meta);
+  const current = engineMod.withSources(
+    toBundle(db, meta),
+    opts.sourceOverrides ?? baseline.sources?.overrides ?? null,
+  );
 
   mkdirSync(outDir, { recursive: true });
   // --format on a verify: `json` is the new run.json, `html` is movement.html.

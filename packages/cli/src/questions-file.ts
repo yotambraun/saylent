@@ -22,6 +22,7 @@
 // whose question it was, and so a smoke run asks the operator's own questions
 // instead of silently dropping them (engine selectForProfile).
 import { readFileSync } from "node:fs";
+import { validateLocale } from "@saylent/engine/question-import";
 
 /** The shipped question types (engine types.ts QType). "custom" is what an
  *  untagged user question gets. */
@@ -59,6 +60,9 @@ export interface QuestionSetFile {
   templateVersion?: number | string;
   /** which of the three shapes this file was */
   shape: "bundle" | "questions.json" | "text";
+  /** questions.json `locale` (saylent questions import --language/--country):
+   *  the default answer-surface locale for a run that asks this set */
+  locale?: { language?: string; country?: string };
 }
 
 /** The editable file `saylent questions` writes and `--questions` reads back. */
@@ -66,6 +70,7 @@ export interface QuestionsJson {
   brand: string;
   domain?: string;
   version: number | string;
+  locale?: { language?: string; country?: string };
   questions: {
     id: string;
     type: string;
@@ -221,7 +226,18 @@ export function loadQuestionSetFile(file: string): QuestionSetFile {
       const isQuestionsJson =
         typeof obj.brand === "string" ||
         rows.some((r) => Boolean(r) && typeof r === "object" && ("id" in (r as object) || "type" in (r as object)));
+      let locale: QuestionSetFile["locale"];
+      if (obj.locale !== undefined && obj.locale !== null) {
+        const l = obj.locale as Record<string, unknown>;
+        const v = validateLocale(
+          typeof l.language === "string" ? l.language : null,
+          typeof l.country === "string" ? l.country : null,
+        );
+        if (typeof v === "string") throw new Error(`--questions ${file}: locale ${v}.`);
+        if (v.language || v.country) locale = v;
+      }
       return {
+        ...(locale ? { locale } : {}),
         questions: fromQuestionRows(rows, file),
         version: !isQuestionsJson && typeof obj.version === "number" ? obj.version : undefined,
         engines: Array.isArray(obj.engines) ? (obj.engines as string[]) : undefined,

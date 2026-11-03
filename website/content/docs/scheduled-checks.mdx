@@ -29,6 +29,12 @@ there, so no secret goes on the crontab line:
 0 9 1 * * cd /home/me/saylent && npx saylent verify ./example.com/2026-09-14/run.json --yes --max-usd 2 >> verify.log 2>&1
 ```
 
+To hear about it without reading the log, add `--notify slack` (or `webhook`,
+`email`) with the target in the job's environment or `.env`: the run then
+sends what changed against the baseline, and nothing when nothing did. A
+weekly summary across the folder is `saylent history ./example.com --digest
+--notify slack`, free. See [Alerts](/docs/alerts).
+
 ## On a schedule you do not host (GitHub Actions)
 
 Commit the baseline `run.json` to the repository, put the two keys in the
@@ -78,8 +84,10 @@ Two things differ once nobody is watching:
   deliberately whether you want that.
 - **Upgrading the CLI can make verify refuse to run**, on purpose, if the
   shipped question templates changed since your baseline was frozen. Pin the
-  version in the job (`npx saylent@0.1.1`), or re-baseline with a fresh
-  `saylent audit` when you upgrade.
+  exact version you took the baseline with: `npx saylent --version` prints it,
+  and the job then runs `npx saylent@<that version> verify ...`. Re-baseline
+  with a fresh `saylent audit` when you choose to upgrade. An unpinned
+  `npx saylent` always runs the latest release.
 
 ## When to move to the app instead
 

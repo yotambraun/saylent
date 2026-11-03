@@ -24,6 +24,9 @@ export const RATE_LIMITS = {
   // Product-analytics event sink (per-IP): generous — a client fires several
   // events per session — but capped so the public /api/track can't spam the log.
   track: { bucket: "track", limit: 120, windowSeconds: 60 },
+  // Read-only API (/api/v1/*), per user across every token and the session:
+  // enough for a dashboard or an agent, not for scraping the database.
+  api: { bucket: "api_v1", limit: 60, windowSeconds: 60 },
 } as const satisfies Record<string, RateLimitRule>;
 
 /** Increment the window counter for (rule.bucket, identifier) and report whether

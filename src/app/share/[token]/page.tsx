@@ -10,8 +10,9 @@ import { Dossier } from "@saylent/report/components/dossier";
 import type { RunRow } from "@saylent/report/components/run-view";
 import { PublicReportHost } from "@/app/app/run/[id]/public-host";
 import { CONTACT_EMAIL, PROJECT_ISSUES_URL } from "@/lib/branding";
-import { getSharedRun } from "@/lib/dossier-data";
+import { fetchSourceOverrides, getSharedRun } from "@/lib/dossier-data";
 import { MODELS } from "@saylent/engine/models";
+import { SURFACE_IDS, surfaceSourceId } from "@saylent/engine/surfaces";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 // per-engine model ids for the answer-drawer source chip (model registry)
@@ -20,6 +21,8 @@ const ENGINE_MODELS: Record<string, string> = {
   claude: MODELS.claudeAnswer,
   gemini: MODELS.geminiAnswer,
   perplexity: MODELS.perplexityAnswer,
+  // answer surfaces carry a provenance id, not a model ("serpapi:google_ai_mode")
+  ...Object.fromEntries(SURFACE_IDS.map((s) => [s, surfaceSourceId(s)])),
 };
 
 export const metadata: Metadata = {
@@ -48,6 +51,8 @@ export default async function SharedRunPage({
   const sp = await searchParams;
   const viewParam = Array.isArray(sp.view) ? sp.view[0] : sp.view;
   const showFull = viewParam === "full";
+  // the owner's "Source types" corrections, so the shared report reads the same
+  const sourceOverrides = await fetchSourceOverrides(createAdminClient(), (run as { brand_id?: string }).brand_id);
 
   const brandProps = {
     name: brand.name,
@@ -111,6 +116,7 @@ export default async function SharedRunPage({
               corpus={corpus as never}
               checks={checks as never}
               fixes={fixes as never}
+              sourceOverrides={sourceOverrides}
               demo
             />
           ) : (
@@ -122,6 +128,7 @@ export default async function SharedRunPage({
               checks={checks as never}
               fixes={fixes as never}
               engineModels={ENGINE_MODELS}
+              sourceOverrides={sourceOverrides}
               demo
             />
           )}

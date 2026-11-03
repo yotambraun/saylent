@@ -11,6 +11,7 @@ import { redactKnownSecrets } from "./redact";
 
 export type AdapterErrorKind =
   | "missing_key"
+  | "no_answer"
   | "auth"
   | "quota"
   | "rate_limit"
@@ -20,6 +21,7 @@ export type AdapterErrorKind =
 
 const KNOWN_KINDS: ReadonlySet<string> = new Set([
   "missing_key",
+  "no_answer",
   "auth",
   "quota",
   "rate_limit",
@@ -46,9 +48,28 @@ const PROVIDER_LABEL: Record<Engine, string> = {
   claude: "Anthropic",
   gemini: "Gemini",
   perplexity: "Perplexity",
+  google_ai_overview: "SerpApi",
+  google_ai_mode: "SerpApi",
+  copilot: "SerpApi",
 };
 
 type MessageFn = (ctx: { modelName?: string }) => string;
+
+/** Answer surfaces are read through the operator's SerpApi key, so every
+ *  failure is worded for SerpApi (https://serpapi.com/api-status-and-error-codes:
+ *  401 bad key, 403 no permission, 429 hourly cap OR out of searches). */
+function surfaceMessages(label: string): Partial<Record<AdapterErrorKind, MessageFn>> {
+  return {
+    missing_key: () => `No SerpApi key configured for ${label}. Run \`saylent keys set serpapi\`.`,
+    no_answer: () => `${label} showed no AI answer for some questions. Recorded as not shown, never as an absence.`,
+    auth: () => "Your SerpApi key was rejected. Check it with `saylent keys test`.",
+    quota: () => "Your SerpApi plan has no searches left. Check serpapi.com/dashboard, then rerun.",
+    rate_limit: () =>
+      "SerpApi refused more searches: the plan's hourly limit, or no searches left this month. Wait an hour or check serpapi.com/dashboard.",
+    not_found: () => `SerpApi does not know the ${label} engine for this request. Update saylent, then rerun.`,
+    server: () => `SerpApi is having trouble reading ${label}. The other engines continue.`,
+  };
+}
 
 const NOT_FOUND: MessageFn = ({ modelName }) =>
   modelName
@@ -99,6 +120,9 @@ const MESSAGES: Record<Engine, Partial<Record<AdapterErrorKind, MessageFn>>> = {
     not_found: NOT_FOUND,
     server: () => "Perplexity is having trouble. The other engines continue.",
   },
+  google_ai_overview: surfaceMessages("Google AI Overviews"),
+  google_ai_mode: surfaceMessages("Google AI Mode"),
+  copilot: surfaceMessages("Microsoft Copilot"),
 };
 
 /** The ONE plain sentence + ONE action for this engine's failure.

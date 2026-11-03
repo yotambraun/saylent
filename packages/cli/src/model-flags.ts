@@ -67,7 +67,7 @@ export function parseModelFlags(values: ModelFlagValues, familyOf: FamilyOfModel
   for (const raw of values.model ?? []) {
     const at = raw.indexOf("=");
     if (at < 1) {
-      throw new Error(`--model ${raw}: expected <role>=<model>, e.g. --model brand=claude-haiku-4-5.`);
+      throw new Error(`--model ${raw}: expected <role>=<model>, e.g. --model brand=claude-haiku-5-5.`);
     }
     const role = raw.slice(0, at).trim().toLowerCase();
     const model = raw.slice(at + 1).trim();

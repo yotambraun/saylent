@@ -17,7 +17,10 @@ the brand is named and recommended, and whether the brand actually appears on
 the pages those answers were built from. It also tests, live, whether each
 assistant's crawler can read the brand's own site. Every number traces back to
 a stored answer or a fetched page you can open. Nothing is modeled,
-extrapolated, or bought from a third-party panel.
+extrapolated, or bought from a third-party panel. A run can also add the
+answer surfaces buyers read inside a search results page (Google AI
+Overviews, Google AI Mode, Microsoft Copilot), read through your own SerpApi
+key.
 
 ## Where do the questions come from?
 
@@ -38,7 +41,21 @@ visibly rebaselines the trend.
 Four answer engines (ChatGPT, Claude, Gemini, Perplexity), each through its
 official API with the provider's own web search on. Nothing is scraped from a
 consumer app. Each engine is its own step, so a provider outage costs one
-engine, not the run, and the report labels the gap.
+engine, not the run, and the report labels the gap. The search queries an
+engine reports running (ChatGPT, Claude and Gemini do; Perplexity does not)
+are kept with its answer as a receipt, read from the same response: they are
+the engine's own wording, not ours, and nothing is inferred from them.
+
+**Answer surfaces** are opt-in. Google AI Overviews, Google AI Mode and
+Microsoft Copilot have no official API, so a run that asks for them reads them
+through a SERP-data provider on your own key (SerpApi today), at the country,
+language and city you set; Copilot takes no locale. Each surface answer
+becomes an answer row like any engine's, its citations in the order the
+answer uses them, and is sampled, judged and scored the same way. Google
+shows an AI Overview for some queries only, so a question with no AI answer
+on a surface is recorded as **not shown**: a coverage gap counted nowhere,
+never an absence verdict and never an engine failure. Setup, locale and price
+per search: [Answer surfaces](/docs/surfaces).
 
 Sampling is per profile: `full` takes two draws per engine on scored
 questions, and a third only when the first two disagree or one failed -
@@ -60,7 +77,9 @@ single number would imply a precision the measurement does not have.
   regex, so "Acme" never matches "Acmeology".
 - **Cross-family judge.** ChatGPT and Gemini answers are judged by the
   Anthropic family, Claude and Perplexity by the OpenAI family. Models prefer
-  their own output, so the split is a deliberate control.
+  their own output, so the split is a deliberate control. The three answer
+  surfaces are judged by the Anthropic family: Google's two are Gemini-family
+  answers, and Copilot runs on OpenAI models.
 - **Reasoning first.** The judge quotes the deciding sentence before emitting
   `mention_type`, `prominence` and `sentiment`, because constrained JSON
   degrades reasoning when the verdict decodes first.
@@ -109,6 +128,34 @@ the same row as direct links.
 **Limitation:** word presence is not entailment. A page can name the brand and
 still contradict the answer, so the report says "brand present on the cited
 page", never "the page supports the claim".
+
+## Sources & opportunities
+
+`sources.ts` reads a run's own stored answers, verdicts, citations and cited
+pages three ways, with no model call and no fetch. An answer is counted once
+per question and engine, the answer the report shows, never the extra sampled
+draws, so every count opens its receipts.
+
+- **Citation share.** Each cited domain: its citations, its share of all
+  citations, per engine and surface, the answers naming the brand and the
+  answers that name a rival and not the brand, and its top pages with whether
+  the brand is on each page read.
+- **Share of voice.** Counts of answers naming the brand and each rival, the
+  brand's recommended count, per engine. "Names the brand" is the verdict's
+  `brand_present`; "recommends" is `mention_type` "recommended"; a rival is
+  named when the verdict lists it among the brands the answer prefers or
+  recommends.
+- **Off-site opportunities.** A domain that is not the brand's site and not a
+  rival's, cited in at least one answer that names a rival and not the brand,
+  on a non-branded question, where the brand was not verified present on any
+  page read on it. Ranked by evidence, the number of distinct such answers
+  citing it; ties by engines, then citations, then host. No weights, no score.
+
+Each domain gets one of twelve types from a short ordered rule list (your
+override, your domain, known host lists, rival-owned hosts, subdomain
+patterns, then what its cited pages look like), and every view shows the rule
+that fired. The full rule list and the overrides:
+[Sources & opportunities](/docs/sources).
 
 ## What do the site access checks know?
 
@@ -178,11 +225,13 @@ causal claim that a fix caused a movement.
 
 ## Which models are used?
 
-`models.ts` is the only place a model name exists, and every value is an
-environment override with a default: `gpt-5.4`, `claude-sonnet-4-6`,
-`gemini-3.6-flash` and `sonar` for answers; `claude-haiku-4-5` and `gpt-5-mini`
-for the judges; `claude-haiku-4-5` for the brand model, `claude-sonnet-4-6` for
-the drafter. Every run records its resolved role-to-model map, judge mode,
+The registry (`packages/engine/src/models.ts`, with the defaults in
+`model-defaults.ts`) is the only place a model is chosen, and every value is an
+environment override with a default, checked against the providers' own model
+and pricing pages on 2026-11-02: `gpt-6.1-sol`, `claude-sonnet-5-5`,
+`gemini-3.6-flash` and `sonar` for answers; `claude-haiku-5-5` and `gpt-6-luna`
+for the judges; `claude-haiku-5-5` for the brand model, `claude-sonnet-5-5` for
+the drafter. Prices live next to them in one table, `rates.ts`. Every run records its resolved role-to-model map, judge mode,
 frozen engine set and template version, so two runs months apart can be read
 knowing what moved underneath them.
 
@@ -190,7 +239,10 @@ knowing what moved underneath them.
 
 - One run is a snapshot; signal comes from frozen sets compared as sets.
 - We measure the official API surface. Consumer apps can answer differently.
-- Google AI Overviews has no API, is not scraped, and is not measured.
+- Google AI Overviews, Google AI Mode and Microsoft Copilot have no official
+  API. They are measured only when you add them, as your SerpApi key reads
+  them from a results page at the locale you set; a buyer's own session can
+  differ, and Copilot answers from SerpApi's default location.
 - Cited-page checks are word presence, not entailment.
 - Access checks report what our fetches saw. Server logs are ground truth.
 - The coverage threshold and fix weights are calibrated defaults; a

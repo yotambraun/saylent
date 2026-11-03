@@ -55,6 +55,11 @@ const ENGINE_SPEED: Record<Engine, { label: string; rank: number }> = {
   chatgpt: { label: "2–4 weeks (ChatGPT)", rank: 1 },
   claude: { label: "2–4 weeks (Claude)", rank: 1 },
   gemini: { label: "4–8 weeks (Gemini)", rank: 2 },
+  // Surfaces read the live index: Google's two follow Google's recrawl,
+  // Copilot follows Bing's. Same "typical range, never a promise" rule.
+  google_ai_overview: { label: "1–4 weeks (Google AI Overviews)", rank: 1 },
+  google_ai_mode: { label: "1–4 weeks (Google AI Mode)", rank: 1 },
+  copilot: { label: "1–4 weeks (Microsoft Copilot)", rank: 1 },
 };
 
 // Honest timeToImpact: the ENGINE_SPEED numbers are typical
@@ -924,7 +929,9 @@ function drafterTaskBase(fix: Fix, bm: BrandModel): string {
   }
   switch (fix.factor) {
     case "access_blocked":
-      return "Write the exact robots.txt block that allows OAI-SearchBot, ChatGPT-User, Claude-SearchBot, Claude-User, PerplexityBot, Perplexity-User (leave GPTBot/ClaudeBot/Google-Extended as a commented choice), plus a 3-step checklist to verify the CDN 'AI bots' toggle and server logs.";
+      // The site's own robots.txt URL is named: without it the drafter wrote
+      // "https:///robots.txt" (an empty host) into the verification steps.
+      return `Write the exact robots.txt block for ${bm.domain} (served at https://${bm.domain}/robots.txt) that allows OAI-SearchBot, ChatGPT-User, Claude-SearchBot, Claude-User, PerplexityBot, Perplexity-User (leave GPTBot/ClaudeBot/Google-Extended as a commented choice), plus a 3-step checklist to verify the CDN 'AI bots' toggle and server logs.`;
     case "coverage_gap":
       // Amendment 2026-07-08: the fix is ONE hub page — one H2 section per
       // uncovered question, in the evidence's order (that order is the priority).

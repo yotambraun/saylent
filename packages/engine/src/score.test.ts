@@ -114,6 +114,17 @@ describe("voteAnswer", () => {
     expect(canonical.ok).toBe(true);
   });
 
+  it("carries the representative draw's search queries, like its text", () => {
+    const { canonical } = voteAnswer([
+      draw(0, "neutral", { search_queries: ["q from draw 0"] }),
+      draw(1, "recommended", { search_queries: ["q from draw 1"] }),
+      draw(2, "recommended", { search_queries: [] }),
+    ]);
+    expect(canonical.search_queries).toEqual(["q from draw 1"]);
+    const none = voteAnswer([draw(0, "recommended")]).canonical;
+    expect("search_queries" in none).toBe(false);
+  });
+
   it("pins the canonical verdict's mention_type to the vote", () => {
     const { canonical } = voteAnswer([
       draw(0, "recommended"),
@@ -173,6 +184,20 @@ describe("recommendedBand", () => {
     ];
     const band = recommendedBand(canonical, []);
     expect(band.overall).toEqual({ min: 1, max: 1 });
+    // ...and it says so: one set means nothing was re-asked, so no reader may
+    // call this point band "stable".
+    expect(band.sample_sets).toBe(1);
+  });
+
+  it("records the sample-set count so a point band is never miscalled stable", () => {
+    const canonical = [{ qid: "q01", engine: chatgpt, mention_type: "recommended" as Mention }];
+    const agreeing: SampleMention[] = [
+      { qid: "q01", engine: chatgpt, sampleIdx: 0, mention_type: "recommended" },
+      { qid: "q01", engine: chatgpt, sampleIdx: 1, mention_type: "recommended" },
+    ];
+    const band = recommendedBand(canonical, agreeing);
+    expect(band.overall).toEqual({ min: 1, max: 1 }); // a point band...
+    expect(band.sample_sets).toBe(2); // ...that WAS re-asked
   });
 
   it("a scored answer with no per-set draw falls back to its canonical mention", () => {

@@ -4,7 +4,7 @@
 // and `--engines chatgpt,claud` silently ran a one-engine audit the operator
 // paid for believing they had asked for two.
 import { describe, expect, it } from "vitest";
-import { ENGINE_NAMES, parseEngineList, parseProfileName } from "./validate";
+import { ENGINE_NAMES, parseEngineList, parseProfileName, parseSurfaceList } from "./validate";
 
 const PROFILES = ["full", "smoke"] as const;
 
@@ -40,8 +40,16 @@ describe("parseProfileName", () => {
 });
 
 describe("parseEngineList", () => {
-  it("is the four answer engines, derived from the provider registry", () => {
-    expect([...ENGINE_NAMES]).toEqual(["chatgpt", "claude", "gemini", "perplexity"]);
+  it("is the four model engines (from the provider registry), then the answer surfaces", () => {
+    expect([...ENGINE_NAMES]).toEqual([
+      "chatgpt",
+      "claude",
+      "gemini",
+      "perplexity",
+      "google_ai_overview",
+      "google_ai_mode",
+      "copilot",
+    ]);
   });
 
   it("parses and de-duplicates a good list", () => {
@@ -50,7 +58,7 @@ describe("parseEngineList", () => {
 
   it("REFUSES an unknown name instead of dropping it", () => {
     expect(() => parseEngineList("chatgpt,claud")).toThrow(
-      '--engines chatgpt,claud: unknown engine "claud". Valid engines: chatgpt, claude, gemini, perplexity.',
+      '--engines chatgpt,claud: unknown engine "claud". Valid engines: chatgpt, claude, gemini, perplexity, google_ai_overview, google_ai_mode, copilot.',
     );
   });
 
@@ -75,5 +83,21 @@ describe("parseEngineList", () => {
     expect(() => parseEngineList(["claud"], "config")).toThrow(
       /^saylent\.config engines "claud": unknown engine/,
     );
+  });
+});
+
+describe("answer surfaces", () => {
+  it("--engines accepts a surface id and corrects a near spelling by name", () => {
+    expect(parseEngineList("chatgpt,google_ai_mode")).toEqual(["chatgpt", "google_ai_mode"]);
+    expect(() => parseEngineList("aio")).toThrow('"aio" is spelled "google_ai_overview"');
+    expect(() => parseEngineList("serpapi")).toThrow('"serpapi" is the key provider');
+  });
+
+  it("--surfaces takes surfaces only", () => {
+    expect(parseSurfaceList("google_ai_overview, copilot,copilot")).toEqual(["google_ai_overview", "copilot"]);
+    expect(parseSurfaceList(undefined)).toBeUndefined();
+    expect(() => parseSurfaceList("chatgpt")).toThrow('"chatgpt" is a model engine; pass it to --engines.');
+    expect(() => parseSurfaceList("ai-mode")).toThrow('"ai-mode" is spelled "google_ai_mode"');
+    expect(() => parseSurfaceList("")).toThrow(/expected a comma-separated list/);
   });
 });

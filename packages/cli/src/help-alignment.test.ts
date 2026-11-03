@@ -5,11 +5,16 @@
 // exactly the moment they are deciding whether to hand the tool an API key.
 import { describe, expect, it, vi } from "vitest";
 import { OPTION_COLUMN, opt } from "./help";
+import { run as demo } from "./commands/demo";
 import { run as audit } from "./commands/audit";
 import { run as verify } from "./commands/verify";
 import { run as gateCheck } from "./commands/gate-check";
 import { run as report } from "./commands/report";
 import { run as history } from "./commands/history";
+import { run as sources } from "./commands/sources";
+import { run as crawlers } from "./commands/crawlers";
+import { run as exportCmd } from "./commands/export";
+import { run as fixes } from "./commands/fixes";
 import { run as keys } from "./commands/keys";
 import { run as questions } from "./commands/questions";
 import { run as models } from "./commands/models";
@@ -17,11 +22,16 @@ import { run as mcp } from "./commands/mcp";
 import { main } from "./index";
 
 const SCREENS: [string, (argv: string[]) => Promise<number>][] = [
+  ["demo", demo],
   ["audit", audit],
   ["verify", verify],
   ["gate-check", gateCheck],
   ["report", report],
   ["history", history],
+  ["sources", sources],
+  ["crawlers", crawlers],
+  ["export", exportCmd],
+  ["fixes", fixes],
   ["keys", keys],
   ["questions", questions],
   ["models", models],
@@ -81,7 +91,7 @@ describe("every help screen", () => {
     for (const c of cols) expect(c).toBe(OPTION_COLUMN);
   });
 
-  it("all nine command screens use the SAME column as each other", async () => {
+  it("all ten command screens use the SAME column as each other", async () => {
     const all: number[] = [];
     for (const [, fn] of SCREENS) all.push(...descriptionColumns(await helpText(fn)));
     expect(all.length).toBeGreaterThan(20);

@@ -23,6 +23,8 @@ import type {
 import type { RunKind } from "./run-audit";
 import type { JudgeMode, RoleAssignment } from "./models";
 import type { ProfileName, ResolvedSampling } from "./profiles";
+import { type SourceIntelligence, type SourceOverrides, buildSourceIntelligence } from "./sources";
+import type { SerpProviderId, SurfaceLocale } from "./surfaces";
 import type {
   AnswerRow,
   AnswerSampleRow,
@@ -83,6 +85,10 @@ export interface BundleRunMeta {
   baseline_run_id?: string | null;
   /** set only when status="failed" */
   failure?: string | null;
+  /** Answer surfaces only (surfaces.ts): the locale surface answers were
+   *  fetched for and the SERP-data provider that fetched them. Absent on every
+   *  run that asked no surface (v1 is additive-only). A verify reuses it. */
+  surfaces?: { provider: SerpProviderId; locale: SurfaceLocale } | null;
 }
 
 /** A canonical answer with EVERY draw behind it (empty for single-draw groups). */
@@ -108,6 +114,32 @@ export interface RunBundleV1 {
   scores: Scores | null;
   /** the run-health "birth certificate" when the caller graded one */
   health: Record<string, unknown> | null;
+  /** Source intelligence (sources.ts): citation share, share of voice with
+   *  receipts, off-site opportunities. Derived ONLY from the rows above, so a
+   *  reader can always recompute it; carries its own schema_version. Optional:
+   *  bundles written before it read back unchanged, and every renderer
+   *  recomputes when it is absent or of an unknown schema. */
+  sources?: SourceIntelligence | null;
+}
+
+/** Compute and attach the bundle's `sources` block from its own rows. */
+export function withSources(bundle: RunBundleV1, overrides?: SourceOverrides | null): RunBundleV1 {
+  return { ...bundle, sources: bundleSources(bundle, overrides) };
+}
+
+/** Source intelligence for a bundle (sources.ts), from its own rows. */
+export function bundleSources(bundle: RunBundleV1, overrides?: SourceOverrides | null): SourceIntelligence {
+  return buildSourceIntelligence({
+    brand: {
+      name: bundle.brand_model.brand || bundle.run.brand.name,
+      domain: bundle.brand_model.domain || bundle.run.brand.domain,
+      aliases: bundle.brand_model.aliases,
+      competitors: bundle.brand_model.competitors,
+    },
+    answers: bundle.answers,
+    corpus: bundle.corpus_pages,
+    overrides: overrides ?? bundle.sources?.overrides ?? null,
+  });
 }
 
 /** Everything the bundle needs that is NOT a persisted row. */
@@ -150,6 +182,8 @@ const answerSchema = z.object({
   verdict: verdictSchema.optional(),
   error: z.string().optional(),
   usage: usageSchema.optional(),
+  // added in 0.2.0: the engine's own web-search queries (search-queries.ts)
+  search_queries: z.array(z.string()).optional(),
   samples: z.array(
     z.object({
       runId: z.string(),
@@ -160,6 +194,7 @@ const answerSchema = z.object({
       citations: z.array(citationSchema),
       verdict: verdictSchema.nullable(),
       usage: usageSchema.nullable(),
+      search_queries: z.array(z.string()).nullable().optional(),
     }),
   ),
 });
@@ -259,6 +294,13 @@ const runMetaSchema = z.object({
   est_cost_usd: z.number().nullable(),
   baseline_run_id: z.string().nullable().optional(),
   failure: z.string().nullable().optional(),
+  surfaces: z
+    .object({
+      provider: z.string(),
+      locale: z.object({ country: z.string().optional(), language: z.string().optional(), location: z.string().optional() }),
+    })
+    .nullable()
+    .optional(),
 });
 
 export const runBundleSchema = z.object({
@@ -281,6 +323,9 @@ export const runBundleSchema = z.object({
   fixes: z.array(fixSchema),
   scores: z.unknown().nullable(),
   health: z.record(z.string(), z.unknown()).nullable(),
+  // validated loosely: only its schema marker. A block of an unknown schema
+  // is still a valid bundle (readers recompute, sources.ts readStoredSources).
+  sources: z.object({ schema_version: z.number() }).passthrough().nullable().optional(),
 });
 
 // ---------------------------------------------------------------------------
@@ -302,6 +347,7 @@ function mapAnswerRow(a: Omit<MemoryAnswerRow, "run_id">, samples: AnswerSampleR
     ...(a.verdict ? { verdict: a.verdict as Verdict } : {}),
     ...(a.error ? { error: a.error } : {}),
     ...(a.usage ? { usage: a.usage } : {}),
+    ...(Array.isArray(a.search_queries) ? { search_queries: a.search_queries } : {}),
     samples,
   };
 }
@@ -316,6 +362,7 @@ function mapSampleRow(s: Omit<MemoryAnswerSampleRow, "run_id">, runId: string): 
     citations: s.citations,
     verdict: s.verdict,
     usage: s.usage ?? null,
+    ...(Array.isArray(s.search_queries) ? { search_queries: s.search_queries } : {}),
   };
 }
 

@@ -7,10 +7,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Input } from "@saylent/report/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@saylent/report/ui/tabs";
 import { Skeleton } from "@saylent/report/ui/skeleton";
+import { MODEL_ENGINE_IDS, SURFACE_IDS, engineLabel } from "@saylent/engine/surfaces";
 import { type SearchResults, searchAll } from "./actions";
 
 type RunMeta = Record<string, { brand: string; date: string; brandId: string; iso: string }>;
-const ENGINES = ["chatgpt", "claude", "gemini", "perplexity"];
 const DATE_FACETS = [
   { key: "all", label: "All time" },
   { key: "last", label: "Last run" },
@@ -160,6 +160,12 @@ export function SearchClient({
     };
   }, [raw, runMeta, brandFacet, engineFacet, dateFacet, lastRunId, nowMs]);
 
+  // The four model APIs always; an answer surface once a hit came from it.
+  const engines = useMemo(() => {
+    const seen = new Set(raw && !raw.failed ? raw.answers.map((a) => a.engine) : []);
+    return [...MODEL_ENGINE_IDS, ...SURFACE_IDS.filter((s) => seen.has(s))] as string[];
+  }, [raw]);
+
   const total = shown
     ? shown.answers.length + shown.fixes.length + shown.sources.length
     : 0;
@@ -270,13 +276,13 @@ export function SearchClient({
             <FacetChip active={engineFacet === null} onClick={() => setEngineFacet(null)}>
               All
             </FacetChip>
-            {ENGINES.map((e) => (
+            {engines.map((e) => (
               <FacetChip
                 key={e}
                 active={engineFacet === e}
                 onClick={() => setEngineFacet(engineFacet === e ? null : e)}
               >
-                {e}
+                {engineLabel(e)}
               </FacetChip>
             ))}
           </div>
@@ -351,7 +357,7 @@ export function SearchClient({
                     >
                       <div className="flex min-w-0 items-center gap-2 text-xs text-wire">
                         <span className="rounded bg-ink px-1.5 py-0.5 font-mono text-[10px] text-paper">
-                          {a.engine}
+                          {engineLabel(a.engine)}
                         </span>
                         <RunTag meta={runMeta[a.run_id]} />
                         <span className="min-w-0 truncate">{a.question}</span>

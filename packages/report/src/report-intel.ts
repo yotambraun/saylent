@@ -154,8 +154,9 @@ export interface ConsensusPage<P extends IntelPage> {
 }
 
 /**
- * Task 2 — "Consensus sources": pages the WHOLE panel trusts (≥2 distinct
- * engines) that the brand is absent from and that are NOT a rival's own site.
+ * Task 2 — "Consensus sources": pages that 2+ distinct engines cite (the bar is
+ * 2 of the 4, never "the whole panel" — see CONSENSUS_PHRASE) that the brand is
+ * verifiably absent from and that are NOT a rival's own site.
  * One listing here moves multiple engines at once. Sorted by consensus.
  */
 export function consensusSources<P extends IntelPage>(

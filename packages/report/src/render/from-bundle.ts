@@ -26,6 +26,7 @@ export function reportDataFromBundle(bundle: RunBundleV1): ReportData {
     error: a.error ?? null,
     created_at: finishedAt,
     usage: a.usage ?? null,
+    search_queries: a.search_queries ?? null,
   }));
 
   const corpus = bundle.corpus_pages.map((p, i) => ({
@@ -108,5 +109,6 @@ export function reportDataFromBundle(bundle: RunBundleV1): ReportData {
     checks,
     fixes,
     previous: null,
+    sourceOverrides: bundle.sources?.overrides ?? null,
   } as unknown as ReportData;
 }

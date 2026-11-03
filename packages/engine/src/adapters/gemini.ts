@@ -8,6 +8,7 @@
 // valid answer, citations=[].
 import { GoogleGenAI } from "@google/genai";
 import { resolveRedirectCitations } from "../resolve-redirects";
+import { geminiSearchQueries } from "../search-queries";
 import type { Citation } from "../types";
 import { type Ask, MAX_OUTPUT_TOKENS, failed, keyMissing, withRetry } from "./shared";
 
@@ -44,6 +45,8 @@ export const askGemini: Ask = async (question, { model, apiKey }) => {
         output_tokens: (um?.candidatesTokenCount ?? 0) + (um?.thoughtsTokenCount ?? 0),
         searches: res.candidates?.[0]?.groundingMetadata?.webSearchQueries?.length ?? 0,
       },
+      // groundingMetadata.webSearchQueries, the same field counted above
+      search_queries: geminiSearchQueries(res),
     };
   } catch (e) {
     return failed(e);

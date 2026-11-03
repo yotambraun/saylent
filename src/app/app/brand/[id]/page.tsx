@@ -7,6 +7,7 @@
 // (fix shipped, engine-set change, re-baseline line-break) · per-engine small
 // multiples · SOV emphasis chart · table fallback. Reads existing tables under
 // the user's RLS session; smoke and full runs are never mixed in one series.
+import { ExportMenu } from "@/components/export-menu";
 import { notFound } from "next/navigation";
 import { PendingLink } from "@/components/pending-link";
 import { diffRuns } from "@saylent/report/answer-diff";
@@ -34,6 +35,14 @@ import {
   type TrendRun,
 } from "@saylent/report/trend";
 import { createClient } from "@/lib/supabase/server";
+import { MODEL_ENGINE_IDS, SURFACE_IDS, engineLabel } from "@saylent/engine/surfaces";
+import {
+  buildBrandSourceHistory,
+  pickSourceHistoryRuns,
+  readSourceOverrides,
+  type SourceHistoryAnswerRow,
+  type SourceHistoryPageRow,
+} from "@/lib/source-history";
 import { Badge } from "@saylent/report/ui/badge";
 import { Button } from "@saylent/report/ui/button";
 import { EnginePanel, MovementChart, SovChart } from "./charts";
@@ -41,10 +50,15 @@ import { FollowingPanel } from "./following-panel";
 import { PulsePanel } from "./pulse-panel";
 import { PulseComparePicker, type PickerOption } from "./pulse-compare-picker";
 import { RunRowActions } from "./run-row-actions";
+import { SourcesOverTime } from "./sources-over-time";
+import { CrawlersPanel, type CrawlerUploadRow } from "./crawlers-panel";
+import { crawlerReportView } from "@/lib/crawler-view";
 
 export const metadata = { title: "Brand · Saylent" };
 
-const ENGINES = ["chatgpt", "claude", "gemini", "perplexity"] as const;
+// The four model APIs always; an answer surface only once a run asked it (see
+// `engines` below), so a brand that never opted in gets no empty surface panels.
+const MODEL_ENGINES: readonly string[] = MODEL_ENGINE_IDS;
 
 // Deterministic, timezone-stable run label for the picker (UTC methods so the
 // server-rendered <option> text matches on the client — no hydration drift).
@@ -70,7 +84,7 @@ export default async function MovementPage({
 
   const { data: brand, error: brandError } = await supabase
     .from("brands")
-    .select("id,name,domain,aliases")
+    .select("id,name,domain,aliases,competitors,run_options")
     .eq("id", id)
     .is("deleted_at", null) // a soft-deleted brand (migration 0038) reads as 404
     .maybeSingle();
@@ -97,6 +111,12 @@ export default async function MovementPage({
   })[];
   const { visible: runs, hidden: hiddenRuns } = partitionByHidden(allRuns);
   const doneRuns = runs.filter((r) => r.status === "done");
+  // Every answer source this brand's runs report: the four model APIs, plus each
+  // surface that appears in some run's per-engine scores.
+  const ENGINES: string[] = [
+    ...MODEL_ENGINES,
+    ...SURFACE_IDS.filter((s) => runs.some((r) => r.scores?.per_engine?.[s] != null)),
+  ];
 
   const series = trendSeries(runs);
   const { state } = deltaState(series);
@@ -246,7 +266,63 @@ export default async function MovementPage({
   }));
 
   const engineData = ENGINES.map((e) => ({ engine: e, points: engineSeries(runs, e) }));
+
+  // ---- SOURCES OVER TIME: where the answers come from across the last few
+  // finished runs (engine sources.ts, per run, then folded). Two narrow selects
+  // for those runs only: the answers WITHOUT raw_text, and the cited pages the
+  // corpus stage read. The brand's own "Source types" overrides apply.
+  const sourceRuns = pickSourceHistoryRuns(doneRuns);
+  let sourceHistory: ReturnType<typeof buildBrandSourceHistory> = { ok: false, reason: "no_runs" };
+  if (sourceRuns.length > 0) {
+    const ids = sourceRuns.map((r) => r.id);
+    const [{ data: srcAnswers, error: srcAnswersError }, { data: srcPages, error: srcPagesError }] =
+      await Promise.all([
+        supabase
+          .from("answers")
+          .select("run_id,qid,engine,qtype,question,ok,citations,verdict")
+          .in("run_id", ids),
+        supabase
+          .from("corpus_pages")
+          .select("run_id,url,final_url,title,page_type,brand_present,competitors_present")
+          .in("run_id", ids),
+      ]);
+    if (srcAnswersError) throw srcAnswersError;
+    if (srcPagesError) throw srcPagesError;
+    sourceHistory = buildBrandSourceHistory({
+      brand: {
+        name: brand.name,
+        domain: brand.domain,
+        aliases: (brand.aliases as string[] | null) ?? null,
+        competitors: (brand.competitors as string[] | null) ?? null,
+      },
+      runs: sourceRuns,
+      answers: (srcAnswers ?? []) as SourceHistoryAnswerRow[],
+      corpus: (srcPages ?? []) as SourceHistoryPageRow[],
+      overrides: readSourceOverrides(brand.run_options),
+    });
+  }
   const panelYMax = Math.max(1, ...engineData.flatMap((d) => d.points.map((p) => p.answered)));
+
+  // ---- AI CRAWLERS (migration 0046): the stored aggregates of uploaded logs,
+  // newest first; only the newest carries its full report. A deployment that
+  // has not applied 0046 yet simply shows the empty state.
+  const { data: crawlerRows } = await supabase
+    .from("crawler_reports")
+    .select("id,source_name,created_at,ai_bot_hits")
+    .eq("brand_id", id)
+    .order("created_at", { ascending: false })
+    .limit(12);
+  const crawlerHistory: CrawlerUploadRow[] = ((crawlerRows ?? []) as { id: string; source_name: string; created_at: string; ai_bot_hits: number }[]).map((r) => ({
+    id: r.id,
+    sourceName: r.source_name,
+    createdAt: r.created_at,
+    aiBotHits: r.ai_bot_hits,
+  }));
+  let latestCrawler = null;
+  if (crawlerHistory.length > 0) {
+    const { data: full } = await supabase.from("crawler_reports").select("id,source_name,created_at,report").eq("id", crawlerHistory[0].id).maybeSingle();
+    latestCrawler = full ? crawlerReportView(full as { id: string; source_name: string; created_at: string; report: unknown }) : null;
+  }
 
   const verdictBadge =
     series.length < 3
@@ -279,6 +355,19 @@ export default async function MovementPage({
             >
               Questions and run options →
             </PendingLink>
+            <PendingLink
+              href={`/app/brand/${id}/alerts`}
+              className="w-fit font-mono text-xs text-signal underline underline-offset-2 hover:text-ink"
+            >
+              Alerts →
+            </PendingLink>
+            <a
+              href="#crawlers"
+              className="w-fit font-mono text-xs text-signal underline underline-offset-2 hover:text-ink"
+            >
+              AI crawlers ↓
+            </a>
+            <ExportMenu base={`/api/v1/brands/${id}/export`} label="Export history" align="left" />
           </div>
         </div>
         <span className={`rounded px-2 py-1 font-mono text-xs ${verdictBadge.cls}`}>
@@ -369,7 +458,7 @@ export default async function MovementPage({
               {engineData.map(({ engine, points }) => (
                 <EnginePanel
                   key={engine}
-                  engine={engine}
+                  engine={engineLabel(engine)}
                   focus={points}
                   ghosts={engineData.filter((d) => d.engine !== engine).map((d) => d.points)}
                   yMax={panelYMax}
@@ -418,6 +507,16 @@ export default async function MovementPage({
           </p>
         </>
       )}
+
+      {/* SOURCES OVER TIME — shown from the first finished run (it needs no
+          second point to be useful), self-hiding with one honest line. */}
+      {series.length > 0 && (
+        <SourcesOverTime result={sourceHistory} brandName={brand.name} />
+      )}
+
+      {/* AI CRAWLERS — what actually visits, from the owner's own log. Shown
+          from day one: it needs no audit. */}
+      <CrawlersPanel brandId={id} latest={latestCrawler} history={crawlerHistory} />
 
       {/* RUN HISTORY — every run for this brand (all kinds + profiles), newest
           first. Shown independently of the trend gates above so a single run,
@@ -498,13 +597,13 @@ export default async function MovementPage({
                           {r.status === "done" && (
                             <>
                               <a
-                                href={`/api/runs/${r.id}/export?format=csv`}
+                                href={`/api/v1/runs/${r.id}?format=csv&table=answers&download=1`}
                                 className="font-mono text-[11px] text-wire underline underline-offset-2 hover:text-ink"
                               >
                                 CSV
                               </a>
                               <a
-                                href={`/api/runs/${r.id}/export?format=json`}
+                                href={`/api/v1/runs/${r.id}?format=json&download=1`}
                                 className="font-mono text-[11px] text-wire underline underline-offset-2 hover:text-ink"
                               >
                                 JSON

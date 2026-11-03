@@ -1,0 +1,35 @@
+{
+  "search_metadata": { "id": "fixture-1", "status": "Success" },
+  "search_parameters": { "engine": "google", "q": "best uptime monitoring tool", "gl": "us", "hl": "en" },
+  "ai_overview": {
+    "text_blocks": [
+      {
+        "type": "paragraph",
+        "snippet": "Popular uptime monitoring tools include Upcheck and Beacon Uptime.",
+        "snippet_highlighted_words": ["Upcheck and Beacon Uptime"],
+        "reference_indexes": [1, 0]
+      },
+      { "type": "heading", "snippet": "Here's a more detailed breakdown:" },
+      {
+        "type": "list",
+        "list": [
+          { "title": "Upcheck:", "snippet": "Free tier with 50 monitors.", "reference_indexes": [1] },
+          {
+            "title": "Beacon Uptime:",
+            "snippet": "Status pages included.",
+            "reference_indexes": [2],
+            "list": [{ "snippet": "Paid plans from $10 a month.", "reference_indexes": [3] }]
+          }
+        ]
+      }
+    ],
+    "references": [
+      { "title": "10 Best Uptime Monitoring Tools", "link": "https://livecheck.example/uptime-tools", "snippet": "We tested...", "source": "Livecheck", "index": 0 },
+      { "title": "Upcheck pricing", "link": "https://upcheck.example/pricing", "snippet": "Free tier...", "source": "Upcheck", "index": 1 },
+      { "title": "Beacon Uptime review", "link": "https://reviews.example/beacon-uptime", "snippet": "Status pages...", "source": "Reviews", "index": 2 },
+      { "title": "Beacon Uptime pricing", "link": "https://beacon-uptime.example/pricing", "snippet": "From $10...", "source": "Beacon Uptime", "index": 3 },
+      { "title": "Unused reference", "link": "https://unused.example/page", "source": "Unused", "index": 4 }
+    ]
+  },
+  "organic_results": [{ "position": 1, "title": "ignored", "link": "https://ignored.example/" }]
+}

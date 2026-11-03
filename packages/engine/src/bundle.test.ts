@@ -429,6 +429,21 @@ describe("bundleFromRows (app-side rows)", () => {
     expect(runBundleSchema.safeParse(bundle).success).toBe(true);
   });
 
+  it("carries search_queries on answers and samples, and reads rows without them", () => {
+    const withQueries = {
+      ...rowsInput,
+      answers: rowsInput.answers.map((a, i) => (i === 0 ? { ...a, search_queries: ["best edge cdn 2026"] } : a)),
+      samples: (rowsInput.samples ?? []).map((x) => ({ ...x, search_queries: x.sample_idx === 0 ? ["best edge cdn 2026"] : [] })),
+    };
+    const bundle = bundleFromRows(withQueries);
+    expect(bundle.answers[0].search_queries).toEqual(["best edge cdn 2026"]);
+    expect(bundle.answers[0].samples.map((x) => x.search_queries)).toEqual([["best edge cdn 2026"], []]);
+    expect(runBundleSchema.safeParse(bundle).success).toBe(true);
+    expect(readBundle(JSON.parse(writeBundle(bundle)))).toEqual(bundle);
+    // a row from a database without the column (or an older run) has no field
+    expect("search_queries" in bundleFromRows(rowsInput).answers[0]).toBe(false);
+  });
+
   it("defaults samples/citations/scores/health when omitted", () => {
     const { samples: _s, citations: _c, scores: _sc, health: _h, ...rest } = rowsInput;
     void _s;

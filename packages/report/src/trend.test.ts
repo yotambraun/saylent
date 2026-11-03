@@ -135,7 +135,16 @@ describe("runEvents", () => {
     ]);
     expect(ev).toHaveLength(1);
     expect(ev[0].type).toBe("engine_set");
-    expect(ev[0].label).toContain("perplexity joined");
+    expect(ev[0].label).toContain("Perplexity joined");
+  });
+
+  it("names engines and surfaces by their registry label, never the raw id", () => {
+    const ev = runEvents([
+      base("2026-07-01T09:00:00Z", ["chatgpt", "copilot"]),
+      base("2026-07-02T09:00:00Z", ["chatgpt", "google_ai_overview"]),
+    ]);
+    expect(ev[0].label).toBe("engine coverage changed: Google AI Overviews joined; Microsoft Copilot dropped");
+    expect(ev[0].label).not.toContain("google_ai_overview");
   });
 
   it("marks a re-baseline when the question hash changes", () => {

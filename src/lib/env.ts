@@ -29,6 +29,7 @@ const serverSchema = z.object({
   ANTHROPIC_API_KEY: opt, // same: missing key = engine flagged
   GEMINI_API_KEY: opt, // same: missing key = engine flagged
   PERPLEXITY_API_KEY: opt, // same: missing key = engine flagged
+  SERPAPI_API_KEY: opt, // optional: unlocks the answer surfaces (AI Overviews, AI Mode, Copilot)
   INNGEST_EVENT_KEY: opt, // required for a deployed Inngest (local dev server needs none)
   INNGEST_SIGNING_KEY: opt, // required for a deployed Inngest
   RESEND_API_KEY: opt, // required for transactional email
@@ -39,7 +40,7 @@ const serverSchema = z.object({
   SENTRY_ORG: opt, // Sentry org slug (source-map upload)
   SENTRY_PROJECT: opt, // Sentry project slug (source-map upload)
   DEMO_RUN_ID: opt, // /demo renders a "demo not configured" note if unset
-  // The app runs the FULL profile by default (23 questions, about $3.70 to $5.50 per run) and
+  // The app runs the FULL profile by default (23 questions, about $5.10 to $7.10 per run) and
   // refuses the 6-question smoke profile for real users in production; the estimate is shown
   // before every run. resolveRunProfile() in src/lib/runs.ts enforces this from process.env.
   AUDIT_PROFILE: z.preprocess(nonEmpty, z.enum(["full", "smoke"]).default("full")),
@@ -53,6 +54,9 @@ const serverSchema = z.object({
   RUN_THROTTLE_AUDITS: opt,
   RUN_THROTTLE_VERIFIES: opt,
   DAILY_SPEND_CAP_USD: opt,
+  // Alerts: let webhook/Slack URLs point at this server's loopback interface
+  // (local development only; src/lib/alert-targets.ts). Off unless truthy.
+  SAYLENT_ALERTS_ALLOW_LOOPBACK: opt,
   // Model registry overrides — defaults live in src/lib/models.ts
   MODEL_CHATGPT_ANSWER: opt,
   MODEL_CLAUDE_ANSWER: opt,

@@ -1,0 +1,112 @@
+---
+title: Import questions
+description: Start an audit from what people really search. Import a Google Search Console export, any CSV or a text list into a questions.json, with every dropped row counted. $0, no model required.
+---
+
+The built-in questions come from templates and your brand model. Your real
+buyers type other things. `saylent questions import` turns a list of real
+queries into the question file an audit asks verbatim:
+
+```bash
+npx saylent questions import Queries.csv --exclude "acme" --questions-only --max 20
+npx saylent audit acme.com --questions questions.json
+```
+
+It runs offline and costs nothing. Every row it drops is counted by reason, so
+"kept 18 of 1,204 rows" always says where the other 1,186 went.
+
+## What it reads
+
+**Google Search Console.** In Performance, export the report (CSV); the ZIP
+holds one file per tab: Queries, Pages, Countries, Devices, Search appearances
+and Dates ([Google](https://developers.google.com/search/blog/2020/02/data-export)).
+Import **Queries.csv**. Its metrics are Clicks, Impressions, CTR and Position
+([Google](https://support.google.com/webmasters/answer/7576553)). Google does
+not document the CSV's header names; exports use "Top queries" and a CTR like
+"4.5%", so headers are matched loosely ("top queries", "query", "queries"),
+the "%" is handled, and the Search Analytics API's names (`query`, `clicks`,
+`impressions`, `ctr` as a fraction, `position`) work too. A Pages export is
+refused with the file to use instead. (Checked 2026-11-02.)
+
+**Any CSV.** Name the column with `--column` (a header name or a 1-based
+number), and optionally `--weight-column` to rank by. Commas, semicolons and
+tabs are detected, and quoted fields are read properly.
+
+**Text.** One question per line; `#` starts a comment.
+
+## What happens to each row
+
+1. **Normalize**: Unicode NFKC, whitespace collapsed, trimmed.
+2. **Filter**: empty, under 2 words, over 300 characters, `--min-impressions`,
+   `--exclude` and `--include` (regular expressions, repeatable; exclude your
+   brand to keep branded queries out), `--questions-only`.
+3. **Dedupe** on a key: lowercase, trailing punctuation dropped. The strongest
+   spelling stays and the others are recorded on it.
+4. **Cluster** (`--cluster`, optional): queries with the same words in any
+   order, minus a short list of common English words, merge into the strongest.
+5. **Rank** by impressions then clicks (Search Console), the weight column, or
+   file order, and keep `--max` (default 20, at most 50).
+
+`--questions-only` keeps rows that end in "?" in any language, or start with
+an English question word (what, which, how, is, can...). For other languages
+only the "?" rule applies.
+
+## The output
+
+A `questions.json`, the same file `saylent questions <domain>` writes, plus
+where it came from:
+
+```json
+{
+  "brand": "",
+  "version": "import",
+  "locale": { "language": "de", "country": "de" },
+  "import": { "file": "Queries.csv", "format": "gsc", "column": "Top queries", "rows": 1204, "kept": 18,
+              "dropped": { "below_min_impressions": 900, "duplicate": 200, "excluded": 86 }, "generated_at": "…" },
+  "questions": [
+    { "id": "u01", "type": "custom", "text": "beste uptime monitoring tool", "source": "user", "impressions": 1200, "clicks": 40 }
+  ]
+}
+```
+
+Every row is typed `custom` unless you pass `--type`. Custom questions are
+asked, judged and reported, but [only category and problem questions count
+toward the score](/docs/questions-and-models); tag rows with `--type category`
+only when they really are.
+
+`--preview` prints what would be kept and dropped without writing; `--json`
+prints the file; `--out` names it, and an existing file is kept unless you pass
+`--force`.
+
+## Optional: rewrite as natural questions
+
+Search queries are terse ("uptime monitor slack"). `--rewrite` asks your
+drafter model, in one call, to rewrite each as the question a buyer would ask
+an assistant, in the same language, adding nothing. It prints the estimate
+first (well under a cent for 20 queries) and spends only with `--yes` or a
+typed "y". The original query stays on each question as `from`. If the
+model's answer does not line up one to one, the queries are kept as they are.
+
+## Language and country
+
+`--language` (BCP 47, e.g. `de`, `pt-BR`) and `--country` (two letters) are
+saved as the set's `locale`. What that does, honestly, per answer source:
+
+| Answer source | What the locale does |
+|---|---|
+| ChatGPT, Claude, Gemini, Perplexity | The question is asked verbatim, so they answer in the language it is written in. No country is sent to these APIs in 0.2.0. |
+| Google AI Overviews, Google AI Mode | The country becomes SerpApi's `gl` and the language its `hl`: answers as a searcher there sees them. |
+| Microsoft Copilot | Takes no locale parameter; answers in the question's language. |
+
+When an audit uses the file, `--country`, `--location` and `--locale`, and
+`saylent.config` `surfaces`, still win; the file's locale fills what they
+leave unset. A run that asks an answer surface records the locale it used,
+and `verify` reuses it.
+
+## In the app and from an agent
+
+The app's **Questions and run options** page has **Import questions**: pick a
+file, see the kept rows and the drop counts, and add them to the draft. The
+file is read in your browser and never uploaded; a questions.json locale fills
+an empty surface country and language. The MCP `questions_import` tool
+previews the same import for an agent and writes nothing.

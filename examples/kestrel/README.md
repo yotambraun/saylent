@@ -6,7 +6,14 @@
 company we do not own. Every number, gate, citation, page and generated fix in
 it is exactly what the engine produced.
 
-Re-render it offline, with no network, no LLM call and no database:
+The CLI ships this same file. Render it anywhere, offline, with no key, no
+network, no LLM call and no database:
+
+```bash
+npx saylent demo
+```
+
+or re-render the copy in this folder:
 
 ```bash
 npx saylent report examples/kestrel/run.json
@@ -22,6 +29,10 @@ opinion is republished under its own name.
   (Anthropic + OpenAI); two rivals named on the command line so the head-to-head
   questions are real
 - **Cost:** $1.11
+- **Models:** the defaults of the time (`gpt-5.4`, `claude-sonnet-4-6`,
+  `gemini-3.6-flash`, `sonar`; judges `claude-haiku-4-5` and `gpt-5-mini`). The
+  file records them in `run.models`; a run today uses the current defaults
+  (`saylent models` prints them).
 
 From a checkout of this repo, without installing the CLI:
 

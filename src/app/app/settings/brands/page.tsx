@@ -1,5 +1,6 @@
 // Settings › Brands — edit a brand's name/domain/category/competitors. Question-
 // affecting edits re-baseline (confirm). Reads via the USER session (RLS = own rows).
+import { serpKeyAvailable } from "@/lib/provider-settings";
 import { createClient } from "@/lib/supabase/server";
 import { SettingsSection } from "../setting-row";
 import { BrandsList } from "./brands-client";
@@ -15,11 +16,14 @@ export default async function BrandsPage() {
     .order("created_at", { ascending: true });
   // A read failure is NOT "no brands" — surface it to the error boundary.
   if (error) throw error;
+  // Presence only: whether the answer surfaces can be offered. Never the key.
+  const serpAvailable = await serpKeyAvailable();
 
   return (
     <SettingsSection title="Brands" description="What each brand is and who it competes with.">
       <BrandsList
         canPickEngines
+        serpAvailable={serpAvailable}
         brands={(brands ?? []).map((b) => ({
           id: b.id,
           name: b.name,

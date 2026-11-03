@@ -137,6 +137,14 @@ export const INFRASTRUCTURE_HOSTS = [
   "netlify.com",
 ];
 
+/** A site file name that a URL parser reads as a host: a drafted
+ *  "https:///robots.txt" (empty host) parses with host "robots.txt", and the
+ *  2026-09 Kestrel map pseudonymized it, so the sample's robots.txt fix told
+ *  readers to edit "brightfield.example". No TLD is a file extension. */
+export function isFileNameHost(host: string): boolean {
+  return /\.(txt|xml|json|html?|md)$/i.test(host);
+}
+
 export function isInfrastructureHost(host: string): boolean {
   return INFRASTRUCTURE_HOSTS.some((e) => host === e || host.endsWith(`.${e}`));
 }
@@ -329,7 +337,7 @@ export function collectHosts(bundle: RunBundleV1): string[] {
 export interface HostPolicyRow {
   host: string;
   pseudonym: string | null;
-  reason: "curated" | "auto" | "auto-base" | "public-platform" | "technical" | "infrastructure" | "own-brand" | "already-fictional";
+  reason: "curated" | "auto" | "auto-base" | "public-platform" | "technical" | "infrastructure" | "own-brand" | "already-fictional" | "file-name";
 }
 
 /** Build the effective host map: curated entries + a deterministic pseudonym
@@ -365,6 +373,10 @@ export function buildHostPolicy(
     }
     if (host.endsWith(".example")) {
       rows.push({ host, pseudonym: null, reason: "already-fictional" });
+      continue;
+    }
+    if (isFileNameHost(host)) {
+      rows.push({ host, pseudonym: null, reason: "file-name" });
       continue;
     }
     // A per-user subdomain on a kept platform (name.medium.com) is a private
@@ -862,6 +874,7 @@ export function auditOutputHosts(bundle: RunBundleV1): { host: string; kept: str
   const leaks: { host: string; kept: string }[] = [];
   for (const host of collectHosts(bundle)) {
     if (host.endsWith(".example")) continue;
+    if (isFileNameHost(host)) continue;
     if (brandDomain && (host === brandDomain || host.endsWith(`.${brandDomain}`))) continue;
     if (isPublicPlatformHost(host)) continue;
     if (isTechnicalHost(host)) continue;

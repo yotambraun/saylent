@@ -43,11 +43,16 @@ function capture() {
 }
 
 const COMMANDS = [
+  "demo",
   "audit",
   "verify",
   "gate-check",
   "report",
   "history",
+  "sources",
+  "crawlers",
+  "export",
+  "fixes",
   "keys",
   "questions",
   "models",
@@ -55,7 +60,7 @@ const COMMANDS = [
 ];
 
 describe("saylent --help", () => {
-  it("lists all nine commands", async () => {
+  it("lists every command", async () => {
     const cap = capture();
     const code = await main(["--help"]);
     cap.restore();
@@ -78,14 +83,16 @@ describe("saylent --help", () => {
 });
 
 describe("saylent --help content", () => {
-  it("opens with package.json's own one-line description, then one example", async () => {
+  it("opens with package.json's own one-line description, then the keyless demo and a priced audit", async () => {
     const cap = capture();
     await main(["--help"]);
     cap.restore();
     const body = cap.stdout();
     expect(body.startsWith(cliDescription())).toBe(true);
-    expect(body).toContain("  npx saylent audit example.com");
-    // the example comes BEFORE the command list
+    expect(body).toContain("  npx saylent demo");
+    expect(body).toContain("npx saylent audit <your-domain> --dry-run");
+    // the keyless example comes first, and both come BEFORE the command list
+    expect(body.indexOf("npx saylent demo")).toBeLessThan(body.indexOf("npx saylent audit"));
     expect(body.indexOf("npx saylent audit")).toBeLessThan(body.indexOf("Commands:"));
   });
 

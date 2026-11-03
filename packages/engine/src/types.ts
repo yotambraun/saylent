@@ -2,7 +2,16 @@
 // (jsonb columns store these exactly), plus later additions.
 // src/engine/ is PURE: no Next/Supabase imports anywhere in this directory.
 
-export type Engine = "chatgpt" | "claude" | "gemini" | "perplexity"; // never variants
+/** The four model APIs saylent has always asked (never variants). */
+export type ModelEngine = "chatgpt" | "claude" | "gemini" | "perplexity";
+/** Answer SURFACES: where buyers actually read an AI answer that saylent can
+ *  only observe through a BYO SERP-data provider (surfaces.ts holds the
+ *  registry: label, credential, capabilities, cost model). An answer from a
+ *  surface has exactly the AnswerRow shape an engine answer has, so judging,
+ *  scoring, sources and reporting reuse everything. */
+export type SurfaceId = "google_ai_overview" | "google_ai_mode" | "copilot";
+/** Every id an answer can come from. Stored in answers.engine / run.engines. */
+export type Engine = ModelEngine | SurfaceId;
 // integration/migration/trust are the
 // three buyer-risk archetypes (see METHODOLOGY.md). They are NOT scored
 // (score.ts SCORED = category+problem only) — the headline stays 12 scored questions.
@@ -99,17 +108,19 @@ export interface Verdict {
   entity_confusion?: boolean;
 }
 
+/** One answer source's scored tally. */
+export interface EngineTally {
+  answered: number;
+  recommended: number;
+  mentioned: number;
+  rec_rate: number | null;
+  mention_rate: number | null;
+}
+
 export interface Scores {
-  per_engine: Record<
-    Engine,
-    {
-      answered: number;
-      recommended: number;
-      mentioned: number;
-      rec_rate: number | null;
-      mention_rate: number | null;
-    }
-  >;
+  /** the four model APIs always have a row; an answer surface has one only
+   *  when the run asked it (so every pre-surface run reads back unchanged) */
+  per_engine: Record<ModelEngine, EngineTally> & Partial<Record<SurfaceId, EngineTally>>;
   overall: {
     answered: number;
     recommended: number;
@@ -202,6 +213,9 @@ export interface AnswerRow {
   error?: string;
   /** exact provider usage (tokens + search calls) — the honest cost record */
   usage?: { input_tokens?: number; output_tokens?: number; searches?: number };
+  /** the web searches the engine ran for this answer (search-queries.ts);
+   *  absent when its API does not report them or the run predates 0.2.0 */
+  search_queries?: string[];
 }
 
 export interface CorpusPageRow {
@@ -259,6 +273,8 @@ export interface AnswerSampleRow {
   citations: Citation[];
   verdict: Verdict | null;
   usage: { input_tokens?: number; output_tokens?: number; searches?: number } | null;
+  /** this draw's web searches; null when not reported (search-queries.ts) */
+  search_queries?: string[] | null;
 }
 
 /** One flattened citation row (0032): one row per citation, in answer order. */

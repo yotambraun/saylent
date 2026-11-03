@@ -1,0 +1,695 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Saylent read-only API",
+    "version": "1",
+    "description": "Read your own brands, runs and the saylent.export/v1 tables from a self-hosted Saylent app. Read-only: nothing here starts a run, spends credits or changes data. 60 requests a minute per user. Docs: https://yotambraun.github.io/saylent/docs/export#read-only-api",
+    "license": {
+      "name": "Apache-2.0",
+      "identifier": "Apache-2.0"
+    }
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "Your own deployment"
+    }
+  ],
+  "security": [
+    {
+      "token": []
+    },
+    {
+      "session": []
+    }
+  ],
+  "paths": {
+    "/api/v1/brands": {
+      "get": {
+        "summary": "Your brands",
+        "responses": {
+          "200": {
+            "description": "Brands",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "brands": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Brand"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/brands/{id}/runs": {
+      "get": {
+        "summary": "A brand's finished runs, newest first",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "The brand id",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The brand and its runs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "brand": {
+                      "$ref": "#/components/schemas/Brand"
+                    },
+                    "runs": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/RunSummary"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/brands/{id}/export": {
+      "get": {
+        "summary": "The brand's last 24 finished runs as one export",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "The brand id",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "json",
+                "csv"
+              ],
+              "default": "json"
+            }
+          },
+          {
+            "name": "table",
+            "in": "query",
+            "required": false,
+            "description": "One table. Required with format=csv.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "runs",
+                "answers",
+                "citations",
+                "sources",
+                "opportunities",
+                "share_of_voice",
+                "fixes",
+                "crawlers",
+                "search_queries",
+                "ai_referrals"
+              ]
+            }
+          },
+          {
+            "name": "download",
+            "in": "query",
+            "required": false,
+            "description": "1 adds Content-Disposition: attachment",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The export document, or one table as CSV",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Export"
+                }
+              },
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/runs/{id}": {
+      "get": {
+        "summary": "One finished run",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "The run id",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "json",
+                "csv",
+                "bundle"
+              ],
+              "default": "json"
+            }
+          },
+          {
+            "name": "table",
+            "in": "query",
+            "required": false,
+            "description": "One table. Required with format=csv.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "runs",
+                "answers",
+                "citations",
+                "sources",
+                "opportunities",
+                "share_of_voice",
+                "fixes",
+                "crawlers",
+                "search_queries",
+                "ai_referrals"
+              ]
+            }
+          },
+          {
+            "name": "download",
+            "in": "query",
+            "required": false,
+            "description": "1 adds Content-Disposition: attachment",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The export document, one table as CSV, or the lossless run bundle (run.json) with format=bundle",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Export"
+                }
+              },
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/openapi.json": {
+      "get": {
+        "summary": "This document",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "OpenAPI 3.1",
+            "content": {
+              "application/json": {}
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "token": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "A personal API token (slt_...) from Settings › API tokens"
+      },
+      "session": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "sb-<project-ref>-auth-token",
+        "description": "A signed-in app session (the app's own Export links)"
+      }
+    },
+    "responses": {
+      "Error": {
+        "description": "An error",
+        "headers": {
+          "Retry-After": {
+            "description": "Seconds to wait, on 429",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "required": [
+                "error"
+              ],
+              "properties": {
+                "error": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "Brand": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "domain": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "RunSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "audit",
+              "verify"
+            ]
+          },
+          "profile": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "finished_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "answered": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "recommended": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "mentioned": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "est_cost_usd": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        }
+      },
+      "Export": {
+        "type": "object",
+        "required": [
+          "export_format",
+          "schema_version",
+          "generated_at",
+          "columns",
+          "tables"
+        ],
+        "properties": {
+          "export_format": {
+            "const": "saylent.export/v1"
+          },
+          "schema_version": {
+            "type": "integer"
+          },
+          "generated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "columns": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "tables": {
+            "type": "object",
+            "properties": {
+              "runs": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "run_id": {},
+                    "run_date": {},
+                    "kind": {},
+                    "profile": {},
+                    "brand": {},
+                    "domain": {},
+                    "engines": {},
+                    "models": {},
+                    "judge_mode": {},
+                    "questions": {},
+                    "answers": {},
+                    "scored_answers": {},
+                    "recommended": {},
+                    "mentioned": {},
+                    "est_cost_usd": {},
+                    "baseline_run_id": {}
+                  },
+                  "description": "Columns in order: run_id, run_date, kind, profile, brand, domain, engines, models, judge_mode, questions, answers, scored_answers, recommended, mentioned, est_cost_usd, baseline_run_id. See the docs for each column's meaning."
+                }
+              },
+              "answers": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "run_id": {},
+                    "run_date": {},
+                    "qid": {},
+                    "qtype": {},
+                    "question": {},
+                    "engine": {},
+                    "engine_label": {},
+                    "status": {},
+                    "brand_present": {},
+                    "mention_type": {},
+                    "prominence": {},
+                    "sentiment": {},
+                    "rivals_named": {},
+                    "citations": {},
+                    "citation_urls": {},
+                    "samples": {},
+                    "excerpt": {},
+                    "answer_text": {},
+                    "search_queries": {}
+                  },
+                  "description": "Columns in order: run_id, run_date, qid, qtype, question, engine, engine_label, status, brand_present, mention_type, prominence, sentiment, rivals_named, citations, citation_urls, samples, excerpt, answer_text, search_queries. See the docs for each column's meaning."
+                }
+              },
+              "citations": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "run_id": {},
+                    "run_date": {},
+                    "qid": {},
+                    "engine": {},
+                    "position": {},
+                    "url": {},
+                    "host": {},
+                    "page_title": {},
+                    "page_type": {},
+                    "brand_on_page": {},
+                    "rivals_on_page": {}
+                  },
+                  "description": "Columns in order: run_id, run_date, qid, engine, position, url, host, page_title, page_type, brand_on_page, rivals_on_page. See the docs for each column's meaning."
+                }
+              },
+              "sources": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "run_id": {},
+                    "run_date": {},
+                    "host": {},
+                    "type": {},
+                    "type_rule": {},
+                    "citations": {},
+                    "share": {},
+                    "answers": {},
+                    "brand_named_answers": {},
+                    "rival_won_answers": {},
+                    "engines": {}
+                  },
+                  "description": "Columns in order: run_id, run_date, host, type, type_rule, citations, share, answers, brand_named_answers, rival_won_answers, engines. See the docs for each column's meaning."
+                }
+              },
+              "opportunities": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "run_id": {},
+                    "run_date": {},
+                    "rank": {},
+                    "host": {},
+                    "type": {},
+                    "evidence": {},
+                    "engines": {},
+                    "rivals": {},
+                    "page_check": {},
+                    "brand_named_answers": {},
+                    "top_page_url": {},
+                    "why": {},
+                    "receipts": {}
+                  },
+                  "description": "Columns in order: run_id, run_date, rank, host, type, evidence, engines, rivals, page_check, brand_named_answers, top_page_url, why, receipts. See the docs for each column's meaning."
+                }
+              },
+              "share_of_voice": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "run_id": {},
+                    "run_date": {},
+                    "name": {},
+                    "is_brand": {},
+                    "scope": {},
+                    "named": {},
+                    "recommended": {},
+                    "receipts": {}
+                  },
+                  "description": "Columns in order: run_id, run_date, name, is_brand, scope, named, recommended, receipts. See the docs for each column's meaning."
+                }
+              },
+              "fixes": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "run_id": {},
+                    "run_date": {},
+                    "rank": {},
+                    "fix_key": {},
+                    "title": {},
+                    "factor": {},
+                    "weight": {},
+                    "effort": {},
+                    "engines": {},
+                    "evidence": {},
+                    "has_artifact": {}
+                  },
+                  "description": "Columns in order: run_id, run_date, rank, fix_key, title, factor, weight, effort, engines, evidence, has_artifact. See the docs for each column's meaning."
+                }
+              },
+              "crawlers": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "window_from": {},
+                    "window_to": {},
+                    "bot_id": {},
+                    "bot": {},
+                    "operator": {},
+                    "purpose": {},
+                    "ai": {},
+                    "requests": {},
+                    "pages": {},
+                    "blocked": {},
+                    "server_errors": {},
+                    "not_found": {},
+                    "verified": {},
+                    "unverified": {},
+                    "first_seen": {},
+                    "last_seen": {}
+                  },
+                  "description": "Columns in order: window_from, window_to, bot_id, bot, operator, purpose, ai, requests, pages, blocked, server_errors, not_found, verified, unverified, first_seen, last_seen. See the docs for each column's meaning."
+                }
+              },
+              "search_queries": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "run_id": {},
+                    "run_date": {},
+                    "qid": {},
+                    "engine": {},
+                    "sample": {},
+                    "position": {},
+                    "query": {}
+                  },
+                  "description": "Columns in order: run_id, run_date, qid, engine, sample, position, query. See the docs for each column's meaning."
+                }
+              },
+              "ai_referrals": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "window_from": {},
+                    "window_to": {},
+                    "assistant_id": {},
+                    "assistant": {},
+                    "operator": {},
+                    "visits": {},
+                    "via_referrer": {},
+                    "via_utm_source": {},
+                    "top_pages": {},
+                    "first_seen": {},
+                    "last_seen": {}
+                  },
+                  "description": "Columns in order: window_from, window_to, assistant_id, assistant, operator, visits, via_referrer, via_utm_source, top_pages, first_seen, last_seen. See the docs for each column's meaning."
+                }
+              }
+            }
+          },
+          "notes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  }
+}

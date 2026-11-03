@@ -14,11 +14,13 @@
 // for a dense editor. The two run-level controls use the same styling so the
 // page reads as one thing.
 import { useMemo, useState } from "react";
+import { QuestionImport } from "./question-import";
 import { useRouter } from "next/navigation";
 import { Button } from "@saylent/report/ui/button";
 import { Input } from "@saylent/report/ui/input";
 import { Label } from "@saylent/report/ui/label";
 import { PendingLink } from "@/components/pending-link";
+import { SurfacePicker } from "@/components/engine-picker";
 import {
   type DraftQuestion,
   estimateRunCost,
@@ -28,19 +30,21 @@ import {
   QUESTION_TYPES,
   type QuestionType,
   questionsChanged,
+  MAX_SOURCE_OVERRIDES,
   ROLE_CENTS,
   type RunSkipOptions,
+  SOURCE_TYPE_OPTIONS,
 } from "@/lib/question-options";
 import { MAX_SAMPLES, MIN_SAMPLES, PROFILES, type ProfileName } from "@saylent/engine/profiles";
-import { ENGINE_FLOOR } from "@saylent/engine/engines";
+import { ENGINE_FLOOR, SELECTABLE_ENGINES } from "@saylent/engine/engines";
+import { SERP_REQUEST_CENTS } from "@saylent/engine/rates";
+import { SERP_PROVIDERS, SURFACES, engineLabel, isSurfaceId } from "@saylent/engine/surfaces";
 import { resetRunOptions, saveRunOptions, startRunWithOptions } from "./actions";
 
-const ENGINE_LABELS: Record<string, string> = {
-  chatgpt: "ChatGPT",
-  claude: "Claude",
-  gemini: "Gemini",
-  perplexity: "Perplexity",
-};
+type SurfaceLocaleForm = { country: string; language: string; location: string };
+type OverrideRow = { host: string; type: string };
+const EMPTY_LOCALE: SurfaceLocaleForm = { country: "", language: "", location: "" };
+const SERP_LABEL = SERP_PROVIDERS.serpapi.label;
 
 const TYPE_LABELS: Record<QuestionType, string> = {
   category: "Category",
@@ -85,6 +89,10 @@ export function QuestionsClient(props: {
   savedEngines: string[] | null;
   savedLocale: string;
   savedSkip: RunSkipOptions;
+  savedSurfaceLocale: SurfaceLocaleForm;
+  savedSourceOverrides: OverrideRow[];
+  /** the deployment has a SerpApi key (presence only, resolved server-side) */
+  serpAvailable: boolean;
   brandEngines: string[];
   allEngines: string[];
   hasFrozenSet: boolean;
@@ -100,6 +108,8 @@ export function QuestionsClient(props: {
   );
   const [locale, setLocale] = useState(props.savedLocale);
   const [skip, setSkip] = useState<RunSkipOptions>(props.savedSkip);
+  const [surfaceLocale, setSurfaceLocale] = useState<SurfaceLocaleForm>(props.savedSurfaceLocale);
+  const [overrides, setOverrides] = useState<OverrideRow[]>(props.savedSourceOverrides);
   const [phase, setPhase] = useState<"idle" | "saving" | "starting" | "resetting">("idle");
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
@@ -119,13 +129,20 @@ export function QuestionsClient(props: {
     enginesEdited ||
     samples !== props.defaultSamples ||
     locale !== props.savedLocale ||
+    surfaceLocale.country !== props.savedSurfaceLocale.country ||
+    surfaceLocale.language !== props.savedSurfaceLocale.language ||
+    surfaceLocale.location !== props.savedSurfaceLocale.location ||
     !!(skip.drafts || skip.corpus || skip.gates);
+  const surfacesPicked = engines.filter((e) => isSurfaceId(e));
+  // a selected surface with no key: the server refuses the run, so say it here
+  const surfacesWithoutKey = surfacesPicked.length > 0 && !props.serpAvailable;
   // The methodology warning, stated before the click: a verify re-asks the frozen
   // set, so changing what gets asked starts a new trend line.
   const willRebaseline = props.hasFrozenSet && (questionsEdited || enginesEdited);
   const belowFloor = engines.length > 0 && engines.length < ENGINE_FLOOR;
   const emptyRow = rows.some((r) => !r.text.trim());
-  const canRun = !busy && !belowFloor && !emptyRow && rows.length > 0 && !props.activeRunId;
+  const canRun =
+    !busy && !belowFloor && !emptyRow && rows.length > 0 && !props.activeRunId && !surfacesWithoutKey;
   // WHY THE BUTTON IS DEAD, NEXT TO THE BUTTON. The explanations
   // existed, but 3,000px down the page: you clicked Run, nothing happened, and
   // the reason was off-screen. Same sentences, said where the click was.
@@ -137,7 +154,9 @@ export function QuestionsClient(props: {
         ? "One row has no text. Fill it in or remove it below before running."
         : belowFloor
           ? `Only ${engines.length} engine selected. Pick at least ${ENGINE_FLOOR} — one engine cannot cross-check another.`
-          : null;
+          : surfacesWithoutKey
+            ? `Answer surfaces need a ${SERP_LABEL} key and this deployment has none. Untick them below, or ask your operator to add ${SERP_PROVIDERS.serpapi.envVar}.`
+            : null;
 
   function patchRow(index: number, patch: Partial<DraftQuestion>) {
     setRows(rows.map((r, i) => (i === index ? { ...r, ...patch, source: "user" } : r)));
@@ -147,13 +166,38 @@ export function QuestionsClient(props: {
     setRows(rows.filter((_, i) => i !== index));
   }
 
+  /** Append imported questions (question-import.tsx), each tagged as the
+   *  owner's own; a questions.json locale fills an empty surface locale. */
+  function importRows(texts: string[], loc: { language?: string; country?: string } | null) {
+    const next = [...rows];
+    for (const text of texts) {
+      if (next.length >= MAX_QUESTIONS) break;
+      if (next.some((r) => r.text.trim().toLowerCase() === text.trim().toLowerCase())) continue;
+      next.push({ id: nextQid(next), type: "custom", text, source: "user" });
+    }
+    setRows(next);
+    if (loc && (loc.country || loc.language)) {
+      setSurfaceLocale({
+        ...surfaceLocale,
+        country: surfaceLocale.country || loc.country || "",
+        language: surfaceLocale.language || loc.language || "",
+      });
+    }
+  }
+
   function addRow() {
     if (rows.length >= MAX_QUESTIONS) return;
     setRows([...rows, { id: nextQid(rows), type: "custom", text: "", source: "user" }]);
   }
 
   function toggleEngine(engine: string) {
-    setEngines(engines.includes(engine) ? engines.filter((e) => e !== engine) : [...engines, engine]);
+    // canonical order (model APIs, then surfaces), so the set compares cleanly
+    const next = engines.includes(engine) ? engines.filter((e) => e !== engine) : [...engines, engine];
+    setEngines(SELECTABLE_ENGINES.filter((e) => next.includes(e)));
+  }
+
+  function patchOverride(index: number, patch: Partial<OverrideRow>) {
+    setOverrides(overrides.map((r, i) => (i === index ? { ...r, ...patch } : r)));
   }
 
   const form = () => ({
@@ -163,6 +207,8 @@ export function QuestionsClient(props: {
     engines,
     locale,
     skip,
+    surfaceLocale,
+    sourceOverrides: overrides.filter((r) => r.host.trim() || r.type),
   });
 
   async function save() {
@@ -210,6 +256,8 @@ export function QuestionsClient(props: {
     setEngines(props.brandEngines);
     setLocale("");
     setSkip({});
+    setSurfaceLocale(EMPTY_LOCALE);
+    // the source-type overrides are kept by the server: they are not run options
     setNote("Back to the generated set and the defaults.");
   }
 
@@ -286,6 +334,15 @@ export function QuestionsClient(props: {
               {skip.drafts ? "none, you skipped them" : `${caps.draftTop}, about ${cents(draftCost)}`}
             </dd>
           </div>
+          {surfacesPicked.length > 0 && !belowFloor && (
+            <div className="flex justify-between gap-4">
+              <dt className="text-wire">Answer surfaces</dt>
+              <dd className="tabular-nums text-ink">
+                {surfacesPicked.map((s) => SURFACES[s as keyof typeof SURFACES].label).join(", ")}, on
+                your {SERP_LABEL} plan at about {cents(SERP_REQUEST_CENTS.serpapi)} a search
+              </dd>
+            </div>
+          )}
           <div className="flex justify-between gap-4">
             <dt className="text-wire">Also billed</dt>
             <dd className="tabular-nums text-ink">
@@ -381,15 +438,124 @@ export function QuestionsClient(props: {
                   checked={engines.includes(engine)}
                   onChange={() => toggleEngine(engine)}
                 />
-                {ENGINE_LABELS[engine] ?? engine}
+                {engineLabel(engine)}
               </label>
             ))}
           </div>
+          <SurfacePicker
+            selected={engines}
+            onToggle={(id) => toggleEngine(id)}
+            serpAvailable={props.serpAvailable}
+            idPrefix="run"
+          />
           <p className="text-xs text-wire">
             {belowFloor
               ? `Pick at least ${ENGINE_FLOOR}. One engine cannot cross-check another, so a single-engine verdict is a coin flip.`
               : `Every engine you drop removes its answers from the score. Changing the set starts a new baseline, because a verify may not compare ${engines.length} engines against a different number.`}
           </p>
+        </fieldset>
+
+        <fieldset className="flex flex-col gap-3">
+          <legend className="mb-1 text-sm font-medium text-ink">
+            Where the answer surfaces read from
+          </legend>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="surface-country">Country</Label>
+              <Input
+                id="surface-country"
+                value={surfaceLocale.country}
+                maxLength={2}
+                onChange={(e) => setSurfaceLocale({ ...surfaceLocale, country: e.target.value })}
+                placeholder="us, gb, de"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="surface-language">Language</Label>
+              <Input
+                id="surface-language"
+                value={surfaceLocale.language}
+                onChange={(e) => setSurfaceLocale({ ...surfaceLocale, language: e.target.value })}
+                placeholder={locale.trim() ? `${locale.trim()} (the run language)` : "en, pt-BR"}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="surface-location">Location</Label>
+              <Input
+                id="surface-location"
+                value={surfaceLocale.location}
+                maxLength={120}
+                onChange={(e) => setSurfaceLocale({ ...surfaceLocale, location: e.target.value })}
+                placeholder="Austin, Texas, United States"
+              />
+            </div>
+          </div>
+          <p className="max-w-[65ch] text-xs text-wire">
+            Applies to the answer surfaces only; the four model APIs ignore it. A blank language
+            uses the run language above. {SURFACES.copilot.label} has no documented country or
+            language setting, so it answers from the provider&apos;s default location. A verify
+            always reads the surfaces from where its baseline did.
+            {surfacesPicked.length === 0 && " No surface is selected, so this has no effect yet."}
+          </p>
+        </fieldset>
+
+        <fieldset className="flex flex-col gap-3">
+          <legend className="mb-1 text-sm font-medium text-ink">Source types</legend>
+          <p className="max-w-[65ch] text-xs text-wire">
+            Correct how a cited domain is classified in the report&apos;s Sources &amp;
+            opportunities section, for example a review site we filed as a blog. This changes how
+            every report for this brand reads its stored answers, never what a run asks, so it
+            never starts a new baseline. Subdomains follow their domain.
+          </p>
+          {overrides.length > 0 && (
+            <ul className="flex flex-col gap-2">
+              {overrides.map((r, index) => (
+                <li key={index} className="flex flex-wrap items-center gap-2">
+                  <Input
+                    aria-label={`Domain ${index + 1}`}
+                    className="w-56 font-mono text-xs"
+                    value={r.host}
+                    onChange={(e) => patchOverride(index, { host: e.target.value })}
+                    placeholder="g2.com"
+                  />
+                  <select
+                    aria-label={`Source type for domain ${index + 1}`}
+                    className={selectClass}
+                    value={r.type}
+                    onChange={(e) => patchOverride(index, { type: e.target.value })}
+                  >
+                    <option value="">Pick a type</option>
+                    {SOURCE_TYPE_OPTIONS.map(([type, label]) => (
+                      <option key={type} value={type}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => setOverrides(overrides.filter((_, i) => i !== index))}
+                    className="text-xs text-wire underline underline-offset-2 hover:text-pill-dismissed"
+                  >
+                    Remove
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              variant="outline"
+              onClick={() => setOverrides([...overrides, { host: "", type: "" }])}
+              disabled={overrides.length >= MAX_SOURCE_OVERRIDES}
+            >
+              Add a source type
+            </Button>
+            <span className="text-xs text-wire">
+              {overrides.length >= MAX_SOURCE_OVERRIDES
+                ? `That is the most a brand can keep (${MAX_SOURCE_OVERRIDES}).`
+                : "Saved with Save for later or Run audit."}
+            </span>
+          </div>
         </fieldset>
 
         <fieldset className="flex flex-col gap-3">
@@ -508,6 +674,7 @@ export function QuestionsClient(props: {
           <Button variant="outline" onClick={addRow} disabled={rows.length >= MAX_QUESTIONS}>
             Add a question
           </Button>
+          <QuestionImport capacity={MAX_QUESTIONS - rows.length} onImport={importRows} />
           <span className="text-xs text-wire">
             {rows.length >= MAX_QUESTIONS
               ? `That is the most one run can ask (${MAX_QUESTIONS}). Remove one to add another.`

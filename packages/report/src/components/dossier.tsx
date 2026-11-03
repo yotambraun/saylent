@@ -1,7 +1,7 @@
 "use client";
 // THE DOSSIER — mirrors METHODOLOGY.md exactly: eyebrow → verdict strip →
-// 01 battlefield → 02 question verdicts → 03 share of voice → 04 domain gates →
-// 05 fix plan → 06 methodology footer. Every number opens its stored receipt.
+// 01 battlefield → 02 question verdicts → 03 share of voice → 04 sources &
+// opportunities → 05 domain gates → 06 fix plan → 07 methodology footer. Every number opens its stored receipt.
 import {
   type ReactNode,
   useEffect,
@@ -58,6 +58,9 @@ import { makeRivalOwner } from "@saylent/engine/rival-owner";
 import { stripMarkdownForPreview } from "../strip-md";
 import { rivalGaps, type RivalGaps } from "../rival-gaps";
 import { buildSourceMap } from "../source-map";
+import { SourcesPanel } from "./sources-panel";
+import { sourcesFor, type SourceOverrides } from "../sources-view";
+import { ENGINE_IDS, isNotShownRow } from "@saylent/engine/surfaces";
 import { sovEntries, topRivalPick, topRivalSentence } from "../sov";
 import {
   AnswerDrawer,
@@ -92,7 +95,9 @@ export interface FixRow {
   published_at: string | null;
 }
 
-const ENGINES = ["chatgpt", "claude", "gemini", "perplexity"] as const;
+// every answer source, canonical order (the four model APIs, then the answer
+// surfaces). Every use below filters to the engines a run actually asked.
+const ENGINES = ENGINE_IDS;
 
 // E3b — short stage nouns for the sharpest-gap lede (qtype = buyer-journey stage).
 const STAGE_NOUN: Record<string, string> = {
@@ -123,6 +128,7 @@ export function Dossier({
   engineModels,
   previous = null,
   shareToken = null,
+  sourceOverrides = null,
 }: {
   run: RunRow;
   brand: {
@@ -148,6 +154,9 @@ export function Dossier({
   previous?: { pct: number; date: string } | null;
   /** current share token when the owner has sharing on (null = off) */
   shareToken?: string | null;
+  /** the owner's domain-type overrides for the Sources section (saylent.config
+   *  sources.domainTypes on the CLI, brand run options in the app) */
+  sourceOverrides?: SourceOverrides | null;
 }) {
   // Analytics is a host capability (a beacon in the app, a no-op in a static
   // report.html) — the view never imports the app's client.
@@ -254,7 +263,7 @@ export function Dossier({
   const disclaimerEngines = useMemo(() => {
     const seen = new Set(answers.map((a) => a.engine));
     // keep canonical order, then any unexpected engines, labelled via the map
-    const ordered = [...ENGINES.filter((e) => seen.has(e)), ...[...seen].filter((e) => !ENGINES.includes(e as (typeof ENGINES)[number]))];
+    const ordered = [...ENGINES.filter((e) => seen.has(e)), ...[...seen].filter((e) => !(ENGINES as readonly string[]).includes(e))];
     return ordered.map((e) => ENGINE_LABEL[e] ?? e.charAt(0).toUpperCase() + e.slice(1));
   }, [answers]);
   // The engines ACTUALLY asked on this run (a run can be narrowed to fewer
@@ -504,6 +513,19 @@ export function Dossier({
     () => ownSiteCoverage(sitePages, corpus, answers, brand.domain),
     [sitePages, corpus, answers, brand.domain],
   );
+  // 04 SOURCES & OPPORTUNITIES — the engine's source intelligence over the
+  // rows already on the page (one computation for the app, report.html and
+  // report.md: ../sources-view).
+  const sources = useMemo(
+    () =>
+      sourcesFor({
+        brand: { name: brand.name, domain: brand.domain, aliases: brand.aliases, competitors: brand.competitors },
+        answers,
+        corpus,
+        overrides: sourceOverrides,
+      }),
+    [brand.name, brand.domain, brand.aliases, brand.competitors, answers, corpus, sourceOverrides],
+  );
 
   return (
     // overflow-x-clip: no card, table or tab strip inside the report may widen
@@ -669,6 +691,12 @@ export function Dossier({
             <ConfidenceBand
               overall={overallBand}
               perEngine={scores?.recommended_band?.per_engine}
+              sampleSets={
+                typeof (scores?.recommended_band as { sample_sets?: number } | undefined)
+                  ?.sample_sets === "number"
+                  ? (scores!.recommended_band as { sample_sets?: number }).sample_sets!
+                  : 0
+              }
               answeredScored={answeredScored}
               perEngineAnswered={Object.fromEntries(
                 enginesAsked.map((e) => [e, scores?.per_engine?.[e]?.answered ?? 0]),
@@ -957,10 +985,25 @@ export function Dossier({
         </Reveal>
       )}
 
-      {/* 04 DOMAIN GATES */}
+      {/* 04 SOURCES & OPPORTUNITIES */}
+      <Reveal>
+        <SourcesPanel
+          intel={sources}
+          answers={answers}
+          corpus={corpus}
+          onAnswerOpen={openAnswer}
+          onPageOpen={setPageOpen}
+          openAnswerId={answerOpen?.id ?? null}
+          openPageId={pageOpen?.id ?? null}
+          corpusSkipped={!!skip?.corpus}
+          title={<SectionTitle n="04" title="Sources & opportunities: where the answers come from" />}
+        />
+      </Reveal>
+
+      {/* 05 DOMAIN GATES */}
       <Reveal>
       <section id="gates">
-        <SectionTitle n="04" title="Can the AI crawlers read your site?" />
+        <SectionTitle n="05" title="Can the AI crawlers read your site?" />
         {/* the crawl→citation story leads the gates table. It composes
             around the stored check detail verbatim; null when there are no checks. */}
         {gatesStory && (
@@ -1028,7 +1071,7 @@ export function Dossier({
       {/* 06 METHODOLOGY & HONESTY */}
       <Reveal>
       <section id="method" className="rounded-lg border border-line bg-card p-6 text-sm">
-        <SectionTitle n="06" title="Methodology & honesty" />
+        <SectionTitle n="07" title="Methodology & honesty" />
         <p className="mt-2">
           <strong>What this is:</strong> the answers {engineCountLabel} gave to your buyers&apos;
           questions, the pages those answers were built from, and what we found on each. This
@@ -1181,9 +1224,10 @@ const TOC = [
   ["battlefield", "01 Battlefield"],
   ["verdicts", "02 Verdicts"],
   ["voice", "03 Voice"],
-  ["gates", "04 Gates"],
-  ["fix-plan", "05 Fixes"],
-  ["method", "06 Method"],
+  ["sources", "04 Sources"],
+  ["gates", "05 Gates"],
+  ["fix-plan", "06 Fixes"],
+  ["method", "07 Method"],
 ] as const;
 
 function DossierNav() {
@@ -1420,6 +1464,7 @@ function RivalGapsPanel({
 function ConfidenceBand({
   overall,
   perEngine,
+  sampleSets,
   answeredScored,
   perEngineAnswered,
   engines,
@@ -1427,6 +1472,10 @@ function ConfidenceBand({
 }: {
   overall: BandDescriptor;
   perEngine?: Record<string, BandLike>;
+  /** sample-sets behind the band; 0 = unknown (a run written before the field
+   *  existed). A point band only means "it held" when this is 2 or more — a
+   *  smoke run draws once, and min==max is then arithmetic, not stability. */
+  sampleSets: number;
   answeredScored: number;
   perEngineAnswered: Record<string, number>;
   engines: readonly string[];
@@ -1453,7 +1502,11 @@ function ConfidenceBand({
               Recommended in {overall.min} of {answeredScored}
             </span>{" "}
             scored answers.{" "}
-            <span className="text-wire">Stable across samples. The number didn&apos;t move when we re-asked.</span>
+            <span className="text-wire">
+              {sampleSets >= 2
+                ? "Stable across samples. The number didn't move when we re-asked."
+                : "One draw per question and engine on this profile, so this is a count, not a measured range."}
+            </span>
           </>
         )}
       </p>
@@ -1973,8 +2026,8 @@ function Battlefield({
               {consensus.length}.
             </span>{" "}
             <span className="text-wire">
-              Two or more of the {ENGINES.length} engines cite each one. A listing here moves
-              several engines at once.
+              Two or more engines cite each one. A listing here moves several engines at
+              once.
             </span>
           </p>
           <ul className="flex flex-col divide-y divide-line">
@@ -2298,6 +2351,8 @@ function QuestionVerdicts({
     return [...m.entries()].sort(([a], [b]) => a.localeCompare(b));
   }, [answers]);
   const shown = byQid.filter(([, rows]) => qtype === "all" || rows[0]?.qtype === qtype);
+  // only the answer sources this run asked (a run may add answer surfaces)
+  const asked = useMemo(() => ENGINES.filter((e) => answers.some((a) => a.engine === e)), [answers]);
 
   return (
     <section id="verdicts">
@@ -2324,7 +2379,7 @@ function QuestionVerdicts({
         </Tabs>
         </div>
         <div className="flex flex-wrap gap-1 pointer-coarse:gap-2">
-          {ENGINES.map((e) => (
+          {asked.map((e) => (
             <button
               key={e}
               onClick={() => setEngineFilter(engineFilter === e ? null : e)}
@@ -2369,16 +2424,23 @@ function QuestionVerdicts({
                   </td>
                   <td className="py-3 pointer-coarse:py-4">
                     <div className="flex flex-wrap gap-1 pointer-coarse:gap-2">
-                      {ENGINES.filter((e) => !engineFilter || e === engineFilter).map((e) => {
+                      {asked.filter((e) => !engineFilter || e === engineFilter).map((e) => {
                         const a = rows.find((r) => r.engine === e);
                         if (!a || !a.ok) {
+                          // an answer surface that showed no AI answer for this
+                          // question is "not shown": a gap, never an absence
+                          const notShown = !!a && isNotShownRow(a);
                           return (
                             <span
                               key={e}
-                              title={a?.error ?? "no answer"}
-                              className="rounded px-1.5 py-0.5 font-mono text-[10px] text-wire outline outline-1 outline-line pointer-coarse:py-1.5"
+                              title={
+                                notShown
+                                  ? `${ENGINE_LABEL[e] ?? e} showed no AI answer for this question. Counted nowhere, never as an absence.`
+                                  : (a?.error ?? "no answer")
+                              }
+                              className={`rounded px-1.5 py-0.5 font-mono text-[10px] text-wire outline outline-1 pointer-coarse:py-1.5 ${notShown ? "outline-dashed outline-line" : "outline-line"}`}
                             >
-                              {ENGINE_LABEL[e]} · no answer
+                              {ENGINE_LABEL[e] ?? e} · {notShown ? "not shown" : "no answer"}
                             </span>
                           );
                         }
@@ -2389,7 +2451,7 @@ function QuestionVerdicts({
                             onClick={() => onOpen(a)}
                             aria-haspopup="dialog"
                             aria-expanded={openAnswerId === a.id}
-                            aria-label={`Read ${ENGINE_LABEL[e]}'s answer for question ${a.qid}: ${mt}`}
+                            aria-label={`Read ${ENGINE_LABEL[e] ?? e}'s answer for question ${a.qid}: ${mt}`}
                             className={`cursor-pointer rounded px-1.5 py-0.5 font-mono text-[10px] pointer-coarse:py-1.5 ${PILL[mt] ?? "bg-wire text-paper"}`}
                           >
                             {ENGINE_LABEL[e]} · {mt}
@@ -3067,7 +3129,7 @@ function FixPlan({
   return (
     <section>
       <span id="fix-plan" />
-      <SectionTitle n="05" title="Fix plan: ranked by evidence weight, drafted for you" />
+      <SectionTitle n="06" title="Fix plan: ranked by evidence weight, drafted for you" />
       {/* The ranking's basis, on the page. The weights were never shown and
           never explained, in a document whose whole pitch is receipts. */}
       <p className="mb-4 max-w-3xl text-[13px] leading-relaxed text-wire">

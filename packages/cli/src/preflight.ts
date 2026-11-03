@@ -10,7 +10,8 @@ import type { EngineModule } from "./engine-loader";
 import { glyph } from "./glyphs";
 
 export type ProfileName = "full" | "smoke";
-export type Engine = "chatgpt" | "claude" | "gemini" | "perplexity";
+/** Every answer source: the four model engines plus the answer surfaces. */
+export type Engine = import("@saylent/engine").Engine;
 
 /** The preflight's Judge line. Two judgment keys ⇒
  *  cross-family (an answer is judged by the OTHER family, which is the
@@ -53,11 +54,11 @@ export interface CostRange {
  *  recorded. The published CLI cannot import from the app, so this is a copy of
  *  src/lib/cost-copy.ts — and src/lib/question-options.test.ts recomputes both
  *  from the estimator and fails the suite if either drifts. */
-export const SMOKE_COST_SENTENCE = "about $0.60 to $1.20 with four engines; our recorded runs cost $0.93 and $1.11";
+export const SMOKE_COST_SENTENCE = "about $0.80 to $1.20 with four engines; our recorded runs cost $0.93 and $1.11";
 
 /** The same for `full`: 23 questions, four engines, two samples per scored
  *  question plus the adaptive tiebreak. */
-export const FULL_COST_SENTENCE = "about $3.70 to $5.50 with four engines";
+export const FULL_COST_SENTENCE = "about $5.10 to $7.10 with four engines";
 
 /** A deliberately approximate range built from the SAME per-answer fallback
  *  rates the engine bills a run with (answer-cost.ts COST_CENTS) plus the

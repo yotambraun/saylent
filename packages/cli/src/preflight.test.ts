@@ -282,12 +282,12 @@ describe("formatJudgeMode", () => {
 describe("formatJudgeModels", () => {
   it("cross-family: names both distinct judge models", () => {
     const roles = engineMod.resolveRoles({ openai: true, anthropic: true });
-    expect(formatJudgeModels(roles)).toBe("claude-haiku-4-5 / gpt-5-mini");
+    expect(formatJudgeModels(roles)).toBe("claude-haiku-5-5 / gpt-6-luna");
   });
 
   it("single-family: names the one judge model that serves every engine", () => {
     const roles = engineMod.resolveRoles({ anthropic: true });
-    expect(formatJudgeModels(roles)).toBe("claude-haiku-4-5");
+    expect(formatJudgeModels(roles)).toBe("claude-haiku-5-5");
   });
 
   it("reflects a --judge / saylent.config models override", () => {
@@ -295,6 +295,6 @@ describe("formatJudgeModels", () => {
       { openai: true, anthropic: true },
       { flags: { judge: { anthropic: "claude-custom-judge" } } },
     );
-    expect(formatJudgeModels(roles)).toBe("claude-custom-judge / gpt-5-mini");
+    expect(formatJudgeModels(roles)).toBe("claude-custom-judge / gpt-6-luna");
   });
 });

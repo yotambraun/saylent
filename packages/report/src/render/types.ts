@@ -5,6 +5,7 @@
 import type { AnswerRow, CorpusRow } from "../components/drawers";
 import type { CheckRow, FixRow } from "../components/dossier";
 import type { RunRow } from "../components/run-view";
+import type { SourceOverrides } from "@saylent/engine/sources";
 
 export type { AnswerRow, CorpusRow, CheckRow, FixRow, RunRow };
 
@@ -32,6 +33,9 @@ export interface ReportData {
   checks: CheckRow[];
   fixes: FixRow[];
   previous?: ReportPrevious | null;
+  /** the domain-type overrides the Sources section is computed with (a run
+   *  bundle's sources.overrides, or the brand's run options in the app) */
+  sourceOverrides?: SourceOverrides | null;
 }
 
 /** The run's provenance, printed in the report header. Every number has a receipt;
