@@ -1,14 +1,14 @@
 {
-  "checked_at": "2026-11-02T07:06:13.160Z",
+  "checked_at": "2026-11-09T17:02:21.900Z",
   "providers": {
     "openai": {
-      "model": "gpt-5.4",
+      "model": "gpt-6.1-sol",
       "ok": false,
       "latency_ms": null,
       "error": "not_configured"
     },
     "anthropic": {
-      "model": "claude-sonnet-4-6",
+      "model": "claude-sonnet-5-5",
       "ok": false,
       "latency_ms": null,
       "error": "not_configured"
@@ -26,5 +26,5 @@
       "error": "not_configured"
     }
   },
-  "cli_version": "0.1.3"
+  "cli_version": "0.2.0"
 }
